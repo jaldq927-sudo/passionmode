@@ -1,0 +1,51 @@
+//@version=5
+indicator("WEMOF %B サブチャート", shorttitle="WEMOF %B", overlay=false)
+
+// ═══════════════════════════════════════════════════════════════════
+//  WEMOF %B サブチャートインジケーター
+//  WEMOF.pine と併用することで %B の動きを視覚的に確認できます
+//
+//  【使い方】
+//   WEMOF.pine（メイン）とこのスクリプトを両方チャートに追加すると
+//   価格チャートの下に %B の動きが表示されます。
+//   %B変化量の急激な増加 = 「気持ち悪い異常な動き」の目安です。
+// ═══════════════════════════════════════════════════════════════════
+
+// 入力設定（WEMOF.pineと同じ値に合わせること）
+bb_len  = input.int  (20,    "BB 期間",        minval=1,            group="Settings")
+bb_src  = input.source(close, "BB ソース",                           group="Settings")
+pb_look = input.int  (3,    "%B変化 計測バー数", minval=1, maxval=10, group="Settings")
+pb_thr  = input.float(0.30, "%B変化 異常閾値",  minval=0.05, step=0.05, group="Settings")
+
+// ボリンジャーバンド計算
+bb_basis = ta.sma(bb_src, bb_len)
+bb_dev   = ta.stdev(bb_src, bb_len)
+u3 = bb_basis + 3.0 * bb_dev
+l3 = bb_basis - 3.0 * bb_dev
+
+// %B 計算（±3σ基準）
+bw   = u3 - l3
+pb   = bw > 0.0 ? (bb_src - l3) / bw : 0.5
+dPb  = math.abs(pb - pb[pb_look])
+anom = dPb >= pb_thr
+
+// ── プロット ──
+// %B 本体
+pb_col = pb >= 1.0 or pb <= 0.0 ? color.red :
+         pb >= 0.85 or pb <= 0.15 ? color.orange :
+         pb >= 0.5 ? color.new(color.red, 50) : color.new(color.green, 50)
+plot(pb, "%B", color=pb_col, linewidth=2)
+
+// 基準ライン
+hline(1.0,  "+3σ (1.0)",  color=color.new(color.red,   20), linestyle=hline.style_solid,    linewidth=2)
+hline(0.85, "+2.5σ相当",  color=color.new(color.red,   50), linestyle=hline.style_dashed,   linewidth=1)
+hline(0.5,  "中心 (0.5)", color=color.new(color.gray,  30), linestyle=hline.style_dotted,   linewidth=1)
+hline(0.15, "-2.5σ相当",  color=color.new(color.lime,  50), linestyle=hline.style_dashed,   linewidth=1)
+hline(0.0,  "-3σ (0.0)",  color=color.new(color.lime,  20), linestyle=hline.style_solid,    linewidth=2)
+
+// 異常検知ゾーン背景色
+bgcolor(anom ? color.new(color.purple, 80) : na, title="異常検知ゾーン")
+
+// %B 変化量プロット（サブ）
+plot(dPb, "%B変化量", color=color.new(color.purple, 30), linewidth=1, style=plot.style_histogram)
+hline(pb_thr, "異常閾値", color=color.new(color.purple, 20), linestyle=hline.style_dashed, linewidth=1)
