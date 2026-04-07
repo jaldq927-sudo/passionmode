@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 indicator("WEMOF - Wakkyai's Entry Model Of FX", shorttitle="WEMOF", overlay=true, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════
@@ -91,15 +91,15 @@ alt_prep  = input.bool(false, "準備段階でもアラートを鳴らす",
 // ──────────────────────────────────────────────────────────────────
 // ボリンジャーバンド計算
 // ──────────────────────────────────────────────────────────────────
-bb_basis = ta.sma(bb_src, bb_len)
-bb_dev   = ta.stdev(bb_src, bb_len)
+float bb_basis = ta.sma(bb_src, bb_len)
+float bb_dev   = ta.stdev(bb_src, bb_len)
 
-u3 = bb_basis + 3.0 * bb_dev
-u2 = bb_basis + 2.0 * bb_dev
-u1 = bb_basis + 1.0 * bb_dev
-l1 = bb_basis - 1.0 * bb_dev
-l2 = bb_basis - 2.0 * bb_dev
-l3 = bb_basis - 3.0 * bb_dev
+float u3 = bb_basis + 3.0 * bb_dev
+float u2 = bb_basis + 2.0 * bb_dev
+float u1 = bb_basis + 1.0 * bb_dev
+float l1 = bb_basis - 1.0 * bb_dev
+float l2 = bb_basis - 2.0 * bb_dev
+float l3 = bb_basis - 3.0 * bb_dev
 
 // ──────────────────────────────────────────────────────────────────
 // %B 計算（±3σ基準）
@@ -112,22 +112,23 @@ l3 = bb_basis - 3.0 * bb_dev
 //   「%Bの変化幅を見て、気持ち悪い相場では変化幅が大きくなるので、
 //    相場の異常を示すシグナルとして見ています」
 // ──────────────────────────────────────────────────────────────────
-bw   = u3 - l3
-pb   = bw > 0.0 ? (bb_src - l3) / bw : 0.5
-dPb  = math.abs(pb - pb[pb_look])    // %B の変化量（絶対値）
-anom = dPb >= pb_thr                  // 異常判定フラグ
+float bw   = u3 - l3
+float pb   = bw > 0.0 ? (bb_src - l3) / bw : 0.5
+float dPb  = math.abs(pb - pb[pb_look])    // %B の変化量（絶対値）
+bool  anom = dPb >= pb_thr                  // 異常判定フラグ
 
 // ──────────────────────────────────────────────────────────────────
 // 日次ピボットポイント（前日の高値・安値・終値を使用）
+// v6: request.security でタプル型に明示的な型注釈を付与
 // ──────────────────────────────────────────────────────────────────
-[dH, dL, dC] = request.security(syminfo.tickerid, "D",
+[float dH, float dL, float dC] = request.security(syminfo.tickerid, "D",
     [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
 
-PP = (dH + dL + dC) / 3.0
-R1 = 2.0 * PP - dL
-R2 = PP + (dH - dL)
-S1 = 2.0 * PP - dH
-S2 = PP - (dH - dL)
+float PP = (dH + dL + dC) / 3.0
+float R1 = 2.0 * PP - dL
+float R2 = PP + (dH - dL)
+float S1 = 2.0 * PP - dH
+float S2 = PP - (dH - dL)
 
 // ──────────────────────────────────────────────────────────────────
 // 説明可能性フィルター
@@ -135,31 +136,31 @@ S2 = PP - (dH - dL)
 // ──────────────────────────────────────────────────────────────────
 
 // pip サイズを通貨ペアから自動判定（JPY系か否か）
-is_jpy  = str.contains(syminfo.basecurrency, "JPY") or str.contains(syminfo.currency, "JPY")
-pip_sz  = is_jpy ? 0.01 : 0.0001
-rnd_u   = is_jpy ? 1.0  : 0.01    // ラウンドナンバー単位（JPY: 150.00, Non-JPY: 1.1000）
+bool  is_jpy  = str.contains(syminfo.basecurrency, "JPY") or str.contains(syminfo.currency, "JPY")
+float pip_sz  = is_jpy ? 0.01 : 0.0001
+float rnd_u   = is_jpy ? 1.0  : 0.01    // ラウンドナンバー単位（JPY: 150.00, Non-JPY: 1.1000）
 
 // フィルター 1: ラウンドナンバー付近
-rnd_buf  = rnd_pips * pip_sz
-nr       = math.abs(close - math.round(close / rnd_u) * rnd_u) <= rnd_buf
+float rnd_buf  = rnd_pips * pip_sz
+bool  nr       = math.abs(close - math.round(close / rnd_u) * rnd_u) <= rnd_buf
 
 // フィルター 2: 直近高安値ブレイク（=トレンド継続の説明がつく）
-prev_hi  = ta.highest(high, hl_look)[1]
-prev_lo  = ta.lowest (low,  hl_look)[1]
-brk_up   = high > prev_hi    // 直近高値更新 → 上昇トレンドで説明可
-brk_dn   = low  < prev_lo    // 直近安値更新 → 下落トレンドで説明可
+float prev_hi  = ta.highest(high, hl_look)[1]
+float prev_lo  = ta.lowest (low,  hl_look)[1]
+bool  brk_up   = high > prev_hi    // 直近高値更新 → 上昇トレンドで説明可
+bool  brk_dn   = low  < prev_lo    // 直近安値更新 → 下落トレンドで説明可
 
 // フィルター 3: ピボットポイント付近
-piv_buf  = piv_pips * pip_sz
-np       = (math.abs(close - PP) <= piv_buf) or
-           (math.abs(close - R1) <= piv_buf) or
-           (math.abs(close - R2) <= piv_buf) or
-           (math.abs(close - S1) <= piv_buf) or
-           (math.abs(close - S2) <= piv_buf)
+float piv_buf  = piv_pips * pip_sz
+bool  np       = (math.abs(close - PP) <= piv_buf) or
+                 (math.abs(close - R1) <= piv_buf) or
+                 (math.abs(close - R2) <= piv_buf) or
+                 (math.abs(close - S1) <= piv_buf) or
+                 (math.abs(close - S2) <= piv_buf)
 
 // 総合判定: 説明できる動きか？
-expl = (use_rnd and nr) or (use_hl and (brk_up or brk_dn)) or (use_piv and np)
-unex = not expl    // 説明できない = WEMOFの候補
+bool expl = (use_rnd and nr) or (use_hl and (brk_up or brk_dn)) or (use_piv and np)
+bool unex = not expl    // 説明できない = WEMOFの候補
 
 // ──────────────────────────────────────────────────────────────────
 // WEMOFシグナル条件
@@ -170,17 +171,17 @@ unex = not expl    // 説明できない = WEMOFの候補
 // ──────────────────────────────────────────────────────────────────
 
 // 準備段階: 高値(安値)がバンドに届いたが終値は超えていない
-prep_s = high >= u3 and close < u3 and anom and unex    // ショート準備
-prep_l = low  <= l3 and close > l3 and anom and unex    // ロング準備
+bool prep_s = high >= u3 and close < u3 and anom and unex    // ショート準備
+bool prep_l = low  <= l3 and close > l3 and anom and unex    // ロング準備
 
 // WEMOFシグナル: 終値がバンドを初めて突き抜けた瞬間のみ (ta.crossover = 初回だけ発火)
 //   ta.crossover(close, u3) ≡ close[1] < u3[1] AND close >= u3
 //   ta.crossunder(close, l3) ≡ close[1] > l3[1] AND close <= l3
-sig_s = ta.crossover (close, u3) and anom and unex    // ショートシグナル（売り）
-sig_l = ta.crossunder(close, l3) and anom and unex    // ロングシグナル（買い）
+bool sig_s = ta.crossover (close, u3) and anom and unex    // ショートシグナル（売り）
+bool sig_l = ta.crossunder(close, l3) and anom and unex    // ロングシグナル（買い）
 
-any_sig  = sig_s or sig_l
-any_prep = prep_s or prep_l
+bool any_sig  = sig_s or sig_l
+bool any_prep = prep_s or prep_l
 
 // ──────────────────────────────────────────────────────────────────
 // プロット: ボリンジャーバンド

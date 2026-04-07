@@ -1,4 +1,4 @@
-//@version=5
+//@version=6
 indicator("WEMOF %B サブチャート", shorttitle="WEMOF %B", overlay=false)
 
 // ═══════════════════════════════════════════════════════════════════
@@ -18,22 +18,22 @@ pb_look = input.int  (3,    "%B変化 計測バー数", minval=1, maxval=10, gro
 pb_thr  = input.float(0.30, "%B変化 異常閾値",  minval=0.05, step=0.05, group="Settings")
 
 // ボリンジャーバンド計算
-bb_basis = ta.sma(bb_src, bb_len)
-bb_dev   = ta.stdev(bb_src, bb_len)
-u3 = bb_basis + 3.0 * bb_dev
-l3 = bb_basis - 3.0 * bb_dev
+float bb_basis = ta.sma(bb_src, bb_len)
+float bb_dev   = ta.stdev(bb_src, bb_len)
+float u3 = bb_basis + 3.0 * bb_dev
+float l3 = bb_basis - 3.0 * bb_dev
 
 // %B 計算（±3σ基準）
-bw   = u3 - l3
-pb   = bw > 0.0 ? (bb_src - l3) / bw : 0.5
-dPb  = math.abs(pb - pb[pb_look])
-anom = dPb >= pb_thr
+float bw   = u3 - l3
+float pb   = bw > 0.0 ? (bb_src - l3) / bw : 0.5
+float dPb  = math.abs(pb - pb[pb_look])
+bool  anom = dPb >= pb_thr
 
 // ── プロット ──
 // %B 本体
-pb_col = pb >= 1.0 or pb <= 0.0 ? color.red :
-         pb >= 0.85 or pb <= 0.15 ? color.orange :
-         pb >= 0.5 ? color.new(color.red, 50) : color.new(color.green, 50)
+color pb_col = pb >= 1.0 or pb <= 0.0 ? color.red :
+               pb >= 0.85 or pb <= 0.15 ? color.orange :
+               pb >= 0.5 ? color.new(color.red, 50) : color.new(color.green, 50)
 plot(pb, "%B", color=pb_col, linewidth=2)
 
 // 基準ライン
