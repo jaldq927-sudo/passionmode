@@ -119,9 +119,8 @@ bool  anom = dPb >= pb_thr                  // 異常判定フラグ
 
 // ──────────────────────────────────────────────────────────────────
 // 日次ピボットポイント（前日の高値・安値・終値を使用）
-// v6: request.security でタプル型に明示的な型注釈を付与
 // ──────────────────────────────────────────────────────────────────
-[float dH, float dL, float dC] = request.security(syminfo.tickerid, "D",
+[dH, dL, dC] = request.security(syminfo.tickerid, "D",
     [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
 
 float PP = (dH + dL + dC) / 3.0
