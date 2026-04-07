@@ -119,9 +119,13 @@ bool  anom = dPb >= pb_thr                  // 異常判定フラグ
 
 // ──────────────────────────────────────────────────────────────────
 // 日次ピボットポイント（前日の高値・安値・終値を使用）
+//
+// lookahead_off（デフォルト）を使用:
+//   日足バーは「最後に確定した日足」のデータを返すため、
+//   当日の5分足バー群はすべて「前日の確定値」を参照できる。
+//   → lookahead_on 不要。リペイント警告も出ない。
 // ──────────────────────────────────────────────────────────────────
-[dH, dL, dC] = request.security(syminfo.tickerid, "D",
-    [high[1], low[1], close[1]], lookahead=barmerge.lookahead_on)
+[dH, dL, dC] = request.security(syminfo.tickerid, "D", [high, low, close])
 
 float PP = (dH + dL + dC) / 3.0
 float R1 = 2.0 * PP - dL
