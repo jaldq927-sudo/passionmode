@@ -2,31 +2,28 @@
 indicator("WEMOF - Wakkyai's Entry Model Of FX", shorttitle="WEMOF", overlay=true, max_labels_count=500)
 
 // ═══════════════════════════════════════════════════════════════════
-//  WEMOF (Wakkyai's Entry Model Of FX) インジケーター
+//  WEMOF (Wakkyai's Entry Model Of FX) インジケーター  v2.0
 //  わっきゃい氏考案・ボリンジャーバンド±3σを使った逆張りスキャルピング手法
 //
 //  【手法の核心】
 //   ±3σタッチ = WEMOFシグナルではない！
 //   「説明できない異常な動き」のときだけWEMOFシグナルとなる。
 //
+//  【v2.0 追加フィルター（高確率化）】
+//   ① ADX フィルター: ADX < 25 = レンジ相場 → 逆張り有利
+//   ② RSI 確認: 70超(ショート) / 30未満(ロング) = 極値確認
+//   ③ BBバンド幅フィルター: 帯域幅が平常の1.8倍超 = ニュース性急騰 → スキップ
+//   ④ ピンバー判定: 実体/ヒゲ比率 < 40% = 価格拒絶の形 → より強いシグナル
+//
 //  【自動スキップ条件（説明できる動き）】
-//   ・ラウンドナンバー付近（例: 150.00円）
-//   ・直近N本の高値・安値のブレイク
-//   ・日次ピボットポイント付近
+//   ・ラウンドナンバー付近 / 直近高安値ブレイク / ピボット付近
+//   ・ADXが高い（トレンド中） / BBバンド幅が異常に広い（ニュース）
 //
 //  【必ず手動確認が必要なもの（自動化不可）】
 //   ・ニュース・要人発言（円安けん制発言、Trump発言等）
 //   ・三角持ち合いブレイク等のチャートパターン
-//   → シグナルが出ても必ずニュース・テクニカルを目視確認すること！
-//
-//  【アラート設定方法 - 無料プラン（1枠）対応】
-//   1. このインジケーターをチャートに追加
-//   2. 「アラームの追加」でこのスクリプトを条件に選択
-//   3. たった1つのアラートでロング・ショート・準備通知を全て受け取れます
-//      （alert()関数が動的なメッセージを送信するため）
 //
 //  【推奨設定】USD/JPY 5分足
-//  【参考文献】わっきゃいFX (@wakkyaiforex) / 松井証券マネーサテライト
 // ═══════════════════════════════════════════════════════════════════
 
 // ──────────────────────────────────────────────────────────────────
@@ -88,6 +85,51 @@ alt_prep  = input.bool(false, "準備段階でもアラートを鳴らす",
             tooltip="ONにすると±3σタッチ時（準備段階）にも通知を送る。OFFにするとWEMOFシグナル確定時のみ。",
             group="Alert (アラート設定)")
 
+// ── 高精度フィルター (v2.0) ──
+// ADX フィルター（レンジ相場判定 - 最重要）
+use_adx   = input.bool (true, "ADX フィルター (レンジ相場のみ)",
+            tooltip="ADX が閾値未満のとき = レンジ相場 = 逆張り有利。ONが推奨。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+adx_len   = input.int  (14,   "  └ ADX 期間",   minval=5, maxval=50,
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+adx_thr   = input.int  (25,   "  └ ADX 閾値 (この値未満でシグナル有効)",
+            minval=10, maxval=50,
+            tooltip="ADX < 25 = レンジ相場。ADX > 30 = トレンド中（逆張り危険）。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+
+// RSI 確認フィルター
+use_rsi   = input.bool (true, "RSI 確認フィルター (極値確認)",
+            tooltip="ショート: RSI >= 70, ロング: RSI <= 30 のときのみ有効。極値を定量的に確認。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+rsi_len   = input.int  (14,   "  └ RSI 期間", minval=5, maxval=50,
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+rsi_ob    = input.int  (70,   "  └ 買われ過ぎ閾値 (ショート用)",
+            minval=60, maxval=90,
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+rsi_os    = input.int  (30,   "  └ 売られ過ぎ閾値 (ロング用)",
+            minval=10, maxval=40,
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+
+// BBバンド幅フィルター（ニュース性急騰検出）
+use_bbw   = input.bool  (true, "BBバンド幅フィルター (ニュース急騰除外)",
+            tooltip="バンド幅が平常の1.8倍超 = 異常な急騰 = ニュース性が高い → スキップ。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+bbw_look  = input.int   (50,  "  └ バンド幅 平均期間", minval=20, maxval=200,
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+bbw_mult  = input.float (1.8, "  └ バンド幅 上限倍率",
+            minval=1.2, maxval=3.0, step=0.1,
+            tooltip="バンド幅が平均のこの倍数を超えたらニュース性と判断してスキップ。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+
+// ピンバーフィルター（価格拒絶パターン確認）
+use_pin   = input.bool  (false, "ピンバー確認 (実体/ヒゲ比率フィルター)",
+            tooltip="実体がヒゲより小さい（拒絶の形）ときのみシグナル。ONにするとシグナルが減る代わり精度が上がる。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+pin_ratio = input.float (0.40, "  └ 実体/値幅 上限比率",
+            minval=0.1, maxval=0.7, step=0.05,
+            tooltip="実体÷値幅 < この値 = ピンバー。小さいほど厳格（0.40推奨）。",
+            group="High-Accuracy Filters v2.0 (高精度フィルター)")
+
 // ──────────────────────────────────────────────────────────────────
 // ボリンジャーバンド計算
 // ──────────────────────────────────────────────────────────────────
@@ -134,6 +176,33 @@ float S1 = 2.0 * PP - dH
 float S2 = PP - (dH - dL)
 
 // ──────────────────────────────────────────────────────────────────
+// 高精度フィルター計算 (v2.0)
+// ──────────────────────────────────────────────────────────────────
+
+// ADX (Average Directional Index) - レンジ相場判定
+// ta.dmi(diLength, adxSmoothing) → [diPlus, diMinus, adx]
+[diPlus, diMinus, adxVal] = ta.dmi(adx_len, adx_len)
+bool adx_ok = not use_adx or adxVal < adx_thr    // ADX が低い = レンジ = 逆張り有利
+
+// RSI - 買われ過ぎ・売られ過ぎ確認
+float rsiVal   = ta.rsi(close, rsi_len)
+bool  rsi_ok_s = not use_rsi or rsiVal >= rsi_ob  // ショート: RSI が高い = 買われ過ぎ
+bool  rsi_ok_l = not use_rsi or rsiVal <= rsi_os  // ロング : RSI が低い = 売られ過ぎ
+
+// BBバンド幅フィルター - 異常な急騰（ニュース性）を除外
+// BBW(%) = (upper3σ - lower3σ) / 中心線 × 100
+float bbw      = bw / bb_basis * 100.0
+float bbw_avg  = ta.sma(bbw, bbw_look)
+bool  bbw_ok   = not use_bbw or bbw <= bbw_avg * bbw_mult  // 幅が正常範囲内
+
+// ピンバーフィルター - 実体小さく＝価格拒絶の形
+float candle_body  = math.abs(close - open)
+float candle_range = high - low
+// 実体÷値幅 < pin_ratio → ピンバー（ヒゲが長く実体が小さい）
+bool  is_pin   = candle_range > 0.0 ? (candle_body / candle_range) < pin_ratio : false
+bool  pin_ok   = not use_pin or is_pin
+
+// ──────────────────────────────────────────────────────────────────
 // 説明可能性フィルター
 // 「この動きは説明できるか？」→ 説明できるならスキップ
 // ──────────────────────────────────────────────────────────────────
@@ -173,15 +242,21 @@ bool unex = not expl    // 説明できない = WEMOFの候補
 //   段階2 [シグナル]: 終値が初めて±3σを突き抜けた
 // ──────────────────────────────────────────────────────────────────
 
+// 全フィルターの統合判定（v2.0: ADX + RSI + BBW + ピンバー）
+// ショート用: ADX低い + RSI高い + BBW正常 + ピンバー(オプション)
+bool adv_ok_s = adx_ok and rsi_ok_s and bbw_ok and pin_ok
+// ロング用 : ADX低い + RSI低い + BBW正常 + ピンバー(オプション)
+bool adv_ok_l = adx_ok and rsi_ok_l and bbw_ok and pin_ok
+
 // 準備段階: 高値(安値)がバンドに届いたが終値は超えていない
+// ※ 準備は基本フィルター(unex/anom)のみ適用（v2.0フィルターはシグナル確定時に判定）
 bool prep_s = high >= u3 and close < u3 and anom and unex    // ショート準備
 bool prep_l = low  <= l3 and close > l3 and anom and unex    // ロング準備
 
 // WEMOFシグナル: 終値がバンドを初めて突き抜けた瞬間のみ (ta.crossover = 初回だけ発火)
-//   ta.crossover(close, u3) ≡ close[1] < u3[1] AND close >= u3
-//   ta.crossunder(close, l3) ≡ close[1] > l3[1] AND close <= l3
-bool sig_s = ta.crossover (close, u3) and anom and unex    // ショートシグナル（売り）
-bool sig_l = ta.crossunder(close, l3) and anom and unex    // ロングシグナル（買い）
+// v2.0: 高精度フィルター（ADX + RSI + BBW + ピンバー）を追加適用
+bool sig_s = ta.crossover (close, u3) and anom and unex and adv_ok_s
+bool sig_l = ta.crossunder(close, l3) and anom and unex and adv_ok_l
 
 bool any_sig  = sig_s or sig_l
 bool any_prep = prep_s or prep_l
@@ -242,9 +317,9 @@ barcolor(show_bc and sig_l   ? color.new(color.lime,   22) :
          show_bc and prep_s  ? color.new(color.yellow, 55) : na)
 
 // ──────────────────────────────────────────────────────────────────
-// 情報テーブル（右上）
+// 情報テーブル（右上）  ※ 各行の「エントリー条件」の目安は README 参照
 // ──────────────────────────────────────────────────────────────────
-var table T = table.new(position.top_right, 2, 9,
+var table T = table.new(position.top_right, 2, 13,
     bgcolor      = color.new(color.black, 70),
     border_width = 1,
     border_color = color.new(color.gray,  50),
@@ -259,36 +334,65 @@ if show_tbl and barstate.islast
               timeframe.isweekly   ? "週足" : timeframe.period + "足")
 
     // ── 行0: ヘッダー ──
-    table.cell(T, 0, 0, "WEMOF",
+    table.cell(T, 0, 0, "WEMOF v2",
         text_color=color.white, text_size=size.small,
         bgcolor=color.new(color.navy, 15))
     table.cell(T, 1, 0, syminfo.ticker + "  " + tf_str,
         text_color=color.yellow, text_size=size.small,
         bgcolor=color.new(color.navy, 15))
 
-    // ── 行1: %B 現在値 ──
+    // ── 行1: %B 現在値 ── エントリー目安: ≥1.0(SHORT) / ≤0.0(LONG)
     pb_col = (pb >= 1.0 or pb <= 0.0 ? color.red :
               pb >= 0.85 or pb <= 0.15 ? color.orange : color.white)
-    table.cell(T, 0, 1, "%B (3σ基準)", text_color=color.gray, text_size=size.small)
-    table.cell(T, 1, 1, str.tostring(pb, "#.###"), text_color=pb_col, text_size=size.small)
+    pb_entry = (pb >= 1.0 ? " SHORT域" : pb <= 0.0 ? " LONG域" : "")
+    table.cell(T, 0, 1, "%B  [目安:>=1.0 or <=0.0]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 1, str.tostring(pb, "#.###") + pb_entry, text_color=pb_col, text_size=size.small)
 
-    // ── 行2: %B 変化量 ──
+    // ── 行2: %B 変化量 ── エントリー目安: ≥ 0.30（デフォルト閾値）
     dpb_col = anom ? color.red : dPb >= pb_thr * 0.7 ? color.orange : color.white
-    dpb_str = str.tostring(dPb, "#.###") + (anom ? "  [異常]" : "  [正常]")
-    table.cell(T, 0, 2, "%B変化量", text_color=color.gray, text_size=size.small)
+    dpb_str = str.tostring(dPb, "#.###") + (anom ? " [>="+str.tostring(pb_thr,"#.##")+" 異常]" : " [正常]")
+    table.cell(T, 0, 2, "%B変化量  [目安:>=" + str.tostring(pb_thr,"#.##") + "]", text_color=color.gray, text_size=size.tiny)
     table.cell(T, 1, 2, dpb_str, text_color=dpb_col, text_size=size.small)
 
-    // ── 行3: 3σ 位置 ──
-    s3_txt = (close >= u3 ? "+3σ超え [SHORT候補]" :
+    // ── 行3: 3σ 位置 ── エントリー目安: +3σ超え or -3σ超え
+    s3_txt = (close >= u3 ? "+3σ超 [SHORT候補]" :
               high  >= u3 ? "+3σタッチ [準備]" :
-              close <= l3 ? "-3σ超え [LONG候補]" :
+              close <= l3 ? "-3σ超 [LONG候補]" :
               low   <= l3 ? "-3σタッチ [準備]" : "通常域")
     s3_col = ((close >= u3 or close <= l3) ? color.red :
               (high  >= u3 or low  <= l3)  ? color.yellow : color.new(color.white, 30))
-    table.cell(T, 0, 3, "3σ 状態", text_color=color.gray, text_size=size.small)
+    table.cell(T, 0, 3, "3σ状態  [目安:3σ超え]", text_color=color.gray, text_size=size.tiny)
     table.cell(T, 1, 3, s3_txt, text_color=s3_col, text_size=size.small)
 
-    // ── 行4: 説明可能性 ──
+    // ── 行4: ADX ── エントリー目安: < 25（レンジ相場）
+    adx_col = (adxVal < adx_thr ? color.lime :
+               adxVal < adx_thr + 5 ? color.yellow : color.red)
+    adx_str = str.tostring(adxVal, "#.#") + (adxVal < adx_thr ? " [レンジ OK]" : " [トレンド NG]")
+    table.cell(T, 0, 4, "ADX  [目安:<" + str.tostring(adx_thr) + " レンジ]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 4, adx_str, text_color=adx_col, text_size=size.small)
+
+    // ── 行5: RSI ── エントリー目安: ≥70(SHORT) / ≤30(LONG)
+    rsi_col = (rsiVal >= rsi_ob ? color.red :
+               rsiVal <= rsi_os ? color.lime :
+               rsiVal >= rsi_ob - 10 or rsiVal <= rsi_os + 10 ? color.orange : color.white)
+    rsi_str = str.tostring(rsiVal, "#.#") + (rsiVal >= rsi_ob ? " [過熱 SHORT]" : rsiVal <= rsi_os ? " [冷却 LONG]" : "")
+    table.cell(T, 0, 5, "RSI  [目安:>=" + str.tostring(rsi_ob) + " or <=" + str.tostring(rsi_os) + "]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 5, rsi_str, text_color=rsi_col, text_size=size.small)
+
+    // ── 行6: BBバンド幅 ── エントリー目安: 平常の1.8倍未満
+    bbw_ratio = bbw_avg > 0 ? bbw / bbw_avg : 1.0
+    bbw_col   = bbw_ok ? color.lime : color.red
+    bbw_str   = str.tostring(bbw_ratio, "#.##") + "倍" + (bbw_ok ? " [正常]" : " [異常広 NG]")
+    table.cell(T, 0, 6, "BBW幅比  [目安:<" + str.tostring(bbw_mult, "#.#") + "倍]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 6, bbw_str, text_color=bbw_col, text_size=size.small)
+
+    // ── 行7: ピンバー ── エントリー目安: 実体比率 < 40%
+    pin_str = str.tostring(candle_range > 0 ? candle_body/candle_range * 100 : 0.0, "#.#") + "%" + (is_pin ? " [ピンバー]" : "")
+    pin_col = is_pin ? color.lime : color.new(color.white, 30)
+    table.cell(T, 0, 7, "実体比率  [目安:<" + str.tostring(pin_ratio * 100, "#") + "%]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 7, pin_str, text_color=pin_col, text_size=size.small)
+
+    // ── 行8: 説明可能性 ── エントリー目安: 「説明不可」
     reason = (expl ?
         (use_rnd and nr     ? "ラウンドナンバー付近" :
          use_hl  and brk_up ? "直近高値ブレイク" :
@@ -296,37 +400,37 @@ if show_tbl and barstate.islast
          use_piv and np     ? "ピボット付近" : "フィルター該当") :
         "説明不可 [候補]")
     expl_col = expl ? color.orange : color.lime
-    table.cell(T, 0, 4, "説明可能性", text_color=color.gray, text_size=size.small)
-    table.cell(T, 1, 4, reason, text_color=expl_col, text_size=size.small)
+    table.cell(T, 0, 8, "説明可能性  [目安:説明不可]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 8, reason, text_color=expl_col, text_size=size.small)
 
-    // ── 行5: シグナル ──
+    // ── 行9: 総合シグナル ──
     sg_txt = (sig_l   ? "WEMOF LONG [BUY]" :
               sig_s   ? "WEMOF SHORT [SELL]" :
               prep_l  ? "ロング準備中..." :
               prep_s  ? "ショート準備中..." : "待機中...")
     sg_col = (sig_l  ? color.lime : sig_s ? color.red :
               (prep_l or prep_s) ? color.yellow : color.gray)
-    table.cell(T, 0, 5, "シグナル", text_color=color.white, text_size=size.small)
-    table.cell(T, 1, 5, sg_txt, text_color=sg_col, text_size=size.small)
+    table.cell(T, 0, 9, "シグナル", text_color=color.white, text_size=size.small)
+    table.cell(T, 1, 9, sg_txt, text_color=sg_col, text_size=size.small)
 
-    // ── 行6: ±3σ レベル ──
-    table.cell(T, 0, 6, "+3σ / -3σ", text_color=color.gray, text_size=size.tiny)
-    table.cell(T, 1, 6,
+    // ── 行10: ±3σ レベル ──
+    table.cell(T, 0, 10, "+3σ / -3σ", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 10,
         str.tostring(u3, "#.###") + " / " + str.tostring(l3, "#.###"),
         text_color=color.white, text_size=size.tiny)
 
-    // ── 行7: ピボット主要値 ──
-    table.cell(T, 0, 7, "PP / R1 / S1", text_color=color.gray, text_size=size.tiny)
-    table.cell(T, 1, 7,
+    // ── 行11: ピボット主要値 ──
+    table.cell(T, 0, 11, "PP / R1 / S1", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 11,
         str.tostring(PP, "#.###") + " / " +
         str.tostring(R1, "#.###") + " / " +
         str.tostring(S1, "#.###"),
         text_color=color.white, text_size=size.tiny)
 
-    // ── 行8: 警告 ──
-    table.cell(T, 0, 8, "!! ニュース確認必須 !!",
+    // ── 行12: 警告 ──
+    table.cell(T, 0, 12, "!! ニュース確認必須 !!",
         text_color=color.orange, bgcolor=color.new(color.orange, 82), text_size=size.tiny)
-    table.cell(T, 1, 8, "手動フィルター要",
+    table.cell(T, 1, 12, "手動フィルター要",
         text_color=color.orange, bgcolor=color.new(color.orange, 82), text_size=size.tiny)
 
 // ──────────────────────────────────────────────────────────────────
