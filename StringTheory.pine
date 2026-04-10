@@ -217,9 +217,7 @@ if array.size(lowLines) > 0
     trl_proj := llY1 + llSlope * float(bar_index - llX1)
 
 float trl_tolerance = float(trl_tol_pips) * pip_size
-bool trl_cond = not na(trl_proj) and
-                math.abs(close - trl_proj) <= trl_tolerance and
-                not long_cond
+bool trl_cond = (not na(trl_proj) and math.abs(close - trl_proj) <= trl_tolerance and not long_cond)
 
 plotshape(show_trl and trl_cond, "TRL", shape.labelup, location.belowbar,
           color=trl_col, textcolor=color.aqua, text="TRL", size=size.tiny)
