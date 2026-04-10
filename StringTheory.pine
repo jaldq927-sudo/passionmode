@@ -1,0 +1,302 @@
+//@version=6
+indicator("天底ひも理論 (String Theory)", shorttitle="StringTheory", overlay=true,
+          max_lines_count=500, max_labels_count=500)
+
+// ═══════════════════════════════════════════════════════════════════
+//  天底ひも理論 (Tenbottom String Theory)
+//  わっきゃい氏考案・天井と底をひも（ライン）で結び、相場の転換点を予測する手法
+//
+//  【手法の核心】
+//   スイングハイを結ぶ「天のひも」とスイングローを結ぶ「底のひも」が
+//   下降チャンネルを形成し、そのひもがサポート・レジスタンスとして機能する。
+//   価格がひもに触れると転換点となる可能性が高い。
+//
+//  【視覚要素】
+//   水色ライン (実線)  : 連続スイングハイを結ぶ天のひも (右に延長)
+//   水色ライン (実線)  : 連続スイングローを結ぶ底のひも (右に延長)
+//   水色ライン (破線)  : チャンネル上弦の傾きで底のひもから平行投影したライン
+//   青丸マーク         : スイングロー（底）の位置
+//   赤丸マーク         : スイングハイ（天）の位置
+//   黄色水平ライン     : 重要な水平サポート・レジスタンスレベル
+//   LONGラベル         : 底シグナル（BB下限付近でのスイングロー）
+//   TRLラベル          : トレンドライン（ひも）タッチポイント
+//
+//  【推奨設定】USD/JPY 5分足
+// ═══════════════════════════════════════════════════════════════════
+
+// ──────────────────────────────────────────────────────────────────
+// 入力設定
+// ──────────────────────────────────────────────────────────────────
+
+grp_swing = "スイング検出設定 (Swing Detection)"
+swing_len   = input.int   (5,    "スイング検出期間 (左右バー数)",
+              minval=1, maxval=30,
+              tooltip="スイングハイ/ローを検出する際の左右バー数。大きいほど大きな転換点のみ検出。",
+              group=grp_swing)
+num_strings = input.int   (6,    "表示ひも本数 (上下それぞれ)",
+              minval=2, maxval=20,
+              tooltip="上弦・下弦それぞれで保持・表示するひものライン数。",
+              group=grp_swing)
+extend_bars = input.int   (40,   "ひも延長バー数",
+              minval=5, maxval=200,
+              tooltip="ひもを未来に向けて何バー延長するか。",
+              group=grp_swing)
+
+grp_bb = "ボリンジャーバンド (Bollinger Bands)"
+bb_len  = input.int   (20,    "BB 期間",    minval=1,  group=grp_bb)
+bb_mult = input.float (2.0,   "BB 乗数",    step=0.1,  group=grp_bb)
+bb_src  = input.source(close, "BB ソース",             group=grp_bb)
+bb_show = input.bool  (true,  "BBを表示",              group=grp_bb)
+
+grp_sig = "シグナル設定 (Signals)"
+show_long    = input.bool (true,  "LONGシグナル表示",                     group=grp_sig)
+long_bb_thr  = input.float(0.15,  "LONGシグナル %B 閾値 (この値以下で発火)",
+               minval=0.0, maxval=0.5, step=0.05,
+               tooltip="BB %B がこの値以下 かつ スイングロー検出で LONG シグナルを表示。",
+               group=grp_sig)
+show_trl     = input.bool (true,  "TRLラベル表示 (ひもタッチ検知)",        group=grp_sig)
+trl_tol_pips = input.int  (5,     "  └ タッチ許容誤差 (pips)",
+               minval=1, maxval=30,
+               tooltip="価格がひも投影値から何pips以内に入った場合にTRLラベルを表示するか。",
+               group=grp_sig)
+
+grp_level = "重要レベル設定 (Key Level)"
+show_key_level = input.bool  (true,   "重要水平レベル表示 (黄色ライン)",         group=grp_level)
+key_level_mode = input.string("自動",  "レベル検出モード",
+                options=["自動", "手動"],
+                tooltip="「自動」=直近スイングローの中で最も重要なレベルを自動検出。「手動」=下の価格を使用。",
+                group=grp_level)
+key_level_val  = input.float (0.0,    "  └ 手動レベル価格 (手動モード時)",       group=grp_level)
+key_level_lb   = input.int   (200,    "  └ 自動検出ルックバック期間 (バー数)",
+                minval=20, maxval=1000,                                           group=grp_level)
+
+grp_col = "カラー設定 (Colors)"
+string_col = input.color(color.aqua,                "ひもライン色",    group=grp_col)
+key_col    = input.color(color.yellow,              "重要レベル色",    group=grp_col)
+bottom_col = input.color(color.blue,                "底マーク色",      group=grp_col)
+top_col    = input.color(color.new(color.red, 40),  "天マーク色",      group=grp_col)
+long_col   = input.color(color.lime,                "LONGシグナル色",  group=grp_col)
+trl_col    = input.color(color.new(color.aqua, 20), "TRLラベル色",     group=grp_col)
+
+// ──────────────────────────────────────────────────────────────────
+// ボリンジャーバンド計算
+// ──────────────────────────────────────────────────────────────────
+
+float bb_basis = ta.sma(bb_src, bb_len)
+float bb_dev   = ta.stdev(bb_src, bb_len)
+float bb_upper = bb_basis + bb_mult * bb_dev
+float bb_lower = bb_basis - bb_mult * bb_dev
+float bb_width = bb_upper - bb_lower
+float bb_pct   = bb_width > 0.0 ? (close - bb_lower) / bb_width : 0.5
+
+p_basis = plot(bb_show ? bb_basis : na, "BB 中心線", color=color.new(color.white, 60), linewidth=1)
+p_upper = plot(bb_show ? bb_upper : na, "BB 上限",   color=color.new(color.gray,  50), linewidth=1)
+p_lower = plot(bb_show ? bb_lower : na, "BB 下限",   color=color.new(color.gray,  50), linewidth=1)
+fill(p_upper, p_lower, color=color.new(color.gray, 92), title="BB 塗りつぶし")
+
+// ──────────────────────────────────────────────────────────────────
+// スイングハイ・スイングロー検出
+// ──────────────────────────────────────────────────────────────────
+
+float ph = ta.pivothigh(high, swing_len, swing_len)
+float pl = ta.pivotlow (low,  swing_len, swing_len)
+
+// ──────────────────────────────────────────────────────────────────
+// ひもライン管理
+// ──────────────────────────────────────────────────────────────────
+
+// 前回スイング記録
+var float prevHighVal = na
+var int   prevHighBar = na
+var float prevLowVal  = na
+var int   prevLowBar  = na
+
+// ライン管理配列
+var line[] highLines     = array.new_line()
+var line[] lowLines      = array.new_line()
+var line[] parallelLines = array.new_line()
+
+// ──────────────────────────────────────────────────────────────────
+// 天のひも: スイングハイを連続で結ぶ (実線)
+// ──────────────────────────────────────────────────────────────────
+if not na(ph)
+    int   curBar = bar_index - swing_len
+    float curVal = ph
+
+    if not na(prevHighVal) and not na(prevHighBar)
+        int   barDiff = curBar - prevHighBar
+        float slope   = barDiff != 0 ? (curVal - prevHighVal) / float(barDiff) : 0.0
+        int   extBar  = bar_index + extend_bars
+        float extVal  = curVal + slope * float(extBar - curBar)
+
+        line l = line.new(prevHighBar, prevHighVal, extBar, extVal,
+                         color=string_col, width=1, style=line.style_solid)
+        array.push(highLines, l)
+
+        if array.size(highLines) > num_strings
+            line.delete(array.shift(highLines))
+
+    prevHighVal := curVal
+    prevHighBar := curBar
+
+// ──────────────────────────────────────────────────────────────────
+// 底のひも: スイングローを連続で結ぶ (実線) + 平行チャンネルライン (破線)
+// ──────────────────────────────────────────────────────────────────
+if not na(pl)
+    int   curBar = bar_index - swing_len
+    float curVal = pl
+
+    if not na(prevLowVal) and not na(prevLowBar)
+        int   barDiff = curBar - prevLowBar
+        float slope   = barDiff != 0 ? (curVal - prevLowVal) / float(barDiff) : 0.0
+        int   extBar  = bar_index + extend_bars
+        float extVal  = curVal + slope * float(extBar - curBar)
+
+        // 底のひも (実線)
+        line l = line.new(prevLowBar, prevLowVal, extBar, extVal,
+                         color=string_col, width=1, style=line.style_solid)
+        array.push(lowLines, l)
+
+        if array.size(lowLines) > num_strings
+            line.delete(array.shift(lowLines))
+
+        // ── 平行チャンネルライン ─────────────────────────────────────
+        // 直近の天のひもと同じ傾きで、現在のスイングローを通る平行ラインを描画
+        if array.size(highLines) > 0
+            line lastHL     = array.get(highLines, array.size(highLines) - 1)
+            int  hlX1       = line.get_x1(lastHL)
+            float hlY1      = line.get_y1(lastHL)
+            int  hlX2       = line.get_x2(lastHL)
+            float hlY2      = line.get_y2(lastHL)
+            int  hlBarDiff  = hlX2 - hlX1
+            float hlSlope   = hlBarDiff != 0 ? (hlY2 - hlY1) / float(hlBarDiff) : 0.0
+
+            float parExtVal = curVal + hlSlope * float(extBar - curBar)
+            line lp = line.new(curBar, curVal, extBar, parExtVal,
+                              color=color.new(string_col, 50), width=1, style=line.style_dashed)
+            array.push(parallelLines, lp)
+
+            if array.size(parallelLines) > num_strings
+                line.delete(array.shift(parallelLines))
+
+    prevLowVal := curVal
+    prevLowBar := curBar
+
+// ──────────────────────────────────────────────────────────────────
+// 天底マーク (スイングハイ・スイングローに丸を表示)
+// ──────────────────────────────────────────────────────────────────
+
+plotshape(not na(ph), "天マーク",    shape.circle, location.abovebar, color=top_col,    size=size.tiny)
+plotshape(not na(pl), "底マーク",    shape.circle, location.belowbar, color=bottom_col, size=size.small)
+
+// ──────────────────────────────────────────────────────────────────
+// LONGシグナル: スイングロー かつ BB %B が低い (売られ過ぎ域)
+// ──────────────────────────────────────────────────────────────────
+
+bool long_cond = not na(pl) and bb_pct <= long_bb_thr
+
+plotshape(show_long and long_cond, "LONG シグナル", shape.labelup, location.belowbar,
+          color=long_col, textcolor=color.black, text="LONG", size=size.small)
+
+// ──────────────────────────────────────────────────────────────────
+// TRLラベル: 価格が底のひも延長線に接近したとき
+// (TRL = Trend Line: ひもが延長された先でのタッチポイント)
+// ──────────────────────────────────────────────────────────────────
+
+float pip_size = syminfo.mintick * 10.0
+float trl_proj = na
+
+if array.size(lowLines) > 0
+    line lastLL  = array.get(lowLines, array.size(lowLines) - 1)
+    int  llX1    = line.get_x1(lastLL)
+    float llY1   = line.get_y1(lastLL)
+    int  llX2    = line.get_x2(lastLL)
+    float llY2   = line.get_y2(lastLL)
+    int  llDiff  = llX2 - llX1
+    float llSlope = llDiff != 0 ? (llY2 - llY1) / float(llDiff) : 0.0
+    trl_proj := llY1 + llSlope * float(bar_index - llX1)
+
+float trl_tolerance = float(trl_tol_pips) * pip_size
+bool trl_cond = not na(trl_proj) and
+                math.abs(close - trl_proj) <= trl_tolerance and
+                not long_cond
+
+plotshape(show_trl and trl_cond, "TRL", shape.labelup, location.belowbar,
+          color=trl_col, textcolor=color.aqua, text="TRL", size=size.tiny)
+
+// ──────────────────────────────────────────────────────────────────
+// 重要水平レベル (黄色ライン)
+// ──────────────────────────────────────────────────────────────────
+
+// 自動モード: 過去のスイングローの中で価格が一度上抜けて再び支持線となった最高レベルを追跡
+// = 「抵抗が支持に転換した重要レベル」として表示
+
+var float key_level_auto = na
+var line  key_line       = na
+
+if show_key_level
+    if key_level_mode == "手動"
+        float kl = key_level_val > 0.0 ? key_level_val : na
+        if not na(kl)
+            if not na(key_line)
+                line.delete(key_line)
+            key_line := line.new(bar_index - key_level_lb, kl, bar_index + extend_bars, kl,
+                                color=key_col, width=2, style=line.style_solid)
+    else
+        // 直近スイングローの中で、その後に価格が上抜けた最高のものをキーレベルとして採用
+        if not na(pl)
+            float newLow = pl
+            if na(key_level_auto)
+                key_level_auto := newLow
+            else if newLow > key_level_auto
+                // より高いスイングローが出現 → 重要度が高い
+                key_level_auto := newLow
+
+        if not na(key_level_auto)
+            if not na(key_line)
+                line.delete(key_line)
+            key_line := line.new(bar_index - key_level_lb, key_level_auto,
+                                bar_index + extend_bars,  key_level_auto,
+                                color=key_col, width=2, style=line.style_solid)
+
+// ──────────────────────────────────────────────────────────────────
+// 情報テーブル (右上)
+// ──────────────────────────────────────────────────────────────────
+
+var table info_table = table.new(position.top_right, 2, 5,
+                                 bgcolor=color.new(color.black, 70),
+                                 border_color=color.new(color.gray, 50),
+                                 border_width=1, frame_color=color.new(color.aqua, 60), frame_width=1)
+
+if barstate.islast
+    // ── ヘッダー
+    table.cell(info_table, 0, 0, "天底ひも理論",  text_color=color.aqua,
+               text_size=size.small, bgcolor=color.new(color.navy, 40), text_halign=text.align_center)
+    table.cell(info_table, 1, 0, "String Theory", text_color=color.aqua,
+               text_size=size.small, bgcolor=color.new(color.navy, 40), text_halign=text.align_center)
+
+    // ── BB %B
+    color pb_col = bb_pct <= 0.0  ? color.red   :
+                   bb_pct <= 0.15 ? color.orange :
+                   bb_pct >= 1.0  ? color.red    :
+                   bb_pct >= 0.85 ? color.orange : color.gray
+    table.cell(info_table, 0, 1, "BB %B",                   text_color=color.white, text_size=size.tiny)
+    table.cell(info_table, 1, 1, str.tostring(bb_pct, "#.###"), text_color=pb_col,  text_size=size.tiny)
+
+    // ── ひも本数
+    table.cell(info_table, 0, 2, "天ひも / 底ひも",  text_color=color.white,  text_size=size.tiny)
+    table.cell(info_table, 1, 2,
+               str.tostring(array.size(highLines)) + " / " + str.tostring(array.size(lowLines)),
+               text_color=string_col, text_size=size.tiny)
+
+    // ── 重要レベル
+    string kl_txt   = not na(key_level_auto) ? str.tostring(key_level_auto, "#.###") :
+                      key_level_mode == "手動" and key_level_val > 0.0 ? str.tostring(key_level_val, "#.###") : "–"
+    table.cell(info_table, 0, 3, "重要レベル",  text_color=color.white,  text_size=size.tiny)
+    table.cell(info_table, 1, 3, kl_txt,        text_color=key_col,      text_size=size.tiny)
+
+    // ── シグナル
+    string sig_txt   = long_cond ? "■ LONG" : trl_cond ? "△ TRL" : "–"
+    color  sig_color = long_cond ? long_col  : trl_cond ? trl_col : color.gray
+    table.cell(info_table, 0, 4, "シグナル", text_color=color.white, text_size=size.tiny)
+    table.cell(info_table, 1, 4, sig_txt,    text_color=sig_color,   text_size=size.tiny)
