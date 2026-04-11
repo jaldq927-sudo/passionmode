@@ -238,8 +238,8 @@ plotshape(shortOk, "SHORT ▼", shape.labeldown, location.abovebar,
 // (価格がひもを跨いだ瞬間 = 「ひもタッチ」の注意マーク)
 // ──────────────────────────────────────────────────────────────────
 
-var bool prevAboveHi = na
-var bool prevAboveLo = na
+var bool prevAboveHi = bool(na)
+var bool prevAboveLo = bool(na)
 
 bool nowAboveHi = not na(projHi) and close > projHi
 bool nowAboveLo = not na(projLo) and close > projLo
