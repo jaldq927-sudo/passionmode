@@ -294,10 +294,7 @@ if barstate.islast
                bgcolor=color.new(color.navy, 40), text_halign=text.align_center)
 
     // BB %B
-    color pbCol = bb_pct >= 1.0  ? color.red    :
-                  bb_pct >= 0.80 ? color.orange  :
-                  bb_pct <= 0.0  ? color.lime    :
-                  bb_pct <= 0.20 ? color.green   : color.gray
+    color pbCol = (bb_pct >= 1.0 ? color.red : bb_pct >= 0.80 ? color.orange : bb_pct <= 0.0 ? color.lime : bb_pct <= 0.20 ? color.green : color.gray)
     table.cell(tbl, 0, 1, "BB %B",                       text_color=color.white,  text_size=size.tiny)
     table.cell(tbl, 1, 1, str.tostring(bb_pct, "#.###"), text_color=pbCol,        text_size=size.tiny)
 
@@ -312,17 +309,12 @@ if barstate.islast
     table.cell(tbl, 1, 3, loStr,               text_color=col_long, text_size=size.tiny)
 
     // 重要レベル
-    string klStr = not na(keyLvl) ? str.tostring(keyLvl, "#.###") :
-                   (key_mode == "手動" and key_manual > 0.0) ? str.tostring(key_manual, "#.###") : "–"
+    string klStr = (not na(keyLvl) ? str.tostring(keyLvl, "#.###") : (key_mode == "手動" and key_manual > 0.0) ? str.tostring(key_manual, "#.###") : "–")
     table.cell(tbl, 0, 4, "重要レベル", text_color=color.white, text_size=size.tiny)
     table.cell(tbl, 1, 4, klStr,        text_color=col_key,     text_size=size.tiny)
 
     // シグナル
-    string sigTxt = short_cond ? "▼ SHORT エントリー候補" :
-                    long_cond  ? "▲ LONG  エントリー候補" :
-                    trl_cond   ? "△ TRL タッチ"           : "–  待機中"
-    color  sigCol = short_cond ? col_short :
-                    long_cond  ? col_long  :
-                    trl_cond   ? col_top   : color.gray
+    string sigTxt = (short_cond ? "▼ SHORT エントリー候補" : long_cond ? "▲ LONG  エントリー候補" : trl_cond ? "△ TRL タッチ" : "–  待機中")
+    color  sigCol = (short_cond ? col_short : long_cond ? col_long : trl_cond ? col_top : color.gray)
     table.cell(tbl, 0, 5, "シグナル", text_color=color.white, text_size=size.tiny)
     table.cell(tbl, 1, 5, sigTxt,     text_color=sigCol,      text_size=size.tiny)
