@@ -1,22 +1,39 @@
 //@version=6
 indicator("天底ひも理論 (String Theory)", shorttitle="StringTheory", overlay=true,
-          max_lines_count=200, max_labels_count=200)
+          max_lines_count=300, max_labels_count=200)
 
 // ═══════════════════════════════════════════════════════════════════
-//  天底ひも理論  v6.0
+//  天底ひも理論  v7.0  (最終版)
 //
-//  ① 戦い (レンジ) : BBW/ATR が圧縮 → レンジを検出 (黄色背景)
-//  ② 想定値計算    : レンジ幅 × 倍率 (戦いが長いほど広がる)
-//  ③ びよーん      : ブレイクアウト → 天/底ひもを描画
-//  ④ 純度 (purity) : 方向性の純粋さ = 純移動量 ÷ 総移動量 × 100%
-//                    例: 2pip陽線×4本の後に陰線8pip → 純度=0% (打ち消し)
-//  ⑤ シグナル      : 純度が目標閾値以上 → SHORT / LONG
-//  ⑥ 観測終了      : 純度が落下 or ブレイクレベル割れ
+//  【画像分析による正解】
+//   水色実線 = スイングハイ同士・スイングロー同士を結ぶ「ひも」
+//              チャンネル状に並び、右に延長して将来の天底を示す
+//   黄色水平線 = Pivot Point (日次均衡ライン)
+//   TRL      = 価格がひもの延長線を横断した瞬間
+//   LONG/SHORT = ひもの投影値に到達 + 純度が高い = 逆張り
+//
+//  【純度 (purity) の正しい計算】
+//   「2pip陽線×4本の後に8pip陰線が来たら純度が悪い」
+//   → 純度 = 目標方向への純移動量 ÷ 全絶対移動量 × 100%
+//
+//   LONG 用純度: 直近スイングハイ以降の「下への純度」
+//     = 下方向の純移動量 ÷ 累積絶対移動量 × 100
+//     高純度 = きれいに下落してきた = 底に到達したら逆張りの好機
+//
+//   SHORT 用純度: 直近スイングロー以降の「上への純度」
+//     = 上方向の純移動量 ÷ 累積絶対移動量 × 100
+//     高純度 = きれいに上昇してきた = 天に到達したら逆張りの好機
 // ═══════════════════════════════════════════════════════════════════
 
 // ──────────────────────────────────────────────────────────────────
 // 入力設定
 // ──────────────────────────────────────────────────────────────────
+
+grp_sw = "スイング・ひも設定"
+swing_len = input.int(8,  "スイング検出期間 (左右バー数)",     minval=3, maxval=30, group=grp_sw,
+            tooltip="大きいほど大きな転換点のみ検出。5分足はデフォルト8推奨。")
+num_str   = input.int(3,  "保持するひも本数 (上下それぞれ)",   minval=1, maxval=8,  group=grp_sw)
+ext_bars  = input.int(60, "ひも右延長バー数",                  minval=10, maxval=200, group=grp_sw)
 
 grp_bb = "ボリンジャーバンド"
 bb_len  = input.int   (20,    "BB 期間",  minval=1,  group=grp_bb)
@@ -24,31 +41,29 @@ bb_mult = input.float (2.0,   "BB 乗数",  step=0.1,  group=grp_bb)
 bb_src  = input.source(close, "ソース",              group=grp_bb)
 bb_show = input.bool  (true,  "BB 表示",             group=grp_bb)
 
-grp_rng = "レンジ(戦い)検出設定"
-bbw_thr   = input.float(2.0,  "BBW/ATR 閾値 (この値以下=レンジ)",        minval=0.5, maxval=6.0, step=0.1, group=grp_rng,
-            tooltip="BBW÷ATR がこの値以下でレンジ判定。大きいほど検出しやすい。")
-rng_min   = input.int  (5,    "最小レンジ継続バー数",                     minval=3, maxval=50, group=grp_rng)
-base_mult = input.float(1.0,  "目標倍率 (基本)",                          minval=0.3, maxval=3.0, step=0.1, group=grp_rng)
-dur_bonus = input.float(0.005,"継続加算係数 (バー数 × この値)",            minval=0.0, maxval=0.05, step=0.001, group=grp_rng,
-            tooltip="戦いが長いほど倍率に加算される。レンジ20バー×0.005=+0.1倍。")
+grp_sig = "純度・シグナル設定"
+sig_purity  = input.float(60.0, "シグナル発火 純度(%) 閾値",    minval=30.0, maxval=95.0, step=5.0, group=grp_sig,
+              tooltip="純度がこの値以上 かつ ひも到達でシグナル。下げると出やすくなる。")
+touch_pips  = input.int  (8,    "ひもタッチ許容誤差 (pips)",     minval=1, maxval=30, group=grp_sig)
+cooldown    = input.int  (15,   "クールダウン (バー数)",         minval=5, maxval=100, group=grp_sig)
 
-grp_pur = "純度設定"
-sig_purity  = input.float(70.0, "シグナル発火純度 (%)",   minval=40.0, maxval=100.0, step=5.0, group=grp_pur,
-              tooltip="純度がこの値以上になったとき逆張りシグナルを発火。低いほどシグナルが出やすい。")
-cancel_purity = input.float(20.0, "観測終了 純度 (%)",   minval=0.0, maxval=60.0, step=5.0, group=grp_pur,
-              tooltip="純度がこの値を下回ったら観測終了。")
-cooldown    = input.int  (15,   "クールダウン (バー数)",  minval=5, maxval=100, group=grp_pur)
+grp_piv = "Pivot Point (均衡ライン)"
+show_pivot   = input.bool  (true,   "日次 Pivot Point 表示 (黄色線)", group=grp_piv,
+               tooltip="Traditional Pivotの日次PP = (前日高値+安値+終値)÷3 を黄色水平線で表示。")
+show_sr      = input.bool  (false,  "S1/R1 も表示",                  group=grp_piv)
 
 grp_cl = "カラー設定"
-col_rng  = input.color(color.new(color.yellow, 82), "レンジゾーン背景色", group=grp_cl)
-col_tgt  = input.color(color.yellow,                "想定値ライン色",     group=grp_cl)
-col_hi   = input.color(color.red,                   "天のひも色",         group=grp_cl)
-col_lo   = input.color(color.lime,                  "底のひも色",         group=grp_cl)
-col_long = input.color(color.lime,                  "LONG シグナル色",    group=grp_cl)
-col_sht  = input.color(color.red,                   "SHORT シグナル色",   group=grp_cl)
+col_hi   = input.color(color.aqua,               "天のひも色",     group=grp_cl)
+col_lo   = input.color(color.aqua,               "底のひも色",     group=grp_cl)
+col_piv  = input.color(color.yellow,             "Pivot Line色",   group=grp_cl)
+col_long = input.color(color.lime,               "LONG シグナル色",group=grp_cl)
+col_sht  = input.color(color.red,                "SHORT シグナル色",group=grp_cl)
+col_ph   = input.color(color.new(color.red, 40), "山マーク色",     group=grp_cl)
+col_pl   = input.color(color.blue,               "谷マーク色",     group=grp_cl)
+col_trl  = input.color(color.new(color.aqua, 30),"TRL マーク色",   group=grp_cl)
 
 // ──────────────────────────────────────────────────────────────────
-// ボリンジャーバンド計算
+// ボリンジャーバンド
 // ──────────────────────────────────────────────────────────────────
 
 float bb_basis = ta.sma(bb_src, bb_len)
@@ -57,165 +72,171 @@ float bb_upper = bb_basis + bb_mult * bb_dev
 float bb_lower = bb_basis - bb_mult * bb_dev
 float bb_bw    = bb_upper - bb_lower
 float bb_pct   = bb_bw > 0.0 ? (close - bb_lower) / bb_bw : 0.5
-float atr14    = ta.atr(14)
-float bbw_ratio = atr14 > 0.0 ? bb_bw / atr14 : 9.9
 
 p_mid = plot(bb_show ? bb_basis : na, "BB 中心", color=color.new(color.white, 55), linewidth=1)
 p_top = plot(bb_show ? bb_upper : na, "BB 上限", color=color.new(color.gray,  45), linewidth=1)
 p_bot = plot(bb_show ? bb_lower : na, "BB 下限", color=color.new(color.gray,  45), linewidth=1)
-fill(p_top, p_bot, color=color.new(color.gray, 90), title="BB 帯域")
+fill(p_top, p_bot, color=color.new(color.gray, 90))
 
 // ──────────────────────────────────────────────────────────────────
-// レンジ(戦い)検出
+// Pivot Point (日次均衡ライン = 黄色水平線)
+// Traditional Pivot: PP = (前日High + Low + Close) / 3
 // ──────────────────────────────────────────────────────────────────
 
-bool isRange = bbw_ratio < bbw_thr
+float dHigh  = request.security(syminfo.tickerid, "D", high[1],  lookahead=barmerge.lookahead_on)
+float dLow   = request.security(syminfo.tickerid, "D", low[1],   lookahead=barmerge.lookahead_on)
+float dClose = request.security(syminfo.tickerid, "D", close[1], lookahead=barmerge.lookahead_on)
 
-var float rngHi    = na
-var float rngLo    = na
-var int   rngStart = 0
-var int   rngBars  = 0
-var bool  prevRng  = false
+float pp = (dHigh + dLow + dClose) / 3.0
+float r1 = 2.0 * pp - dLow
+float s1 = 2.0 * pp - dHigh
 
-if isRange
-    if not prevRng
-        rngStart := bar_index
-        rngHi    := high
-        rngLo    := low
-        rngBars  := 1
-    else
-        rngHi   := math.max(rngHi, high)
-        rngLo   := math.min(rngLo, low)
-        rngBars += 1
-
-bgcolor(isRange ? col_rng : na, title="レンジゾーン背景")
-
-// ★ バグ修正: wasRange を prevRng 更新「前」に保存
-bool wasRange = prevRng
-prevRng := isRange
+plot(show_pivot ? pp : na, "Pivot PP",  color=col_piv,                    linewidth=2, style=plot.style_line)
+plot(show_sr    ? r1 : na, "Pivot R1",  color=color.new(col_piv, 50),     linewidth=1, style=plot.style_linebr)
+plot(show_sr    ? s1 : na, "Pivot S1",  color=color.new(col_piv, 50),     linewidth=1, style=plot.style_linebr)
 
 // ──────────────────────────────────────────────────────────────────
-// ブレイクアウト検出 & 天底想定値計算
+// スイングハイ・スイングロー検出
 // ──────────────────────────────────────────────────────────────────
 
-// wasRange = 「前バーまでレンジだった」, isRange = 「今バーはレンジ外」
-bool breakUp = (wasRange and not isRange and close > rngHi and rngBars >= rng_min)
-bool breakDn = (wasRange and not isRange and close < rngLo and rngBars >= rng_min)
+float ph = ta.pivothigh(high, swing_len, swing_len)
+float pl = ta.pivotlow (low,  swing_len, swing_len)
 
-var float tgtHi    = na
-var float tgtLo    = na
-var float brkLevel = na
-var int   brkDir   = 0     // +1=上抜け, -1=下抜け, 0=追跡なし
-var int   lastSig  = -999
+// ──────────────────────────────────────────────────────────────────
+// ひも描画 (天のひも = 山→山, 底のひも = 谷→谷)
+// ──────────────────────────────────────────────────────────────────
 
-// 純度計算用: ブレイク後の累積絶対移動量 と 純移動量
-var float cumAbsMove = 0.0  // ブレイク後の |close - close[1]| の累積
-var float netMove    = 0.0  // ブレイク後の目標方向への純移動量
+var float prevHiVal = na
+var int   prevHiBar = na
+var float prevLoVal = na
+var int   prevLoBar = na
 
-var line   hiStr    = na
-var line   loStr    = na
-var line   hiTgtLn  = na
-var line   loTgtLn  = na
-var label  hiTgtLbl = na
-var label  loTgtLbl = na
+var line[] hiLines = array.new_line()
+var line[] loLines = array.new_line()
 
-if breakUp or breakDn
-    float rngWidth = rngHi - rngLo
-    float mult     = base_mult + float(rngBars) * dur_bonus
-    cumAbsMove    := 0.0
-    netMove       := 0.0
+float pip = syminfo.mintick * 10.0
 
-    if breakUp
-        tgtHi    := rngHi + rngWidth * mult
-        brkLevel := rngHi
-        brkDir   := 1
+// ラインの指定barにおけるY値を返す
+lineY(line l, int b) =>
+    int   x1 = line.get_x1(l)
+    float y1 = line.get_y1(l)
+    int   x2 = line.get_x2(l)
+    float y2 = line.get_y2(l)
+    int   dx = x2 - x1
+    float sl = dx != 0 ? (y2 - y1) / float(dx) : 0.0
+    y1 + sl * float(b - x1)
 
-        if not na(hiStr)
-            line.delete(hiStr)
-        hiStr := line.new(rngStart, rngLo, bar_index + 80, tgtHi,
+// 天のひも
+if not na(ph)
+    int   cb = bar_index - swing_len
+    float cv = ph
+    if not na(prevHiVal)
+        int   dx = cb - prevHiBar
+        float sl = dx != 0 ? (cv - prevHiVal) / float(dx) : 0.0
+        int   eb = bar_index + ext_bars
+        line l = line.new(prevHiBar, prevHiVal, eb, cv + sl * float(eb - cb),
                          color=col_hi, width=2, style=line.style_solid)
+        array.push(hiLines, l)
+        if array.size(hiLines) > num_str
+            line.delete(array.shift(hiLines))
+    prevHiVal := cv
+    prevHiBar := cb
 
-        if not na(hiTgtLn)
-            line.delete(hiTgtLn)
-        hiTgtLn := line.new(bar_index - rngBars, tgtHi, bar_index + 100, tgtHi,
-                            color=col_tgt, width=2, style=line.style_dashed)
-        if not na(hiTgtLbl)
-            label.delete(hiTgtLbl)
-        hiTgtLbl := label.new(bar_index + 3, tgtHi,
-                              "天の想定値 " + str.tostring(tgtHi, "#.###"),
-                              color=color.new(col_sht, 15), textcolor=color.white,
-                              style=label.style_label_left, size=size.small)
-
-    if breakDn
-        tgtLo    := rngLo - rngWidth * mult
-        brkLevel := rngLo
-        brkDir   := -1
-
-        if not na(loStr)
-            line.delete(loStr)
-        loStr := line.new(rngStart, rngHi, bar_index + 80, tgtLo,
+// 底のひも
+if not na(pl)
+    int   cb = bar_index - swing_len
+    float cv = pl
+    if not na(prevLoVal)
+        int   dx = cb - prevLoBar
+        float sl = dx != 0 ? (cv - prevLoVal) / float(dx) : 0.0
+        int   eb = bar_index + ext_bars
+        line l = line.new(prevLoBar, prevLoVal, eb, cv + sl * float(eb - cb),
                          color=col_lo, width=2, style=line.style_solid)
+        array.push(loLines, l)
+        if array.size(loLines) > num_str
+            line.delete(array.shift(loLines))
+    prevLoVal := cv
+    prevLoBar := cb
 
-        if not na(loTgtLn)
-            line.delete(loTgtLn)
-        loTgtLn := line.new(bar_index - rngBars, tgtLo, bar_index + 100, tgtLo,
-                            color=col_tgt, width=2, style=line.style_dashed)
-        if not na(loTgtLbl)
-            label.delete(loTgtLbl)
-        loTgtLbl := label.new(bar_index + 3, tgtLo,
-                              "底の想定値 " + str.tostring(tgtLo, "#.###"),
-                              color=color.new(col_long, 15), textcolor=color.black,
-                              style=label.style_label_left, size=size.small)
+// 山・谷マーク (小)
+plotshape(not na(ph), "山", shape.circle, location.abovebar, color=col_ph, size=size.tiny)
+plotshape(not na(pl), "谷", shape.circle, location.belowbar, color=col_pl, size=size.small)
+
+// ──────────────────────────────────────────────────────────────────
+// 最新ひも投影値 (現在バーにおける天/底のひもの価格)
+// ──────────────────────────────────────────────────────────────────
+
+float projHi = na
+float projLo = na
+
+if array.size(hiLines) > 0
+    projHi := lineY(array.get(hiLines, array.size(hiLines) - 1), bar_index)
+if array.size(loLines) > 0
+    projLo := lineY(array.get(loLines, array.size(loLines) - 1), bar_index)
 
 // ──────────────────────────────────────────────────────────────────
 // 純度計算 (Directional Efficiency)
 //
-//   純度 = 目標方向への純移動量 ÷ 総絶対移動量 × 100
+//   LONG 用純度: 直近スイングハイ以降、どれだけ純粋に下落してきたか
+//   SHORT用純度: 直近スイングロー以降、どれだけ純粋に上昇してきたか
 //
-//   例) 2pip陽線×4本, 8pip陰線×1本 (上方ブレイク中)
-//     累積絶対移動 = 2+2+2+2+8 = 16pip
-//     純移動量     = +8-8 = 0pip (ブレイクレベルまで戻った)
-//     純度 = 0÷16×100 = 0% → 観測終了
+//   純度 = |目標方向への純移動量| ÷ 累積絶対移動量 × 100%
 // ──────────────────────────────────────────────────────────────────
 
-float purity = na
-bool  longOk = false
-bool  shortOk = false
+// スイングハイ確定 → LONG用純度カウント開始 (下落の純度を測る)
+// スイングロー確定 → SHORT用純度カウント開始 (上昇の純度を測る)
 
-if brkDir != 0 and not na(brkLevel)
-    // ブレイク後の各バーの絶対移動を累積
-    float barMove = math.abs(close - close[1])
-    cumAbsMove += barMove
+var float cumAbsLong  = 0.0   // LONG用: 直近SwingHigh以降の累積絶対移動
+var float netDownLong = 0.0   // LONG用: 直近SwingHigh以降の下方向純移動
+var float cumAbsShort = 0.0   // SHORT用: 直近SwingLow以降の累積絶対移動
+var float netUpShort  = 0.0   // SHORT用: 直近SwingLow以降の上方向純移動
 
-    if brkDir == 1
-        // 上方ブレイク中: ブレイクレベルからの純移動 (上方向がプラス)
-        netMove := close - brkLevel
-        purity  := cumAbsMove > 0.0 ? math.max(netMove / cumAbsMove * 100.0, 0.0) : 0.0
+// スイングハイで LONG用純度をリセット
+if not na(ph)
+    cumAbsLong  := 0.0
+    netDownLong := 0.0
 
-        // シグナル: 純度が閾値以上
-        if purity >= sig_purity and (bar_index - lastSig) > cooldown
-            shortOk     := true
-            lastSig     := bar_index
+// スイングローで SHORT用純度をリセット
+if not na(pl)
+    cumAbsShort := 0.0
+    netUpShort  := 0.0
 
-        // 観測終了: 純度が低下 or ブレイクレベル割れ
-        if purity < cancel_purity or close < brkLevel
-            brkDir      := 0
-            cumAbsMove  := 0.0
-            netMove     := 0.0
+// 各バーの移動量を累積
+float barMove = math.abs(close - close[1])
 
-    else if brkDir == -1
-        // 下方ブレイク中: ブレイクレベルからの純移動 (下方向がプラス)
-        netMove := brkLevel - close
-        purity  := cumAbsMove > 0.0 ? math.max(netMove / cumAbsMove * 100.0, 0.0) : 0.0
+cumAbsLong  += barMove
+netDownLong += (close[1] - close)   // 下落がプラス
+cumAbsShort += barMove
+netUpShort  += (close - close[1])   // 上昇がプラス
 
-        if purity >= sig_purity and (bar_index - lastSig) > cooldown
-            longOk      := true
-            lastSig     := bar_index
+// 純度 (0〜100%)
+float purLong  = cumAbsLong  > 0.0 ? math.max(netDownLong / cumAbsLong  * 100.0, 0.0) : 0.0
+float purShort = cumAbsShort > 0.0 ? math.max(netUpShort  / cumAbsShort * 100.0, 0.0) : 0.0
 
-        if purity < cancel_purity or close > brkLevel
-            brkDir      := 0
-            cumAbsMove  := 0.0
-            netMove     := 0.0
+// ──────────────────────────────────────────────────────────────────
+// シグナル判定
+//
+//   LONG : 底のひも投影値に到達 + 下落の純度が高い + クールダウン
+//   SHORT: 天のひも投影値に到達 + 上昇の純度が高い + クールダウン
+//   TRL  : ひも横断 (シグナル未満の接触マーク)
+// ──────────────────────────────────────────────────────────────────
+
+var int lastSig = -999
+float tol = float(touch_pips) * pip
+
+bool nearLo = not na(projLo) and math.abs(low  - projLo) <= tol
+bool nearHi = not na(projHi) and math.abs(high - projHi) <= tol
+
+bool longOk  = (nearLo and purLong  >= sig_purity and (bar_index - lastSig) > cooldown)
+bool shortOk = (nearHi and purShort >= sig_purity and (bar_index - lastSig) > cooldown)
+
+if longOk or shortOk
+    lastSig := bar_index
+
+// TRL: ひもクロス (LOW/SHORTでない場合)
+bool trlLo = (not na(projLo) and ta.cross(close, projLo) and not longOk)
+bool trlHi = (not na(projHi) and ta.cross(close, projHi) and not shortOk)
+bool trlOk = trlLo or trlHi
 
 // ──────────────────────────────────────────────────────────────────
 // シグナル表示
@@ -225,6 +246,33 @@ plotshape(longOk,  "LONG ▲",  shape.labelup,   location.belowbar,
           color=col_long, textcolor=color.black, text="LONG",  size=size.normal)
 plotshape(shortOk, "SHORT ▼", shape.labeldown, location.abovebar,
           color=col_sht,  textcolor=color.white, text="SHORT", size=size.normal)
+plotshape(trlOk,   "TRL",     shape.triangleup, location.belowbar,
+          color=col_trl, textcolor=color.aqua,  text="TRL",   size=size.tiny)
+
+// ──────────────────────────────────────────────────────────────────
+// 未来予測ラベル: 最新ひもの延長先に価格を表示
+// ──────────────────────────────────────────────────────────────────
+
+var label predHi = na
+var label predLo = na
+
+if barstate.islast
+    if not na(predHi)
+        label.delete(predHi)
+    if not na(predLo)
+        label.delete(predLo)
+    if array.size(hiLines) > 0
+        int   fb  = bar_index + ext_bars
+        float fy  = lineY(array.get(hiLines, array.size(hiLines) - 1), fb)
+        predHi := label.new(fb, fy, "天 (予測)\n" + str.tostring(fy, "#.###"),
+                           color=color.new(col_sht, 15), textcolor=color.white,
+                           style=label.style_label_left, size=size.small)
+    if array.size(loLines) > 0
+        int   fb  = bar_index + ext_bars
+        float fy  = lineY(array.get(loLines, array.size(loLines) - 1), fb)
+        predLo := label.new(fb, fy, "底 (予測)\n" + str.tostring(fy, "#.###"),
+                           color=color.new(col_long, 15), textcolor=color.black,
+                           style=label.style_label_left, size=size.small)
 
 // ──────────────────────────────────────────────────────────────────
 // 情報テーブル (右上)
@@ -241,29 +289,26 @@ if barstate.islast
     table.cell(tbl, 1, 0, "String Theory", text_color=color.aqua, text_size=size.small,
                bgcolor=color.new(color.navy, 40), text_halign=text.align_center)
 
-    string phaseStr = (isRange ? "⚔  戦い中 (" + str.tostring(rngBars) + "バー)" : brkDir == 1 ? "↑ 上昇追跡中" : brkDir == -1 ? "↓ 下降追跡中" : "– 待機中")
-    color  phaseCol = (isRange ? color.yellow : brkDir != 0 ? color.aqua : color.gray)
-    table.cell(tbl, 0, 1, "フェーズ",  text_color=color.white, text_size=size.tiny)
-    table.cell(tbl, 1, 1, phaseStr,    text_color=phaseCol,    text_size=size.tiny)
+    color pbCol = (bb_pct <= 0.0 ? color.lime : bb_pct <= 0.15 ? color.green : bb_pct >= 1.0 ? color.red : bb_pct >= 0.85 ? color.orange : color.gray)
+    table.cell(tbl, 0, 1, "BB %B",                       text_color=color.white, text_size=size.tiny)
+    table.cell(tbl, 1, 1, str.tostring(bb_pct, "#.###"), text_color=pbCol,       text_size=size.tiny)
 
-    string hiStr2 = (not na(tgtHi) and brkDir == 1 ? str.tostring(tgtHi, "#.###") : "–")
-    table.cell(tbl, 0, 2, "天の想定値", text_color=col_sht, text_size=size.tiny)
-    table.cell(tbl, 1, 2, hiStr2,       text_color=col_sht, text_size=size.tiny)
+    color plCol = (purLong >= sig_purity ? col_long : purLong >= sig_purity * 0.6 ? color.orange : color.gray)
+    table.cell(tbl, 0, 2, "LONG 純度 (下落の純粋さ)",        text_color=color.white, text_size=size.tiny)
+    table.cell(tbl, 1, 2, str.tostring(math.round(purLong, 1)) + "%", text_color=plCol, text_size=size.tiny)
 
-    string loStr2 = (not na(tgtLo) and brkDir == -1 ? str.tostring(tgtLo, "#.###") : "–")
-    table.cell(tbl, 0, 3, "底の想定値", text_color=col_long, text_size=size.tiny)
-    table.cell(tbl, 1, 3, loStr2,       text_color=col_long, text_size=size.tiny)
+    color psCol = (purShort >= sig_purity ? col_sht : purShort >= sig_purity * 0.6 ? color.orange : color.gray)
+    table.cell(tbl, 0, 3, "SHORT 純度 (上昇の純粋さ)",       text_color=color.white, text_size=size.tiny)
+    table.cell(tbl, 1, 3, str.tostring(math.round(purShort, 1)) + "%", text_color=psCol, text_size=size.tiny)
 
-    color purCol = (not na(purity) and purity >= sig_purity ? col_sht : not na(purity) and purity >= sig_purity * 0.6 ? color.orange : color.gray)
-    string purStr = not na(purity) ? str.tostring(math.round(purity, 1)) + "%" : "–"
-    table.cell(tbl, 0, 4, "純度 (purity)", text_color=color.white, text_size=size.tiny)
-    table.cell(tbl, 1, 4, purStr,          text_color=purCol,       text_size=size.tiny)
+    string hiStr = not na(projHi) ? str.tostring(projHi, "#.###") : "–"
+    table.cell(tbl, 0, 4, "天のひも (SHORT圧)",  text_color=col_sht, text_size=size.tiny)
+    table.cell(tbl, 1, 4, hiStr,                  text_color=col_sht, text_size=size.tiny)
 
-    string cumStr = not na(purity) ? str.tostring(math.round(cumAbsMove / (syminfo.mintick * 10), 1)) + " pips" : "–"
-    table.cell(tbl, 0, 5, "累積移動量",  text_color=color.white, text_size=size.tiny)
-    table.cell(tbl, 1, 5, cumStr,         text_color=color.gray,  text_size=size.tiny)
+    string loStr = not na(projLo) ? str.tostring(projLo, "#.###") : "–"
+    table.cell(tbl, 0, 5, "底のひも (LONG圧)",   text_color=col_long, text_size=size.tiny)
+    table.cell(tbl, 1, 5, loStr,                  text_color=col_long, text_size=size.tiny)
 
-    string sigStr = (shortOk ? "▼ SHORT (天到達)" : longOk ? "▲ LONG  (底到達)" : "–  待機中")
-    color  sigCol = (shortOk ? col_sht : longOk ? col_long : color.gray)
-    table.cell(tbl, 0, 6, "シグナル", text_color=color.white, text_size=size.tiny)
-    table.cell(tbl, 1, 6, sigStr,     text_color=sigCol,      text_size=size.tiny)
+    string ppStr = not na(pp) ? str.tostring(pp, "#.###") : "–"
+    table.cell(tbl, 0, 6, "Pivot PP (均衡)",  text_color=color.white, text_size=size.tiny)
+    table.cell(tbl, 1, 6, ppStr,              text_color=col_piv,     text_size=size.tiny)
