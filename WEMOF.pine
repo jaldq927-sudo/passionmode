@@ -142,16 +142,28 @@ pin_ratio = input.float (0.40, "  └ 実体/値幅 上限比率",
 // ── 純度フィルター (Movement Purity / 動きの純度) ──
 // 【わっきゃい氏の定義】
 //   純度 = 5分足の20SMA（平均足サイズ）を単位として
-//          今の足がそれに比べて2.2倍以上動いているか
+//          今の足がそれに比べて十分に大きく動いているか
 //
-//   低純度の例: 過去6本で各2pipずつ下がる → 1本あたり2pip = 平均並み → スキップ
-//   高純度の例: 2本で各6pipずつ下がる     → 1本あたり6pip = 平均の3倍 → WEMOF候補
-use_purity  = input.bool  (true, "純度フィルター (急激な大きな値動きのみWEMOF対象)",
-             tooltip="ONにすると現在の足サイズが20SMA平均足の2.2倍以上の急激な動きのみWEMOFシグナルになります。",
+//   低純度: 6本×2pip → 各足が平均並み = じわじわ = スキップ
+//   高純度: 2本×6pip → 各足が平均の3倍 = 急激 = WEMOF候補
+//
+// 【実装方針: 適応型パーセンタイル閾値】
+//   固定倍率ではなく「過去N本中の上位X%の足サイズ」を閾値とする。
+//   これにより、相場の volatility（静かな時間帯 vs ロンドン/NY等）に
+//   自動適応し、常に"その相場の文脈で大きな足"を高純度と判定できる。
+//
+//   例: 過去100本のうち、上位15%の大きさ（85パーセンタイル）以上なら高純度
+//       → 静かな時間帯でも、活発な時間帯でも、基準が自動調整される
+use_purity  = input.bool  (true, "純度フィルター (急激な大きな足のみWEMOF対象)",
+             tooltip="ONにすると過去purity_look本中の上位purity_pct%に入る大きな足のみWEMOFシグナルになります。相場の活発さに自動適応します。",
              group="Movement Purity Filter (純度フィルター)")
-purity_mult = input.float (2.2, "  └ 純度倍率 (20SMA平均足の何倍以上で高純度)",
-             minval=1.0, maxval=6.0, step=0.1,
-             tooltip="現在の足サイズ ÷ 20バー平均足サイズ がこの値以上 = 高純度。デフォルト2.2倍。",
+purity_look = input.int   (100, "  └ 純度 参照期間 (バー数)",
+             minval=20, maxval=500,
+             tooltip="過去何本のバーを基準に閾値を計算するか。100本=約8時間分の5分足。",
+             group="Movement Purity Filter (純度フィルター)")
+purity_pct  = input.float (85.0, "  └ 純度 パーセンタイル閾値 (%)",
+             minval=50.0, maxval=99.0, step=5.0,
+             tooltip="現在の足が過去purity_look本中の上位何%に入れば高純度とするか。85=上位15%。90に上げるとより厳格（シグナル減少）。75に下げると緩める。",
              group="Movement Purity Filter (純度フィルター)")
 
 // ──────────────────────────────────────────────────────────────────
@@ -227,26 +239,26 @@ bool  is_pin   = candle_range > 0.0 ? (candle_body / candle_range) < pin_ratio :
 bool  pin_ok   = not use_pin or is_pin
 
 // ──────────────────────────────────────────────────────────────────
-// 純度フィルター計算 (Movement Purity)
+// 純度フィルター計算 (Movement Purity - 適応型パーセンタイル方式)
 //
-// 【わっきゃい氏の正式定義】
-//   純度 = 5分足の20SMA（平均足サイズ）を単位として
-//          今の足がそれに比べて2.2倍以上動いているか
+// 【設計原則】
+//   固定倍率（例: 2.2倍）は "その数字に根拠がない" 問題がある。
+//   代わりに、過去purity_look本のデータから実際の分布を計算し、
+//   上位purity_pct%（デフォルト: 上位15%）に入る足のみ高純度とする。
 //
-//   avg_candle_sz = SMA(high-low, 20)  ← 20バー平均の足の値幅
-//   pure_ratio    = (high-low) / avg_candle_sz
-//   高純度 = pure_ratio >= 2.2
+//   ta.percentile_nearest_rank(source, length, percentage):
+//     過去length本中、percentage%の位置にある値を返す。
+//     例: purity_pct=85 → 過去100本中85%の位置 = 上位15%のボーダー値
 //
-//   ※ 例:
-//     avg = 2pip  → 現在足が4.4pip以上 = 高純度 (2.2倍)
-//     「6本で2pip」各足2pip → pure_ratio=1.0 → 低純度 → スキップ
-//     「2本で6pip」各足6pip → pure_ratio=3.0 → 高純度 → WEMOF候補
+// 【USDJPY 5分足での典型値 (参考)】
+//   静かな時間帯(アジア早朝): avg≈3-5pip, 85th pct≈7-10pip
+//   通常取引時間(東京/NY):    avg≈5-10pip, 85th pct≈12-18pip
+//   WEMOFシグナル足:          通常15-30pip → 85th pct を大きく超える
 // ──────────────────────────────────────────────────────────────────
-float avg_candle_sz = ta.sma(high - low, bb_len)          // 20バー平均足サイズ（bb_len=20を流用）
-float cur_candle_sz = high - low                           // 現在の足サイズ
-float pure_ratio    = avg_candle_sz > 0.0 ? cur_candle_sz / avg_candle_sz : 0.0
-bool  is_pure       = pure_ratio >= purity_mult            // 2.2倍以上 = 高純度
-bool  pure_ok       = not use_purity or is_pure
+float pure_thr = ta.percentile_nearest_rank(high - low, purity_look, purity_pct)
+float cur_sz   = high - low
+bool  is_pure  = cur_sz >= pure_thr
+bool  pure_ok  = not use_purity or is_pure
 
 // ──────────────────────────────────────────────────────────────────
 // 説明可能性フィルター
@@ -461,12 +473,13 @@ if show_tbl and barstate.islast
     table.cell(T, 0, 8, "説明可能性  [目安:説明不可]", text_color=color.gray, text_size=size.tiny)
     table.cell(T, 1, 8, reason, text_color=expl_col, text_size=size.small)
 
-    // ── 行9: 純度 ── エントリー目安: ≥ 2.2倍（現在足 ÷ 20SMA平均足）
+    // ── 行9: 純度 ── エントリー目安: 上位15%以上の足サイズ（閾値比 > 1.0）
+    float pct_label = 100.0 - purity_pct
     purity_disp = (not use_purity ? "OFF (フィルター無効)" :
-                   is_pure        ? str.tostring(pure_ratio, "#.##") + "倍 [高純度]" :
-                   str.tostring(pure_ratio, "#.##") + "倍 [低純度 NG]")
+                   is_pure        ? str.tostring(cur_sz / pip_sz, "#.#") + "p ≥" + str.tostring(pure_thr / pip_sz, "#.#") + "p [高純度]" :
+                   str.tostring(cur_sz / pip_sz, "#.#") + "p <" + str.tostring(pure_thr / pip_sz, "#.#") + "p [低純度 NG]")
     purity_col  = not use_purity ? color.gray : is_pure ? color.lime : color.red
-    table.cell(T, 0, 9, "純度  [目安:>=" + str.tostring(purity_mult, "#.#") + "倍]", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 0, 9, "純度  [上位" + str.tostring(pct_label, "#") + "% = 閾値比>1.0]", text_color=color.gray, text_size=size.tiny)
     table.cell(T, 1, 9, purity_disp, text_color=purity_col, text_size=size.small)
 
     // ── 行10: 総合シグナル ──
@@ -538,24 +551,24 @@ if alt_prep
 if sig_s
     alert(
         "[SHORT] " + syminfo.ticker +
-        " | 終値: "    + str.tostring(close,      "#.###") +
-        " | +3σ: "    + str.tostring(u3,         "#.###") +
-        " | %B変化: " + str.tostring(dPb,        "#.##")  +
-        " | 純度: "   + str.tostring(pure_ratio,  "#.##") + "倍" +
-        " | ADX: "    + str.tostring(adxVal,     "#.#") + (adxVal < 25 ? "(レンジ)" : adxVal < 35 ? "(弱T)" : "(強T!)") +
-        " | RSI: "    + str.tostring(rsiVal,     "#.#")   +
+        " | 終値: "    + str.tostring(close,   "#.###") +
+        " | +3σ: "    + str.tostring(u3,      "#.###") +
+        " | %B変化: " + str.tostring(dPb,     "#.##")  +
+        " | 純度: "   + str.tostring(cur_sz / pip_sz, "#.#") + "p (閾値" + str.tostring(pure_thr / pip_sz, "#.#") + "p)" +
+        " | ADX: "    + str.tostring(adxVal,  "#.#") + (adxVal < 25 ? "(レンジ)" : adxVal < 35 ? "(弱T)" : "(強T!)") +
+        " | RSI: "    + str.tostring(rsiVal,  "#.#")   +
         " | !! ニュース確認してからエントリー !!",
         alert.freq_once_per_bar_close)
 
 if sig_l
     alert(
         "[LONG] " + syminfo.ticker +
-        " | 終値: "    + str.tostring(close,      "#.###") +
-        " | -3σ: "    + str.tostring(l3,         "#.###") +
-        " | %B変化: " + str.tostring(dPb,        "#.##")  +
-        " | 純度: "   + str.tostring(pure_ratio,  "#.##") + "倍" +
-        " | ADX: "    + str.tostring(adxVal,     "#.#") + (adxVal < 25 ? "(レンジ)" : adxVal < 35 ? "(弱T)" : "(強T!)") +
-        " | RSI: "    + str.tostring(rsiVal,     "#.#")   +
+        " | 終値: "    + str.tostring(close,   "#.###") +
+        " | -3σ: "    + str.tostring(l3,      "#.###") +
+        " | %B変化: " + str.tostring(dPb,     "#.##")  +
+        " | 純度: "   + str.tostring(cur_sz / pip_sz, "#.#") + "p (閾値" + str.tostring(pure_thr / pip_sz, "#.#") + "p)" +
+        " | ADX: "    + str.tostring(adxVal,  "#.#") + (adxVal < 25 ? "(レンジ)" : adxVal < 35 ? "(弱T)" : "(強T!)") +
+        " | RSI: "    + str.tostring(rsiVal,  "#.#")   +
         " | !! ニュース確認してからエントリー !!",
         alert.freq_once_per_bar_close)
 
