@@ -3,7 +3,7 @@ indicator("天底ひも理論 (String Theory)", shorttitle="StringTheory", overl
           max_lines_count=300, max_labels_count=200)
 
 // ═══════════════════════════════════════════════════════════════════
-//  天底ひも理論  v7.0  (最終版)
+//  天底ひも理論  v8.0  (最終版)
 //
 //  【画像分析による正解】
 //   水色実線 = スイングハイ同士・スイングロー同士を結ぶ「ひも」
@@ -42,9 +42,9 @@ bb_src  = input.source(close, "ソース",              group=grp_bb)
 bb_show = input.bool  (true,  "BB 表示",             group=grp_bb)
 
 grp_sig = "純度・シグナル設定"
-sig_purity  = input.float(60.0, "シグナル発火 純度(%) 閾値",    minval=30.0, maxval=95.0, step=5.0, group=grp_sig,
+sig_purity  = input.float(50.0, "シグナル発火 純度(%) 閾値",    minval=20.0, maxval=95.0, step=5.0, group=grp_sig,
               tooltip="純度がこの値以上 かつ ひも到達でシグナル。下げると出やすくなる。")
-touch_pips  = input.int  (8,    "ひもタッチ許容誤差 (pips)",     minval=1, maxval=30, group=grp_sig)
+touch_pips  = input.int  (10,   "ひもタッチ許容誤差 (pips)",     minval=1, maxval=50, group=grp_sig)
 cooldown    = input.int  (15,   "クールダウン (バー数)",         minval=5, maxval=100, group=grp_sig)
 
 grp_piv = "Pivot Point (均衡ライン)"
@@ -166,13 +166,24 @@ plotshape(not na(pl), "谷", shape.circle, location.belowbar, color=col_pl, size
 // 最新ひも投影値 (現在バーにおける天/底のひもの価格)
 // ──────────────────────────────────────────────────────────────────
 
-float projHi = na
-float projLo = na
+float projHi    = na
+float projLo    = na
+bool  nearHiAny = false
+bool  nearLoAny = false
 
 if array.size(hiLines) > 0
     projHi := lineY(array.get(hiLines, array.size(hiLines) - 1), bar_index)
+    for _i = 0 to array.size(hiLines) - 1
+        float _yh = lineY(array.get(hiLines, _i), bar_index)
+        if math.abs(high - _yh) <= (float(touch_pips) * pip)
+            nearHiAny := true
+
 if array.size(loLines) > 0
     projLo := lineY(array.get(loLines, array.size(loLines) - 1), bar_index)
+    for _i = 0 to array.size(loLines) - 1
+        float _yl = lineY(array.get(loLines, _i), bar_index)
+        if math.abs(low - _yl) <= (float(touch_pips) * pip)
+            nearLoAny := true
 
 // ──────────────────────────────────────────────────────────────────
 // 純度計算 (Directional Efficiency)
@@ -192,14 +203,29 @@ var float cumAbsShort = 0.0   // SHORT用: 直近SwingLow以降の累積絶対�
 var float netUpShort  = 0.0   // SHORT用: 直近SwingLow以降の上方向純移動
 
 // スイングハイで LONG用純度をリセット
+// pivotは swing_len バー遅延して検出される。その間の動きを遡って取込む。
 if not na(ph)
-    cumAbsLong  := 0.0
-    netDownLong := 0.0
+    float _rAbs = 0.0
+    float _rNet = 0.0
+    if swing_len > 1
+        for _i = 1 to swing_len - 1
+            float _d = close[_i] - close[_i + 1]
+            _rAbs += math.abs(_d)
+            _rNet += (-_d)           // close[i+1]→close[i] の下落分がプラス
+    cumAbsLong  := _rAbs
+    netDownLong := _rNet
 
 // スイングローで SHORT用純度をリセット
 if not na(pl)
-    cumAbsShort := 0.0
-    netUpShort  := 0.0
+    float _rAbs = 0.0
+    float _rNet = 0.0
+    if swing_len > 1
+        for _i = 1 to swing_len - 1
+            float _d = close[_i] - close[_i + 1]
+            _rAbs += math.abs(_d)
+            _rNet += _d              // close[i+1]→close[i] の上昇分がプラス
+    cumAbsShort := _rAbs
+    netUpShort  := _rNet
 
 // 各バーの移動量を累積
 float barMove = math.abs(close - close[1])
@@ -222,13 +248,13 @@ float purShort = cumAbsShort > 0.0 ? math.max(netUpShort  / cumAbsShort * 100.0,
 // ──────────────────────────────────────────────────────────────────
 
 var int lastSig = -999
-float tol = float(touch_pips) * pip
 
-bool nearLo = not na(projLo) and math.abs(low  - projLo) <= tol
-bool nearHi = not na(projHi) and math.abs(high - projHi) <= tol
+// ひも到達 OR BB%B 極値 → どちらかが満たされればシグナル条件成立
+bool atBBLow  = bb_pct <= 0.15   // BB下限付近（売られすぎ） = LONG候補
+bool atBBHigh = bb_pct >= 0.85   // BB上限付近（買われすぎ） = SHORT候補
 
-bool longOk  = (nearLo and purLong  >= sig_purity and (bar_index - lastSig) > cooldown)
-bool shortOk = (nearHi and purShort >= sig_purity and (bar_index - lastSig) > cooldown)
+bool longOk  = ((nearLoAny or atBBLow)  and purLong  >= sig_purity and (bar_index - lastSig) > cooldown)
+bool shortOk = ((nearHiAny or atBBHigh) and purShort >= sig_purity and (bar_index - lastSig) > cooldown)
 
 if longOk or shortOk
     lastSig := bar_index
