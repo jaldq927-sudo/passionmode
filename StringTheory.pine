@@ -3,7 +3,7 @@ indicator("天底ひも理論 (String Theory)", shorttitle="StringTheory", overl
           max_lines_count=300, max_labels_count=200)
 
 // ═══════════════════════════════════════════════════════════════════
-//  天底ひも理論  v8.0  (最終版)
+//  天底ひも理論  v9.0  (最終版)
 //
 //  【画像分析による正解】
 //   水色実線 = スイングハイ同士・スイングロー同士を結ぶ「ひも」
@@ -42,10 +42,14 @@ bb_src  = input.source(close, "ソース",              group=grp_bb)
 bb_show = input.bool  (true,  "BB 表示",             group=grp_bb)
 
 grp_sig = "純度・シグナル設定"
-sig_purity  = input.float(50.0, "シグナル発火 純度(%) 閾値",    minval=20.0, maxval=95.0, step=5.0, group=grp_sig,
+sig_purity  = input.float(55.0, "シグナル発火 純度(%) 閾値",    minval=20.0, maxval=95.0, step=5.0, group=grp_sig,
               tooltip="純度がこの値以上 かつ ひも到達でシグナル。下げると出やすくなる。")
 touch_pips  = input.int  (10,   "ひもタッチ許容誤差 (pips)",     minval=1, maxval=50, group=grp_sig)
-cooldown    = input.int  (15,   "クールダウン (バー数)",         minval=5, maxval=100, group=grp_sig)
+cooldown    = input.int  (20,   "クールダウン (バー数)",         minval=5, maxval=100, group=grp_sig)
+trl_cd      = input.int  (8,    "TRL クールダウン (バー数)",     minval=1, maxval=30,  group=grp_sig)
+use_adx     = input.bool (true,  "ADXフィルター (トレンド除外)", group=grp_sig,
+              tooltip="ONの場合、ADX ≥ 閾値のトレンド相場ではシグナルをスキップ（WEMOFの『説明できる動き』除外）")
+adx_thr     = input.float(25.0,  "ADX 閾値",  minval=15.0, maxval=50.0, step=1.0, group=grp_sig)
 
 grp_piv = "Pivot Point (均衡ライン)"
 show_pivot   = input.bool  (true,   "日次 Pivot Point 表示 (黄色線)", group=grp_piv,
@@ -77,6 +81,10 @@ p_mid = plot(bb_show ? bb_basis : na, "BB 中心", color=color.new(color.white, 
 p_top = plot(bb_show ? bb_upper : na, "BB 上限", color=color.new(color.gray,  45), linewidth=1)
 p_bot = plot(bb_show ? bb_lower : na, "BB 下限", color=color.new(color.gray,  45), linewidth=1)
 fill(p_top, p_bot, color=color.new(color.gray, 90))
+
+// ADX (トレンド強度 — WEMOFの「説明できる動き」フィルター)
+[_diP, _diM, adxVal] = ta.dmi(14, 14)
+bool adxOk = not use_adx or adxVal < adx_thr
 
 // ──────────────────────────────────────────────────────────────────
 // Pivot Point (日次均衡ライン = 黄色水平線)
@@ -247,22 +255,41 @@ float purShort = cumAbsShort > 0.0 ? math.max(netUpShort  / cumAbsShort * 100.0,
 //   TRL  : ひも横断 (シグナル未満の接触マーク)
 // ──────────────────────────────────────────────────────────────────
 
-var int lastSig = -999
+var int lastSig    = -999
+var int lastSigDir = 0    // 1=直近LONG, -1=直近SHORT（交互制限）
 
-// ひも到達 OR BB%B 極値 → どちらかが満たされればシグナル条件成立
-bool atBBLow  = bb_pct <= 0.15   // BB下限付近（売られすぎ） = LONG候補
-bool atBBHigh = bb_pct >= 0.85   // BB上限付近（買われすぎ） = SHORT候補
+// ──────────────────────────────────────────────────────────────────
+// BB%B 極値 + 反転確認
+//  ・まだ同方向に動き続けている場合（BB%bが継続上昇/下落）はスキップ
+//  ・BB%bが極値から折り返し始めた最初のバーで発火
+// ──────────────────────────────────────────────────────────────────
+bool atBBLow  = bb_pct <= 0.12 and bb_pct >= bb_pct[1]   // 下限域 かつ BB%b上昇中(反発確認)
+bool atBBHigh = bb_pct >= 0.88 and bb_pct <= bb_pct[1]   // 上限域 かつ BB%b下落中(反落確認)
 
-bool longOk  = ((nearLoAny or atBBLow)  and purLong  >= sig_purity and (bar_index - lastSig) > cooldown)
-bool shortOk = ((nearHiAny or atBBHigh) and purShort >= sig_purity and (bar_index - lastSig) > cooldown)
+// ──────────────────────────────────────────────────────────────────
+// 交互方向制限: LONGの次はSHORTのみ、SHORTの次はLONGのみ
+//  → 同方向の連続シグナル（SHORT×5 など）を根本的に防止
+// ──────────────────────────────────────────────────────────────────
+bool canLong  = lastSigDir != 1
+bool canShort = lastSigDir != -1
 
-if longOk or shortOk
-    lastSig := bar_index
+bool longOk  = (canLong  and (nearLoAny or atBBLow)  and purLong  >= sig_purity and adxOk and (bar_index - lastSig) > cooldown)
+bool shortOk = (canShort and (nearHiAny or atBBHigh) and purShort >= sig_purity and adxOk and (bar_index - lastSig) > cooldown)
 
-// TRL: ひもクロス (LOW/SHORTでない場合)
+if longOk
+    lastSig    := bar_index
+    lastSigDir := 1
+if shortOk
+    lastSig    := bar_index
+    lastSigDir := -1
+
+// TRL: ひもクロス (LONG/SHORTでない場合) — クールダウン付きで密集防止
 bool trlLo = (not na(projLo) and ta.cross(close, projLo) and not longOk)
 bool trlHi = (not na(projHi) and ta.cross(close, projHi) and not shortOk)
-bool trlOk = trlLo or trlHi
+var int lastTrl = -999
+bool trlOk = (trlLo or trlHi) and (bar_index - lastTrl) > trl_cd
+if trlOk
+    lastTrl := bar_index
 
 // ──────────────────────────────────────────────────────────────────
 // シグナル表示
@@ -304,7 +331,7 @@ if barstate.islast
 // 情報テーブル (右上)
 // ──────────────────────────────────────────────────────────────────
 
-var table tbl = table.new(position.top_right, 2, 7,
+var table tbl = table.new(position.top_right, 2, 8,
                           bgcolor=color.new(color.black, 65),
                           border_color=color.new(color.gray, 50), border_width=1,
                           frame_color=color.new(color.aqua, 50), frame_width=1)
@@ -338,3 +365,8 @@ if barstate.islast
     string ppStr = not na(pp) ? str.tostring(pp, "#.###") : "–"
     table.cell(tbl, 0, 6, "Pivot PP (均衡)",  text_color=color.white, text_size=size.tiny)
     table.cell(tbl, 1, 6, ppStr,              text_color=col_piv,     text_size=size.tiny)
+
+    color adxCol = (adxVal >= adx_thr ? color.red : adxVal >= adx_thr * 0.8 ? color.orange : color.green)
+    string adxStr = str.tostring(math.round(adxVal, 1)) + (adxVal >= adx_thr ? " [トレンド NG]" : " [レンジ OK]")
+    table.cell(tbl, 0, 7, "ADX (トレンド)",   text_color=color.white, text_size=size.tiny)
+    table.cell(tbl, 1, 7, adxStr,             text_color=adxCol,      text_size=size.tiny)
