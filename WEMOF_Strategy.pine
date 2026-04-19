@@ -1,0 +1,439 @@
+//@version=6
+indicator("WEMOF Strategy (6-Filter) - Wakkyai's Entry Model Of FX",
+     shorttitle = "WEMOF-6F",
+     overlay    = true,
+     max_labels_count = 500,
+     max_lines_count  = 500)
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  WEMOF Strategy - 6フィルター仕様 (USD/JPY 5分足)
+//  わっきゃい氏考案の逆張りエントリーモデルを 6 つのフィルターで再構築。
+//
+//  【設計思想】
+//   「期待値の高い、気持ち悪いほどの急変動」だけを抽出する。
+//   単なる 3σ タッチではなく、値幅の純度 / 絶対 pips / キリ番 / トレンドを
+//   全てクリアした瞬間のみシグナル化する。
+//
+//  【6フィルター】
+//   ① 純度 (Purity)       : 前足はバンド内、現在足で一気に±3σを突破
+//   ② 絶対 pips           : 現在足の変動幅が最低 pips 以上
+//   ③ 絞り (%B)           : %B ≥ 1.1 / ≤ -0.1 (3σ基準)   ※ 1.0 = 事前アラート
+//   ④ ラウンドナンバー    : キリ番 ±5 pips は除外
+//   ⑤ 20SMA 傾き          : 強い逆行トレンドに逆らう場面は除外
+//   ⑥ 200SMA + 履歴 S/R   : 過去 200 足で複数回タッチの S/R を突破中なら除外
+//
+//  【Exit 補助】 エントリー位置 ± 2 pips の利確目安ラインを表示
+// ═══════════════════════════════════════════════════════════════════════════
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 0. 入力パラメーター
+// ───────────────────────────────────────────────────────────────────────
+
+// ── ベース ──
+grpBase  = "① Base (BB / SMA)"
+bb_len   = input.int  (20,    "BB / SMA20 期間",         minval=2,               group=grpBase)
+sma200_len = input.int(200,   "SMA200 期間 (環境認識)", minval=50,              group=grpBase)
+bb_src   = input.source(close, "ソース",                                         group=grpBase)
+show_s2  = input.bool (true,  "±2σ を表示",                                     group=grpBase)
+show_sma200 = input.bool(true,"200SMA を表示",                                  group=grpBase)
+
+// ── ① 純度 (1本で 3σ 突き抜け) ──
+grpPur    = "② Purity (純度フィルター)"
+use_purity = input.bool(true, "前足バンド内 → 現在足で一気に 3σ ブレイク",
+          tooltip="前のローソク足ではバンド内に収まっており、現在のローソク足で一気に±3σをブレイクする場面のみ許可。",
+          group=grpPur)
+
+// ── ② 絶対 pips ──
+grpPip    = "③ Absolute Pips (絶対値フィルター)"
+min_pips  = input.float(5.0, "最低変動 pips (現在足 High-Low)",
+          minval=0.0, step=0.5,
+          tooltip="現在足の変動幅 (high-low) がこの値未満ならスプレッド負けリスクが高く除外。USD/JPY のデフォルト 5.0 pips。",
+          group=grpPip)
+
+// ── ③ 絞り (%B) ──
+grpSqz    = "④ Squeeze (絞り・%B)"
+sqz_sig   = input.float(1.1, "絞り (本サイン)  %B 閾値",
+          minval=0.5, maxval=2.0, step=0.05,
+          tooltip="ショート: %B ≥ sqz_sig / ロング: %B ≤ (1 - sqz_sig) を条件とする。1.1 で 3σ より 10% 突き抜けた状態。",
+          group=grpSqz)
+sqz_pre   = input.float(1.0, "絞り (事前アラート)  %B 閾値",
+          minval=0.5, maxval=1.5, step=0.05,
+          tooltip="事前アラート用。1.0 で 3σ ライン上。",
+          group=grpSqz)
+
+// ── ④ ラウンドナンバー ──
+grpRnd    = "⑤ Round Number (キリ番除外)"
+use_rnd   = input.bool (true, "キリ番付近で除外",
+          tooltip="158.000 / 159.000 など大衆心理が働く価格帯を除外。",
+          group=grpRnd)
+rnd_buf_p = input.float(5.0,  "  └ 除外幅 (± pips)",
+          minval=0.0, step=0.5,
+          tooltip="キリ番から ±この pips の範囲を除外。",
+          group=grpRnd)
+
+// ── ⑤ 20SMA 傾き ──
+grpSlope  = "⑥ 20SMA Slope (トレンド環境)"
+use_slope = input.bool (true, "強トレンド時の逆行エントリーを制限",
+          tooltip="20SMA の傾きが強く、逆向きの逆張りエントリーになる場合は除外。",
+          group=grpSlope)
+slope_bars= input.int  (5,    "  └ 傾き測定バー数",
+          minval=2, maxval=30,
+          group=grpSlope)
+slope_thr_p = input.float(3.0,"  └ 強トレンド判定閾値 (pips / 計測区間)",
+          minval=0.5, step=0.5,
+          tooltip="SMA20 が計測区間で何 pips 動いたら強トレンドとみなすか。",
+          group=grpSlope)
+
+// ── ⑥ 200SMA 環境 & 履歴 S/R ──
+grpSR     = "⑦ 200SMA Historical S/R (履歴サポレジ)"
+use_sr    = input.bool (true, "履歴サポレジを突破中ならシグナル除外",
+          tooltip="過去 200 足内でキリ番が複数回 S/R として機能しており、現在足でそれを突破中なら対象外。",
+          group=grpSR)
+sr_look   = input.int  (200,  "  └ 参照バー数 (デフォルト 200)",
+          minval=50, maxval=500,
+          group=grpSR)
+sr_grid_p = input.float(50.0, "  └ S/R グリッド幅 (pips, 例: 50 = .50刻み)",
+          minval=10.0, step=5.0,
+          tooltip="50 pips → 158.00 / 158.50 / 159.00 ... のグリッド。100 pips なら 1.00刻み。",
+          group=grpSR)
+sr_tol_p  = input.float(5.0,  "  └ S/R タッチ許容幅 (± pips)",
+          minval=0.5, step=0.5,
+          group=grpSR)
+sr_min_t  = input.int  (3,    "  └ 履歴 S/R 認定タッチ回数 (≥)",
+          minval=2, maxval=10,
+          group=grpSR)
+
+// ── Exit (利確) ──
+grpExit   = "⑧ Exit (利確目安)"
+tp_pips   = input.float(2.0,  "利確目安 (pips)", minval=0.5, step=0.5,
+          tooltip="エントリー位置からの利確目安。2.0 pips がデフォルト。",
+          group=grpExit)
+tp_bars   = input.int  (12,   "  └ ライン延長バー数",
+          minval=1, maxval=100,
+          group=grpExit)
+
+// ── 表示/アラート ──
+grpUI     = "⑨ Visual / Alert"
+show_tbl  = input.bool (true, "情報テーブルを表示", group=grpUI)
+alert_pre = input.bool (true, "事前アラート (絞り=1.0) を有効化", group=grpUI)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 1. 通貨ペア自動判定 (pip サイズ & ラウンドナンバー単位)
+// ───────────────────────────────────────────────────────────────────────
+bool  is_jpy   = str.contains(syminfo.currency, "JPY") or str.contains(syminfo.basecurrency, "JPY")
+float pip_sz   = is_jpy ? 0.01 : 0.0001
+float rnd_unit = is_jpy ? 1.0  : 0.01          // 158.000 / 1.1000 単位
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 2. ベース指標 (BB / SMA / %B)
+// ───────────────────────────────────────────────────────────────────────
+float basis  = ta.sma(bb_src, bb_len)
+float dev    = ta.stdev(bb_src, bb_len)
+float u2     = basis + 2.0 * dev
+float l2     = basis - 2.0 * dev
+float u3     = basis + 3.0 * dev
+float l3     = basis - 3.0 * dev
+float sma200 = ta.sma(close, sma200_len)
+
+// 3σ 基準の %B (1.0 = +3σ ライン、0.0 = -3σ ライン)
+float bw   = u3 - l3
+float pctB = bw > 0.0 ? (bb_src - l3) / bw : 0.5
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 3. フィルター① 純度 (1本で 3σ 突き抜け / バンドウォーク除外)
+// ───────────────────────────────────────────────────────────────────────
+// 前足: 完全にバンド内に収まっていた
+bool prev_inside = high[1] < u3[1] and low[1] > l3[1]
+// 現在足: 3σ を突破 (終値ベースの初突破 = ta.crossover/under)
+bool cross_up    = ta.crossover (close, u3)
+bool cross_dn    = ta.crossunder(close, l3)
+bool purity_s    = not use_purity or (prev_inside and cross_up)
+bool purity_l    = not use_purity or (prev_inside and cross_dn)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 4. フィルター② 絶対 pips (ボラ最低値)
+// ───────────────────────────────────────────────────────────────────────
+float range_p = (high - low) / pip_sz
+bool  pips_ok = range_p >= min_pips
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 5. フィルター③ 絞り (%B)
+// ───────────────────────────────────────────────────────────────────────
+float pctB_short_thr = sqz_sig          // 例: 1.1
+float pctB_long_thr  = 1.0 - sqz_sig    // 例: -0.1
+float pctB_pre_s     = sqz_pre          // 例: 1.0
+float pctB_pre_l     = 1.0 - sqz_pre    // 例: 0.0
+
+bool sqz_ok_s = pctB >= pctB_short_thr
+bool sqz_ok_l = pctB <= pctB_long_thr
+bool sqz_pre_s = pctB >= pctB_pre_s
+bool sqz_pre_l = pctB <= pctB_pre_l
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 6. フィルター④ ラウンドナンバー (キリ番) 除外
+// ───────────────────────────────────────────────────────────────────────
+float rnd_buf = rnd_buf_p * pip_sz
+float nearest_rnd = math.round(close / rnd_unit) * rnd_unit
+bool  near_rnd = math.abs(close - nearest_rnd) <= rnd_buf
+bool  rnd_ok  = not use_rnd or not near_rnd
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 7. フィルター⑤ 20SMA 傾き (トレンド環境)
+//   強い上昇トレンド中のショートは危険 → 除外
+//   強い下降トレンド中のロングは危険  → 除外
+// ───────────────────────────────────────────────────────────────────────
+float slope_move_p = (basis - basis[slope_bars]) / pip_sz   // 符号付き pips
+bool  strong_up    = slope_move_p >=  slope_thr_p
+bool  strong_dn    = slope_move_p <= -slope_thr_p
+bool  slope_ok_s   = not use_slope or not strong_up         // 強い上昇中はショート制限
+bool  slope_ok_l   = not use_slope or not strong_dn         // 強い下降中はロング制限
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 8. フィルター⑥ 200SMA + 履歴サポレジ
+//   過去 sr_look 本の間に、現在価格近辺のキリ番レベル (grid) が
+//   複数回 S/R として機能しているか → 機能していて、かつ現在足で
+//   そのレベルを突破しているなら「説明可能」として除外。
+// ───────────────────────────────────────────────────────────────────────
+float sr_grid = sr_grid_p * pip_sz                          // 0.50 刻み など
+float sr_tol  = sr_tol_p  * pip_sz
+float sr_level = math.round(close / sr_grid) * sr_grid      // 現在価格最寄りグリッド
+
+// 過去 sr_look 本で sr_level 付近がタッチされた「独立した局面」をカウント
+int sr_touches = 0
+for i = 1 to sr_look
+    bool touch_i  = high[i] >= sr_level - sr_tol and low[i] <= sr_level + sr_tol
+    bool touch_i1 = ((i + 1) <= sr_look ? (high[i+1] >= sr_level - sr_tol and low[i+1] <= sr_level + sr_tol) : false)
+    if touch_i and not touch_i1
+        sr_touches := sr_touches + 1
+
+bool is_hist_sr = sr_touches >= sr_min_t
+// 「突破」: 前足の終値が sr_level の反対側にあり、現在足の終値が超えた
+bool broke_sr_up = close > sr_level + sr_tol and close[1] <= sr_level + sr_tol
+bool broke_sr_dn = close < sr_level - sr_tol and close[1] >= sr_level - sr_tol
+bool sr_ok_s = not use_sr or not (is_hist_sr and broke_sr_up)
+bool sr_ok_l = not use_sr or not (is_hist_sr and broke_sr_dn)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 9. シグナル合成
+// ───────────────────────────────────────────────────────────────────────
+bool sig_short = purity_s and pips_ok and sqz_ok_s and rnd_ok and slope_ok_s and sr_ok_s
+bool sig_long  = purity_l and pips_ok and sqz_ok_l and rnd_ok and slope_ok_l and sr_ok_l
+
+// 事前アラート: 絞りが 1.0 / 0.0 を超えた瞬間 + キリ番除外 + 最低 pips
+bool pre_short = sqz_pre_s and ta.crossover (pctB, pctB_pre_s) and rnd_ok and pips_ok and not sig_short
+bool pre_long  = sqz_pre_l and ta.crossunder(pctB, pctB_pre_l) and rnd_ok and pips_ok and not sig_long
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 10. プロット (BB / 200SMA / Signal / Exit)
+// ───────────────────────────────────────────────────────────────────────
+plot(basis,                "BB 中心線 (20SMA)", color=color.new(color.gray,   30), linewidth=1)
+plot(show_s2 ? u2 : na,    "+2σ",              color=color.new(color.red,    55), linewidth=1)
+plot(show_s2 ? l2 : na,    "-2σ",              color=color.new(color.lime,   55), linewidth=1)
+pU3 = plot(u3,             "+3σ",              color=color.new(color.red,     5), linewidth=2)
+pL3 = plot(l3,             "-3σ",              color=color.new(color.lime,    5), linewidth=2)
+plot(show_sma200 ? sma200 : na, "200SMA",      color=color.new(color.orange, 20), linewidth=2)
+
+// SHORT: 赤ラベル (上側)
+plotshape(sig_short, "SHORT シグナル (売り)",
+     style    = shape.labeldown,
+     location = location.abovebar,
+     color    = color.new(color.red, 0),
+     size     = size.large,
+     text     = "SHORT",
+     textcolor= color.white)
+
+// LONG: 青ラベル (下側)  ※ 仕様: Long=青 / Short=赤
+plotshape(sig_long,  "LONG シグナル (買い)",
+     style    = shape.labelup,
+     location = location.belowbar,
+     color    = color.new(color.blue, 0),
+     size     = size.large,
+     text     = "LONG",
+     textcolor= color.white)
+
+// 事前アラートマーカー (黄色三角)
+plotshape(pre_short, "SHORT 事前",
+     style=shape.triangledown, location=location.abovebar,
+     color=color.new(color.yellow, 25), size=size.small,
+     text="待機", textcolor=color.new(color.yellow, 0))
+plotshape(pre_long,  "LONG 事前",
+     style=shape.triangleup,   location=location.belowbar,
+     color=color.new(color.yellow, 25), size=size.small,
+     text="待機", textcolor=color.new(color.yellow, 0))
+
+// Exit (+2 pips) 目標ラインを描画
+if sig_short
+    float tp = close - tp_pips * pip_sz
+    line.new(bar_index, tp, bar_index + tp_bars, tp,
+         color = color.new(color.red, 30),
+         style = line.style_dashed, width = 2)
+    label.new(bar_index + tp_bars, tp,
+         text  = "TP " + str.tostring(tp_pips, "#.#") + "p",
+         style = label.style_label_left,
+         color = color.new(color.red, 30),
+         textcolor = color.white,
+         size  = size.small)
+
+if sig_long
+    float tp = close + tp_pips * pip_sz
+    line.new(bar_index, tp, bar_index + tp_bars, tp,
+         color = color.new(color.blue, 30),
+         style = line.style_dashed, width = 2)
+    label.new(bar_index + tp_bars, tp,
+         text  = "TP " + str.tostring(tp_pips, "#.#") + "p",
+         style = label.style_label_left,
+         color = color.new(color.blue, 30),
+         textcolor = color.white,
+         size  = size.small)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 11. 情報テーブル (右上)
+// ───────────────────────────────────────────────────────────────────────
+var table T = table.new(position.top_right, 2, 10,
+     bgcolor      = color.new(color.black, 70),
+     border_width = 1,
+     border_color = color.new(color.gray,  50),
+     frame_width  = 2,
+     frame_color  = color.new(color.navy,  20))
+
+if show_tbl and barstate.islast
+    // 0: ヘッダ
+    table.cell(T, 0, 0, "WEMOF 6-Filter",
+         text_color=color.white, text_size=size.small,
+         bgcolor=color.new(color.navy, 10))
+    table.cell(T, 1, 0, syminfo.ticker + "  " + timeframe.period,
+         text_color=color.yellow, text_size=size.small,
+         bgcolor=color.new(color.navy, 10))
+
+    // 1: ①純度
+    pur_state = (sig_short ? "SHORT 突破" :
+                 sig_long  ? "LONG 突破"  :
+                 prev_inside ? "前足内 [待機]" : "前足が既に外 [NG]")
+    pur_col   = sig_short or sig_long ? color.lime : prev_inside ? color.white : color.red
+    table.cell(T, 0, 1, "①純度", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 1, pur_state, text_color=pur_col, text_size=size.small)
+
+    // 2: ② pips
+    pips_col  = pips_ok ? color.lime : color.red
+    pips_str  = (str.tostring(range_p, "#.#") + "p " +
+                (pips_ok ? "[OK ≥" : "[NG <") + str.tostring(min_pips, "#.#") + "]")
+    table.cell(T, 0, 2, "②pips", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 2, pips_str, text_color=pips_col, text_size=size.small)
+
+    // 3: ③ %B 絞り
+    pb_tag = (pctB >= pctB_short_thr ? "≥" + str.tostring(pctB_short_thr, "#.##") + " [SHORT]" :
+              pctB <= pctB_long_thr  ? "≤" + str.tostring(pctB_long_thr,  "#.##") + " [LONG]"  :
+              pctB >= pctB_pre_s     ? "≥" + str.tostring(pctB_pre_s,     "#.##") + " [事前S]" :
+              pctB <= pctB_pre_l     ? "≤" + str.tostring(pctB_pre_l,     "#.##") + " [事前L]" :
+              "通常域")
+    pb_col = (sqz_ok_s or sqz_ok_l ? color.red :
+              sqz_pre_s or sqz_pre_l ? color.yellow : color.white)
+    table.cell(T, 0, 3, "③%B(絞り)", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 3, str.tostring(pctB, "#.##") + " " + pb_tag, text_color=pb_col, text_size=size.small)
+
+    // 4: ④ キリ番
+    rnd_str = (str.tostring(nearest_rnd, "#.###") + " 距離" +
+              str.tostring(math.abs(close - nearest_rnd) / pip_sz, "#.#") + "p" +
+              (near_rnd ? " [キリ番 NG]" : " [OK]"))
+    rnd_col = near_rnd ? color.red : color.lime
+    table.cell(T, 0, 4, "④キリ番", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 4, rnd_str, text_color=rnd_col, text_size=size.small)
+
+    // 5: ⑤ 20SMA 傾き
+    slope_tag = (strong_up ? "強UP [ショート制限]" :
+                 strong_dn ? "強DN [ロング制限]"  : "緩やか [OK]")
+    slope_col = (strong_up or strong_dn) ? color.orange : color.lime
+    slope_sign = slope_move_p >= 0 ? "+" : ""
+    table.cell(T, 0, 5, "⑤20SMA傾き", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 5, slope_sign + str.tostring(slope_move_p, "#.#") + "p " + slope_tag,
+         text_color=slope_col, text_size=size.small)
+
+    // 6: ⑥ 履歴 S/R
+    sr_tag = (is_hist_sr ? "S/R " + str.tostring(sr_level, "#.###") + " タッチ" + str.tostring(sr_touches) + "回" : "S/R なし [OK]")
+    sr_col = is_hist_sr ? (broke_sr_up or broke_sr_dn ? color.red : color.orange) : color.lime
+    sr_extra = ((is_hist_sr and broke_sr_up) ? " [上抜け NG]" : (is_hist_sr and broke_sr_dn) ? " [下抜け NG]" : "")
+    table.cell(T, 0, 6, "⑥履歴S/R", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 6, sr_tag + sr_extra, text_color=sr_col, text_size=size.small)
+
+    // 7: シグナル
+    sig_str = (sig_short ? "SHORT [本サイン]" :
+               sig_long  ? "LONG [本サイン]"  :
+               pre_short ? "SHORT 事前..."     :
+               pre_long  ? "LONG 事前..."      : "待機")
+    sig_col = (sig_short ? color.red :
+               sig_long  ? color.blue :
+               pre_short or pre_long ? color.yellow : color.gray)
+    table.cell(T, 0, 7, "シグナル", text_color=color.white, text_size=size.small)
+    table.cell(T, 1, 7, sig_str, text_color=sig_col, text_size=size.small)
+
+    // 8: ±3σ / 200SMA
+    table.cell(T, 0, 8, "±3σ / 200SMA", text_color=color.gray, text_size=size.tiny)
+    table.cell(T, 1, 8,
+         str.tostring(u3,     "#.###") + " / " +
+         str.tostring(l3,     "#.###") + " / " +
+         str.tostring(sma200, "#.###"),
+         text_color=color.white, text_size=size.tiny)
+
+    // 9: 注意
+    table.cell(T, 0, 9, "!! ニュース確認 !!",
+         text_color=color.orange, bgcolor=color.new(color.orange, 82), text_size=size.tiny)
+    table.cell(T, 1, 9, "自己責任で",
+         text_color=color.orange, bgcolor=color.new(color.orange, 82), text_size=size.tiny)
+
+
+// ───────────────────────────────────────────────────────────────────────
+// 12. アラート
+//   無料プラン対応: 1 つのアラート (Any alert() function call) で
+//   本サイン / 事前サイン / ロング / ショート の全てが通知可能。
+// ───────────────────────────────────────────────────────────────────────
+if sig_short
+    alert("[WEMOF SHORT] " + syminfo.ticker +
+          " | 終値 "   + str.tostring(close, "#.###") +
+          " | +3σ "   + str.tostring(u3,    "#.###") +
+          " | %B "    + str.tostring(pctB,  "#.##")  +
+          " | 値幅 "  + str.tostring(range_p, "#.#") + "p" +
+          " | TP 目安 " + str.tostring(close - tp_pips * pip_sz, "#.###") +
+          " | !! ニュース・チャートパターンを確認してからエントリー !!",
+          alert.freq_once_per_bar_close)
+
+if sig_long
+    alert("[WEMOF LONG] " + syminfo.ticker +
+          " | 終値 "   + str.tostring(close, "#.###") +
+          " | -3σ "   + str.tostring(l3,    "#.###") +
+          " | %B "    + str.tostring(pctB,  "#.##")  +
+          " | 値幅 "  + str.tostring(range_p, "#.#") + "p" +
+          " | TP 目安 " + str.tostring(close + tp_pips * pip_sz, "#.###") +
+          " | !! ニュース・チャートパターンを確認してからエントリー !!",
+          alert.freq_once_per_bar_close)
+
+if alert_pre and pre_short
+    alert("[WEMOF 事前 SHORT] " + syminfo.ticker +
+          " | %B が " + str.tostring(pctB_pre_s, "#.##") + " を上抜け (+3σ 到達)" +
+          " | 終値 " + str.tostring(close, "#.###") +
+          " | さらに突き抜けたら本サイン候補",
+          alert.freq_once_per_bar_close)
+
+if alert_pre and pre_long
+    alert("[WEMOF 事前 LONG] " + syminfo.ticker +
+          " | %B が " + str.tostring(pctB_pre_l, "#.##") + " を下抜け (-3σ 到達)" +
+          " | 終値 " + str.tostring(close, "#.###") +
+          " | さらに突き抜けたら本サイン候補",
+          alert.freq_once_per_bar_close)
+
+// 手動アラート作成用の alertcondition (バックアップ)
+alertcondition(sig_short, title="WEMOF SHORT",       message="WEMOF SHORT シグナル {{ticker}} {{close}}")
+alertcondition(sig_long,  title="WEMOF LONG",        message="WEMOF LONG シグナル {{ticker}} {{close}}")
+alertcondition(pre_short, title="WEMOF 事前 SHORT",  message="WEMOF 事前 SHORT {{ticker}} {{close}}")
+alertcondition(pre_long,  title="WEMOF 事前 LONG",   message="WEMOF 事前 LONG  {{ticker}} {{close}}")
