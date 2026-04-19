@@ -14,13 +14,15 @@ indicator("WEMOF Strategy (6-Filter) - Wakkyai's Entry Model Of FX",
 //   単なる 3σ タッチではなく、値幅の純度 / 絶対 pips / キリ番 / トレンドを
 //   全てクリアした瞬間のみシグナル化する。
 //
-//  【6フィルター】
-//   ① 純度 (Purity)       : 前足はバンド内、現在足で一気に±3σを突破
-//   ② 絶対 pips           : 現在足の変動幅が最低 pips 以上
-//   ③ 絞り (%B)           : %B ≥ 1.1 / ≤ -0.1 (3σ基準)   ※ 1.0 = 事前アラート
-//   ④ ラウンドナンバー    : キリ番 ±5 pips は除外
-//   ⑤ 20SMA 傾き          : 強い逆行トレンドに逆らう場面は除外
-//   ⑥ 200SMA + 履歴 S/R   : 過去 200 足で複数回タッチの S/R を突破中なら除外
+//  【6フィルター】  ※ デフォルトは "緩和" モード (厳格化は各 input で調整可)
+//   ① 純度 (Purity)       : 前足の終値がバンド内で、現在足で±3σ突破 (ヒゲ許容)
+//                           strict_purity=ON で高安値まで要求 (元仕様)
+//   ② 絶対 pips           : 現在足の変動幅 ≥ 3.0 pips (元仕様 5.0)
+//   ③ 絞り (%B)           : 直近 sqz_look 本内の %B 最高/最低が 1.03 / -0.03 超
+//                           ※ 厳格運用は sqz_sig=1.10, sqz_look=1
+//   ④ ラウンドナンバー    : 1.00 刻みから ±3 pips 除外 (元仕様 ±5)
+//   ⑤ 20SMA 傾き          : 5バーで 6 pips 以上動くトレンドのみ逆行制限
+//   ⑥ 200SMA + 履歴 S/R   : ±3 pips 許容で 4 回以上タッチの S/R 突破中なら除外
 //
 //  【Exit 補助】 エントリー位置 ± 2 pips の利確目安ラインを表示
 // ═══════════════════════════════════════════════════════════════════════════
@@ -41,25 +43,32 @@ show_sma200 = input.bool(true,"200SMA を表示",                               
 // ── ① 純度 (1本で 3σ 突き抜け) ──
 grpPur    = "② Purity (純度フィルター)"
 use_purity = input.bool(true, "前足バンド内 → 現在足で一気に 3σ ブレイク",
-          tooltip="前のローソク足ではバンド内に収まっており、現在のローソク足で一気に±3σをブレイクする場面のみ許可。",
+          tooltip="前のローソク足がバンド内に収まっており、現在のローソク足で±3σをブレイクする場面のみ許可。",
+          group=grpPur)
+strict_purity = input.bool(false, "  └ 厳格モード (高安値ベースで前足を判定)",
+          tooltip="OFF (推奨/緩): 前足の終値がバンド内ならOK (ヒゲの僅かな突出は許容)。\nON (厳格): 前足の高安値まで完全にバンド内。シグナルが激減します。",
           group=grpPur)
 
 // ── ② 絶対 pips ──
 grpPip    = "③ Absolute Pips (絶対値フィルター)"
-min_pips  = input.float(5.0, "最低変動 pips (現在足 High-Low)",
+min_pips  = input.float(3.0, "最低変動 pips (現在足 High-Low)",
           minval=0.0, step=0.5,
-          tooltip="現在足の変動幅 (high-low) がこの値未満ならスプレッド負けリスクが高く除外。USD/JPY のデフォルト 5.0 pips。",
+          tooltip="現在足の変動幅 (high-low) がこの値未満なら除外。緩和デフォルトで 3.0 pips (厳格運用なら 5.0〜7.0)。",
           group=grpPip)
 
 // ── ③ 絞り (%B) ──
 grpSqz    = "④ Squeeze (絞り・%B)"
-sqz_sig   = input.float(1.1, "絞り (本サイン)  %B 閾値",
-          minval=0.5, maxval=2.0, step=0.05,
-          tooltip="ショート: %B ≥ sqz_sig / ロング: %B ≤ (1 - sqz_sig) を条件とする。1.1 で 3σ より 10% 突き抜けた状態。",
+sqz_sig   = input.float(1.03, "絞り (本サイン)  %B 閾値",
+          minval=0.5, maxval=2.0, step=0.01,
+          tooltip="ショート: %B ≥ sqz_sig / ロング: %B ≤ (1 - sqz_sig) を条件。\n緩和デフォルト 1.03 (3σ より 3% 突き抜け)。\n厳格運用は 1.10 (元仕様)。",
           group=grpSqz)
 sqz_pre   = input.float(1.0, "絞り (事前アラート)  %B 閾値",
-          minval=0.5, maxval=1.5, step=0.05,
+          minval=0.5, maxval=1.5, step=0.01,
           tooltip="事前アラート用。1.0 で 3σ ライン上。",
+          group=grpSqz)
+sqz_look  = input.int  (2,    "  └ 絞り最高値の参照本数 (緩和)",
+          minval=1, maxval=5,
+          tooltip="過去この本数以内に絞り閾値を超えた%Bがあれば本サイン対象。1=現在足のみ (厳格)、2〜3=直近の息切れを拾う (緩和)。",
           group=grpSqz)
 
 // ── ④ ラウンドナンバー ──
@@ -67,9 +76,9 @@ grpRnd    = "⑤ Round Number (キリ番除外)"
 use_rnd   = input.bool (true, "キリ番付近で除外",
           tooltip="158.000 / 159.000 など大衆心理が働く価格帯を除外。",
           group=grpRnd)
-rnd_buf_p = input.float(5.0,  "  └ 除外幅 (± pips)",
+rnd_buf_p = input.float(3.0,  "  └ 除外幅 (± pips)",
           minval=0.0, step=0.5,
-          tooltip="キリ番から ±この pips の範囲を除外。",
+          tooltip="キリ番 (1.00 刻み) から ±この pips の範囲を除外。緩和デフォルト 3.0 (厳格は 5.0〜10.0)。",
           group=grpRnd)
 
 // ── ⑤ 20SMA 傾き ──
@@ -80,9 +89,9 @@ use_slope = input.bool (true, "強トレンド時の逆行エントリーを制�
 slope_bars= input.int  (5,    "  └ 傾き測定バー数",
           minval=2, maxval=30,
           group=grpSlope)
-slope_thr_p = input.float(3.0,"  └ 強トレンド判定閾値 (pips / 計測区間)",
+slope_thr_p = input.float(6.0,"  └ 強トレンド判定閾値 (pips / 計測区間)",
           minval=0.5, step=0.5,
-          tooltip="SMA20 が計測区間で何 pips 動いたら強トレンドとみなすか。",
+          tooltip="SMA20 が計測区間で何 pips 動いたら強トレンドとみなすか。緩和デフォルト 6.0 pips (5バーで 1.2pip/bar 以上のじわじわ上昇下降のみブロック)。厳格運用は 3.0。",
           group=grpSlope)
 
 // ── ⑥ 200SMA 環境 & 履歴 S/R ──
@@ -97,11 +106,13 @@ sr_grid_p = input.float(50.0, "  └ S/R グリッド幅 (pips, 例: 50 = .50刻
           minval=10.0, step=5.0,
           tooltip="50 pips → 158.00 / 158.50 / 159.00 ... のグリッド。100 pips なら 1.00刻み。",
           group=grpSR)
-sr_tol_p  = input.float(5.0,  "  └ S/R タッチ許容幅 (± pips)",
+sr_tol_p  = input.float(3.0,  "  └ S/R タッチ許容幅 (± pips)",
           minval=0.5, step=0.5,
+          tooltip="緩和デフォルト 3.0 pips (厳格は 5.0)。小さいほど「本物のS/R」だけが履歴認定される = 除外が減る。",
           group=grpSR)
-sr_min_t  = input.int  (3,    "  └ 履歴 S/R 認定タッチ回数 (≥)",
+sr_min_t  = input.int  (4,    "  └ 履歴 S/R 認定タッチ回数 (≥)",
           minval=2, maxval=10,
+          tooltip="緩和デフォルト 4 回 (厳格は 3)。大きいほど「本物のS/R」しか除外対象にならない。",
           group=grpSR)
 
 // ── Exit (利確) ──
@@ -145,9 +156,13 @@ float pctB = bw > 0.0 ? (bb_src - l3) / bw : 0.5
 
 // ───────────────────────────────────────────────────────────────────────
 // 3. フィルター① 純度 (1本で 3σ 突き抜け / バンドウォーク除外)
+//   緩和モード (strict_purity=OFF): 前足の "終値" がバンド内なら OK。
+//     ヒゲが 3σ に軽く触れただけでも許容する (バンドウォークでない限り拾える)
+//   厳格モード (strict_purity=ON): 前足の "高安値" まで完全にバンド内。
 // ───────────────────────────────────────────────────────────────────────
-// 前足: 完全にバンド内に収まっていた
-bool prev_inside = high[1] < u3[1] and low[1] > l3[1]
+bool prev_inside_loose  = close[1] < u3[1] and close[1] > l3[1]
+bool prev_inside_strict = high[1]  < u3[1] and low[1]   > l3[1]
+bool prev_inside        = strict_purity ? prev_inside_strict : prev_inside_loose
 // 現在足: 3σ を突破 (終値ベースの初突破 = ta.crossover/under)
 bool cross_up    = ta.crossover (close, u3)
 bool cross_dn    = ta.crossunder(close, l3)
@@ -170,8 +185,11 @@ float pctB_long_thr  = 1.0 - sqz_sig    // 例: -0.1
 float pctB_pre_s     = sqz_pre          // 例: 1.0
 float pctB_pre_l     = 1.0 - sqz_pre    // 例: 0.0
 
-bool sqz_ok_s = pctB >= pctB_short_thr
-bool sqz_ok_l = pctB <= pctB_long_thr
+// 緩和: 直近 sqz_look 本以内の %B 最高値/最低値で閾値判定
+float pctB_hi_win = ta.highest(pctB, sqz_look)
+float pctB_lo_win = ta.lowest (pctB, sqz_look)
+bool sqz_ok_s  = pctB_hi_win >= pctB_short_thr
+bool sqz_ok_l  = pctB_lo_win <= pctB_long_thr
 bool sqz_pre_s = pctB >= pctB_pre_s
 bool sqz_pre_l = pctB <= pctB_pre_l
 
