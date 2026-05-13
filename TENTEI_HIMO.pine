@@ -168,8 +168,8 @@ new_top = himo_up_active and (na(top_target) or (not na(top_target_now) and top_
 new_bot = himo_dn_active and (na(bot_target) or (not na(bot_target_now) and bot_target_now < bot_target))
 
 // 紐の「新規成立」 = 直前バーでは紐が非アクティブだったが、今バーでアクティブになった瞬間
-himo_up_first = himo_up_active and not nz(himo_up_active[1], false)
-himo_dn_first = himo_dn_active and not nz(himo_dn_active[1], false)
+himo_up_first = himo_up_active and not himo_up_active[1]
+himo_dn_first = himo_dn_active and not himo_dn_active[1]
 
 if new_top
     top_target := top_target_now
