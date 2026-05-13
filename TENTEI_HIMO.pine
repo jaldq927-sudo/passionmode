@@ -165,58 +165,95 @@ var line  bot_seg    = na
 var label top_label  = na
 var label bot_label  = na
 
-// 「新規成立」 = 直前バーで目標が無く (= 紐が休眠中) 、今バーで紐が立ち上がった瞬間
-// → 目標が生きている間は同一紐の継続とみなし新マーカーを出さない (連発防止)
+// 「新規成立」 = 紐が休眠中だったが今バーで立ち上がった瞬間
 himo_up_first = himo_up_active and na(top_target) and not himo_up_active[1]
 himo_dn_first = himo_dn_active and na(bot_target) and not himo_dn_active[1]
 
-// new_top/new_bot: 目標を「新規確定」または「同一紐内で先端 x が伸びて更新」するタイミング
-// - 新規確定: 目標がまだ無く、紐がアクティブ
-// - 更新: 同一紐内で先端 x が更新され、新しい目標が古い目標を更新
-new_top = himo_up_active and (na(top_target) or (not na(top_target_now) and top_target_now > top_target))
-new_bot = himo_dn_active and (na(bot_target) or (not na(bot_target_now) and bot_target_now < bot_target))
+// ──────────────────────────────────────────────────────────────────
+// ステップ1: 逆方向の紐が成立したら反対側 target を完全消去
+//   (例: 上紐成立 → 下紐の古い 想定底 をクリア)
+// ──────────────────────────────────────────────────────────────────
+if himo_up_first
+    bot_target := na
+    bot_f      := na
+    if not na(bot_line)
+        line.delete(bot_line)
+        bot_line := na
+    if not na(bot_seg)
+        line.delete(bot_seg)
+        bot_seg := na
+    if not na(bot_label)
+        label.delete(bot_label)
+        bot_label := na
 
-if new_top
+if himo_dn_first
+    top_target := na
+    top_f      := na
+    if not na(top_line)
+        line.delete(top_line)
+        top_line := na
+    if not na(top_seg)
+        line.delete(top_seg)
+        top_seg := na
+    if not na(top_label)
+        label.delete(top_label)
+        top_label := na
+
+
+// ──────────────────────────────────────────────────────────────────
+// ステップ2: 同一紐内で target を 動的更新 (純度・先端 x の変化を毎バー反映)
+//   - 新規成立時: 起点 f を記憶、線・ラベル・f→x セグメントを生成
+//   - 継続バー: 線とラベルを set_xy で位置更新 (再生成しない)
+// ──────────────────────────────────────────────────────────────────
+if himo_up_active and not na(top_target_now)
+    is_new = na(top_target)
     top_target := top_target_now
-    if na(top_f)
+    if is_new
         top_f := himo_f
     if show_lines
-        if not na(top_line)
-            line.delete(top_line)
-        top_line := line.new(bar_index, top_target, bar_index + extend_to, top_target, color=col_top, width=2, extend=extend.none)
-    if show_fx_line
-        if not na(top_seg)
-            line.delete(top_seg)
-        top_seg := line.new(bar_index - N_len, himo_f, bar_index, himo_x, color=col_himo_seg, width=2, style=line.style_dotted)
+        if is_new or na(top_line)
+            top_line := line.new(bar_index, top_target, bar_index + extend_to, top_target, color=col_top, width=2, extend=extend.none)
+        else
+            line.set_xy1(top_line, bar_index, top_target)
+            line.set_xy2(top_line, bar_index + extend_to, top_target)
     if show_labels
-        if not na(top_label)
-            label.delete(top_label)
-        top_label := label.new(bar_index + extend_to, top_target, "天 " + str.tostring(top_target, format.mintick) + "\n純度=" + str.tostring(purity, "0.00"), style=label.style_label_left, color=col_top, textcolor=color.white, size=size.small)
-    if alert_set and himo_up_first
+        lbl_txt = "天 " + str.tostring(top_target, format.mintick) + "\n純度=" + str.tostring(purity, "0.00")
+        if is_new or na(top_label)
+            top_label := label.new(bar_index + extend_to, top_target, lbl_txt, style=label.style_label_left, color=col_top, textcolor=color.white, size=size.small)
+        else
+            label.set_xy(top_label, bar_index + extend_to, top_target)
+            label.set_text(top_label, lbl_txt)
+    if show_fx_line and is_new
+        top_seg := line.new(bar_index - N_len, himo_f, bar_index, himo_x, color=col_himo_seg, width=2, style=line.style_dotted)
+    if is_new and alert_set
         alert("【上紐 新規成立】純度=" + str.tostring(purity, "0.00") + " 想定天井=" + str.tostring(top_target, format.mintick) + " ショート逆張りの引きつけ目標", alert.freq_once_per_bar_close)
 
-if new_bot
+if himo_dn_active and not na(bot_target_now)
+    is_new = na(bot_target)
     bot_target := bot_target_now
-    if na(bot_f)
+    if is_new
         bot_f := himo_f
     if show_lines
-        if not na(bot_line)
-            line.delete(bot_line)
-        bot_line := line.new(bar_index, bot_target, bar_index + extend_to, bot_target, color=col_bot, width=2, extend=extend.none)
-    if show_fx_line
-        if not na(bot_seg)
-            line.delete(bot_seg)
-        bot_seg := line.new(bar_index - N_len, himo_f, bar_index, himo_x, color=col_himo_seg, width=2, style=line.style_dotted)
+        if is_new or na(bot_line)
+            bot_line := line.new(bar_index, bot_target, bar_index + extend_to, bot_target, color=col_bot, width=2, extend=extend.none)
+        else
+            line.set_xy1(bot_line, bar_index, bot_target)
+            line.set_xy2(bot_line, bar_index + extend_to, bot_target)
     if show_labels
-        if not na(bot_label)
-            label.delete(bot_label)
-        bot_label := label.new(bar_index + extend_to, bot_target, "底 " + str.tostring(bot_target, format.mintick) + "\n純度=" + str.tostring(purity, "0.00"), style=label.style_label_left, color=col_bot, textcolor=color.white, size=size.small)
-    if alert_set and himo_dn_first
+        lbl_txt = "底 " + str.tostring(bot_target, format.mintick) + "\n純度=" + str.tostring(purity, "0.00")
+        if is_new or na(bot_label)
+            bot_label := label.new(bar_index + extend_to, bot_target, lbl_txt, style=label.style_label_left, color=col_bot, textcolor=color.white, size=size.small)
+        else
+            label.set_xy(bot_label, bar_index + extend_to, bot_target)
+            label.set_text(bot_label, lbl_txt)
+    if show_fx_line and is_new
+        bot_seg := line.new(bar_index - N_len, himo_f, bar_index, himo_x, color=col_himo_seg, width=2, style=line.style_dotted)
+    if is_new and alert_set
         alert("【下紐 新規成立】純度=" + str.tostring(purity, "0.00") + " 想定底=" + str.tostring(bot_target, format.mintick) + " ロング逆張りの引きつけ目標", alert.freq_once_per_bar_close)
 
 
 // ──────────────────────────────────────────────────────────────────
-// 引きつけ完了 (到達)
+// ステップ3: 引きつけ完了 (到達) 判定
 // ──────────────────────────────────────────────────────────────────
 top_hit = not na(top_target) and (sig_close ? close >= top_target : high >= top_target)
 bot_hit = not na(bot_target) and (sig_close ? close <= bot_target : low  <= bot_target)
@@ -228,6 +265,12 @@ if top_hit
         alert("【天到達】 価格=" + str.tostring(close, format.mintick) + " 天=" + str.tostring(top_target, format.mintick), alert.freq_once_per_bar_close)
     top_target := na
     top_f      := na
+    if not na(top_seg)
+        line.delete(top_seg)
+        top_seg := na
+    if not na(top_label)
+        label.delete(top_label)
+        top_label := na
 
 if bot_hit
     if not na(bot_line)
@@ -236,23 +279,42 @@ if bot_hit
         alert("【底到達】 価格=" + str.tostring(close, format.mintick) + " 底=" + str.tostring(bot_target, format.mintick), alert.freq_once_per_bar_close)
     bot_target := na
     bot_f      := na
+    if not na(bot_seg)
+        line.delete(bot_seg)
+        bot_seg := na
+    if not na(bot_label)
+        label.delete(bot_label)
+        bot_label := na
 
 
 // ──────────────────────────────────────────────────────────────────
-// 目標の無効化 = 起点 f を価格が割り込んだら 紐は完全消滅
-//   (純度の一時的な低下や小さな押し目では消さない = 同一紐継続扱い)
+// ステップ4: 起点 f を価格が割り込んだら紐は完全消滅
 // ──────────────────────────────────────────────────────────────────
 if not na(top_target) and not na(top_f) and close < top_f
-    if not na(top_line)
-        line.set_x2(top_line, bar_index)
     top_target := na
     top_f      := na
+    if not na(top_line)
+        line.delete(top_line)
+        top_line := na
+    if not na(top_seg)
+        line.delete(top_seg)
+        top_seg := na
+    if not na(top_label)
+        label.delete(top_label)
+        top_label := na
 
 if not na(bot_target) and not na(bot_f) and close > bot_f
-    if not na(bot_line)
-        line.set_x2(bot_line, bar_index)
     bot_target := na
     bot_f      := na
+    if not na(bot_line)
+        line.delete(bot_line)
+        bot_line := na
+    if not na(bot_seg)
+        line.delete(bot_seg)
+        bot_seg := na
+    if not na(bot_label)
+        label.delete(bot_label)
+        bot_label := na
 
 
 // ──────────────────────────────────────────────────────────────────
