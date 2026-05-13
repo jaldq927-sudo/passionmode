@@ -2,39 +2,41 @@
 indicator("TENTEI-HIMO - Wakkyai's Top-Bottom String Theory", shorttitle="天底ひも", overlay=true, max_lines_count=500, max_labels_count=500, max_boxes_count=500)
 
 // ═══════════════════════════════════════════════════════════════════
-//  わっきゃい氏考案「天底ひも理論」 TradingView Pine Script  v1.0
-//  Wakkyai's Tentei-Himo Theory (Top-Bottom String Theory)
+//  わっきゃい氏考案「天底紐 (てんぞこひも) 理論」 TradingView Pine Script  v2.0
+//  Wakkyai's Tentei-Himo Theory  (Top-Bottom String Theory)
 //
-//  【理論の核心 — わっきゃい氏ご本人ツイートより】
-//   "ちなみに天底紐理論はどこにも詳細は書いてないんだけど、
-//    主に「逆張りするならせめてここまでは引きつける」の基準。
-//    そしてそこまでの辿り着き方は紐(該当する足で陽線もしくは
-//    陰線のみで構成された一方的な挙動)である場合のみ。
-//    基準値まで辿りつかないことは全然あってそれでいい、入らんだけだし"
+//  【出典】 ザイFX! 記事「新しい武器『天底紐理論』とは」
+//   https://zai.diamond.jp/articles/-/487451
 //
-//   "ほぼ四則演算しか使わないくらいのロジックで
-//    流れの中の天底をバンバン弾き出してくれる"
+//   ───────────────────────────────
+//    天井 = x + ( f → x ) / 純度
+//    底   = x − ( f → x ) / 純度
+//   ───────────────────────────────
 //
-//  【用語定義】
-//   ・紐 (ひも / Himo) = N本以上の同色ローソク足が連続した一方的な挙動
-//      - 上紐: 陽線のみで構成された連続バー (close > open が連続)
-//      - 下紐: 陰線のみで構成された連続バー (close < open が連続)
-//   ・天 (てん) = 上紐が示唆する高値ターゲット (ショート逆張りの引きつけ基準)
-//   ・底 (そこ) = 下紐が示唆する安値ターゲット (ロング逆張りの引きつけ基準)
+//  【公式の意味 — わっきゃい氏ご本人解説より】
+//   "ブレイクまでの値動き (f→x) を 1 本の紐に見立てて、
+//    ブレイク後も純度の閾値を越えたものは同じ紐とみなします。
+//    伸び率は進行形の純度で割ることにより、想定天底の価格帯を
+//    導き出します"
 //
-//  【ロジック (四則演算のみ)】
-//   1. N本以上の同色連続を検出 → 紐確定
-//   2. 紐実体幅 = |紐の終値 − 紐の始値|
-//   3. 紐高安幅 = 紐高値 − 紐安値
-//   4. 天目標   = 紐終値 + ( 紐実体 × Multiplier ) ← 上紐の場合
-//      底目標   = 紐終値 − ( 紐実体 × Multiplier ) ← 下紐の場合
-//   5. 価格が天/底ターゲットに到達 → 逆張りの「引きつけ完了」
-//      到達しなければエントリーしない (それでいい)
+//   "純度が高い一方通行的な上昇なら仮想天井は低くなるし、
+//    純度の低いジリジリした上昇だと仮想天井は高くなる"
 //
-//  【使い方】
-//   ・天/底ライン到達 = 逆張り候補ゾーン到達
-//   ・そこからWEMOF他のシグナルや反転確認と組み合わせて発注判断
-//   ・到達しなかったらスキップ (理論の精神に従う)
+//   "想定天井に達したところでショートする、といったように使っています"
+//
+//  【記号定義】
+//   ・f : 紐の起点 (例: ロングなら直近の安値 / ショートなら直近の高値)
+//   ・x : 紐の現在の先端 (例: ロングなら直近の高値 / ショートなら現在の安値)
+//   ・f→x : 起点から先端までの値動きの大きさ ( |x − f| )
+//   ・純度 : 値動きの「一方通行度」  (高いほど純度↑)
+//          = |x の終値 − f の終値| / 区間内の各バー絶対変化量の合計
+//          = いわゆる Kaufman Efficiency Ratio (0 ≤ 純度 ≤ 1)
+//
+//  【トレード活用】
+//   ・想定天井 = ショートの「引きつけ完了」基準
+//   ・想定底   = ロングの「引きつけ完了」基準
+//   ・予想はせず、生じた結果に対して逆張りで臨む (氏のスタンス)
+//   ・想定値に到達しなければ入らないだけ。それでよい。
 // ═══════════════════════════════════════════════════════════════════
 
 
@@ -42,298 +44,310 @@ indicator("TENTEI-HIMO - Wakkyai's Top-Bottom String Theory", shorttitle="天底
 // 入力設定
 // ──────────────────────────────────────────────────────────────────
 
-// ── 紐 (Himo) の定義 ──
-himo_min   = input.int   (3,    "紐の最小連続本数 (N)",
-             minval=2, maxval=20,
-             tooltip="この本数以上、同色ローソク足が連続したとき『紐』として認識します。デフォルト3本。",
-             group="紐 (Himo) Definition")
+// ── 紐 (Himo) の範囲 ──
+N_len      = input.int   (20,    "紐の計測期間 N (bars)",
+             minval=3, maxval=200,
+             tooltip="この期間内で f (起点) と x (先端) を決定し、純度を計測します。\n短い: 短期スキャル / 長い: スイング。",
+             group="紐 (Himo) Range")
 
-himo_max   = input.int   (12,   "紐の最大連続本数 (上限)",
-             minval=3, maxval=50,
-             tooltip="探索を打ち切る本数の上限。実用上12本もあれば十分。",
-             group="紐 (Himo) Definition")
+f_mode     = input.string("期間内 最安/最高",  "f (紐の起点) の決定方法",
+             options=["期間内 最安/最高", "ピボット (左右強度)"],
+             tooltip="期間内最安/最高: ta.lowest/ta.highest で f を決める (簡潔)。\nピボット: 局所的な底/天井を pivot で検出 (精度高だが遅延あり)。",
+             group="紐 (Himo) Range")
 
-allow_doji = input.bool  (false, "同値足 (open==close) を紐の継続として許容",
-             tooltip="OFF: 同値足は紐を切る。ON: 同値足は紐を継続させる。",
-             group="紐 (Himo) Definition")
+piv_strength = input.int(5,      "  └ ピボット左右強度 (Pivot mode のみ)",
+             minval=1, maxval=20,
+             group="紐 (Himo) Range")
 
-min_body_pips = input.float(0.0,  "1本あたり最低実体幅 (pips, 0=制限なし)",
-             minval=0.0, maxval=100.0, step=0.1,
-             tooltip="実体が薄い「ヒゲだけ」のような足を紐から除外したい場合に設定。0で無効。",
-             group="紐 (Himo) Definition")
+// ── 純度フィルター ──
+purity_thr  = input.float(0.30,  "純度の閾値 (これ未満で紐は無効)",
+              minval=0.05, maxval=0.95, step=0.05,
+              tooltip="純度がこの値以上のときのみ紐成立。\n0.3 ≈ そこそこ一方通行 / 0.5 ≈ 強い一方通行。",
+              group="純度 (Purity / Efficiency Ratio)")
 
-// ── 天底計算 (Projection / 四則演算) ──
-proj_mode = input.string("実体ベース (close−open)", "天底投影ロジック",
-             options=["実体ベース (close−open)", "高安ベース (high−low)", "両方の平均"],
-             tooltip="紐の『大きさ』を何で測るか。実体ベース＝四則演算らしい素直な投影。",
-             group="天底 Projection")
+purity_floor= input.float(0.10,  "純度の最低値 (ゼロ割対策)",
+              minval=0.01, maxval=0.5, step=0.01,
+              tooltip="割り算の分母に使う純度の下限。これ未満は floor 値で計算 → 目標が天井知らずに飛ぶのを防ぐ。",
+              group="純度 (Purity / Efficiency Ratio)")
 
-proj_mult = input.float (1.0,  "投影倍率 (Multiplier)",
-             minval=0.1, maxval=5.0, step=0.1,
-             tooltip="紐の大きさ × この値 を紐終値から先に投影し天底候補とする。1.0=等倍 N波。",
-             group="天底 Projection")
+src_pure    = input.source(close, "純度計算のソース",
+              tooltip="純変化と総変化を測るソース。通常 close。",
+              group="純度 (Purity / Efficiency Ratio)")
 
-show_half = input.bool  (true, "中間ターゲット (0.5倍) も表示",
-             tooltip="軽い引きつけ候補として 0.5倍 ラインも表示。",
-             group="天底 Projection")
+// ── オプションフィルター ──
+use_himo_bar = input.bool(false, "連続同色フィルター (紐らしさを強化)",
+               tooltip="ON: 期間内に M 本以上の連続同色 (陽線/陰線) が含まれているときのみ目標を有効化。\n氏の以前のツイートでの紐定義 (連続同色ローソク足) を併用する。",
+               group="Optional Filter")
+himo_bar_min = input.int (3,     "  └ 必要連続本数 M",
+               minval=2, maxval=20,
+               group="Optional Filter")
 
 // ── 表示設定 ──
-show_himo   = input.bool (true,  "紐ローソク足をハイライト",   group="Visual (表示)")
-col_up_himo = input.color(color.new(#26a69a, 30), "  └ 上紐の色", group="Visual (表示)")
-col_dn_himo = input.color(color.new(#ef5350, 30), "  └ 下紐の色", group="Visual (表示)")
+show_himo_color = input.bool (true,  "紐成立中バーをハイライト",       group="Visual (表示)")
+col_up_himo     = input.color(color.new(#26a69a, 30), "  └ 上紐の色", group="Visual (表示)")
+col_dn_himo     = input.color(color.new(#ef5350, 30), "  └ 下紐の色", group="Visual (表示)")
 
 show_lines = input.bool (true,  "天/底ライン表示",            group="Visual (表示)")
-line_keep  = input.int  (60,    "  └ ライン保持バー数",
+extend_to  = input.int  (60,    "  └ ライン延長バー数",
              minval=5, maxval=500,
-             tooltip="天/底ラインを最大何バー先まで延長表示するか。価格が到達したら自動で打ち切り。",
              group="Visual (表示)")
 col_top    = input.color(color.new(#ef5350, 0),  "  └ 天ライン色 (ショート目標)", group="Visual (表示)")
 col_bot    = input.color(color.new(#26a69a, 0),  "  └ 底ライン色 (ロング目標)",  group="Visual (表示)")
-col_half   = input.color(color.new(#9e9e9e, 30), "  └ 中間ライン色",            group="Visual (表示)")
+
+show_fx_line = input.bool(true, "f → x の紐自体を線で表示", group="Visual (表示)")
+col_himo_seg = input.color(color.new(#fdd835, 30), "  └ 紐セグメント色", group="Visual (表示)")
 
 show_labels = input.bool(true,  "天/底ラベル表示",            group="Visual (表示)")
-show_box    = input.bool(true,  "紐エリアをボックスで囲む",   group="Visual (表示)")
 show_table  = input.bool(true,  "右上テーブル表示",           group="Visual (表示)")
 
 show_signal = input.bool(true,  "引きつけ完了シグナル (▼▲) 表示",
-              tooltip="価格が天/底ターゲットに到達したバーに矢印を表示。逆張りの引きつけ完了サイン。",
+              tooltip="価格が想定天/底に到達したバーに矢印を表示。",
               group="Visual (表示)")
-sig_break   = input.bool(false, "  └ 終値でターゲット超え時のみ発火 (true=終値, false=高安タッチでOK)",
+sig_close   = input.bool(false, "  └ 終値到達時のみ発火 (false=高安タッチで発火)",
               group="Visual (表示)")
 
 // ── アラート ──
-alert_himo = input.bool(false, "紐確定でアラート", group="Alert (アラート)")
-alert_hit  = input.bool(true,  "天/底到達でアラート", group="Alert (アラート)")
+alert_set  = input.bool(false, "紐成立 (新規目標確定) でアラート", group="Alert")
+alert_hit  = input.bool(true,  "天/底到達でアラート",               group="Alert")
 
 
 // ──────────────────────────────────────────────────────────────────
-// pips 換算 (FX想定。シンボルから推定)
+// pips 換算
 // ──────────────────────────────────────────────────────────────────
 is_jpy   = str.endswith(syminfo.ticker, "JPY")
 pip_size = is_jpy ? 0.01 : 0.0001
-min_body = min_body_pips * pip_size
 
 
 // ──────────────────────────────────────────────────────────────────
-// 紐 (Himo) 検出ロジック
-//   各バー時点で、そこから過去に何本連続で同色が続いているかをカウント
+// 純度 (Efficiency Ratio) の計算
+//   = |src[0] - src[N]| / Σ|src[i] - src[i+1]|     (i = 0..N-1)
 // ──────────────────────────────────────────────────────────────────
+net_change = src_pure - src_pure[N_len]
+abs_net    = math.abs(net_change)
 
-isBull(idx) =>
-    body = close[idx] - open[idx]
-    cond_color = allow_doji ? body >= 0 : body > 0
-    cond_body  = math.abs(body) >= min_body
-    cond_color and cond_body
+float sum_abs = 0.0
+for i = 0 to N_len - 1
+    sum_abs := sum_abs + math.abs(src_pure[i] - src_pure[i + 1])
 
-isBear(idx) =>
-    body = close[idx] - open[idx]
-    cond_color = allow_doji ? body <= 0 : body < 0
-    cond_body  = math.abs(body) >= min_body
-    cond_color and cond_body
+purity = sum_abs == 0 ? 0.0 : abs_net / sum_abs
+direction = net_change > 0 ? 1 : net_change < 0 ? -1 : 0
 
-// 現在バーから遡って連続上紐／下紐の本数を数える
+
+// ──────────────────────────────────────────────────────────────────
+// f (紐の起点) と x (紐の先端) の決定
+// ──────────────────────────────────────────────────────────────────
+// ── 期間内モード ──
+lo_n = ta.lowest (low,  N_len + 1)
+hi_n = ta.highest(high, N_len + 1)
+
+// ── ピボットモード ──
+piv_low  = ta.pivotlow (low,  piv_strength, piv_strength)
+piv_high = ta.pivothigh(high, piv_strength, piv_strength)
+
+var float last_piv_low  = na
+var float last_piv_high = na
+if not na(piv_low)
+    last_piv_low  := piv_low
+if not na(piv_high)
+    last_piv_high := piv_high
+
+bool use_pivot = (f_mode == "ピボット (左右強度)")
+
+float himo_f = na
+float himo_x = na
+
+if direction > 0
+    himo_f := use_pivot and not na(last_piv_low)  ? last_piv_low  : lo_n
+    himo_x := use_pivot and not na(last_piv_high) ? math.max(last_piv_high, high) : hi_n
+else if direction < 0
+    himo_f := use_pivot and not na(last_piv_high) ? last_piv_high : hi_n
+    himo_x := use_pivot and not na(last_piv_low)  ? math.min(last_piv_low, low)  : lo_n
+
+f_to_x = math.abs(himo_x - himo_f)
+
+
+// ──────────────────────────────────────────────────────────────────
+// 連続同色本数 (オプションフィルター用)
+// ──────────────────────────────────────────────────────────────────
 var int up_run = 0
 var int dn_run = 0
+up_run := close > open ? nz(up_run[1]) + 1 : 0
+dn_run := close < open ? nz(dn_run[1]) + 1 : 0
 
-up_run := isBull(0) ? nz(up_run[1]) + 1 : 0
-dn_run := isBear(0) ? nz(dn_run[1]) + 1 : 0
+// 期間内で連続同色 M 本以上が一度でも出現したか
+int max_up_run_in_window = 0
+int max_dn_run_in_window = 0
+for i = 0 to N_len - 1
+    if up_run[i] > max_up_run_in_window
+        max_up_run_in_window := up_run[i]
+    if dn_run[i] > max_dn_run_in_window
+        max_dn_run_in_window := dn_run[i]
 
-
-// ──────────────────────────────────────────────────────────────────
-// 紐の確定タイミング & 紐情報の取得
-//   「紐の確定」= 連続中だったが、今バーで色が切り替わった(または同色終了)
-//   そのとき直前までの run が紐長さ
-// ──────────────────────────────────────────────────────────────────
-
-// 前バーまでの連続数 (今バーで途切れた可能性をチェック)
-prev_up = nz(up_run[1])
-prev_dn = nz(dn_run[1])
-
-// 上紐確定: 前バーまで N 本以上連続して陽線で、今バーで途切れた
-up_himo_just_closed = prev_up >= himo_min and not isBull(0)
-dn_himo_just_closed = prev_dn >= himo_min and not isBear(0)
-
-// 紐情報を取得するヘルパー
-//   length: 紐の本数 (himo_max でクリップ)
-//   start_idx: 紐の先頭バーのインデックス (現在バーから見た過去オフセット)
-//   end_idx:   紐の末尾バーのインデックス (= 1, つまり1バー前)
-get_himo_extremes(int length) =>
-    n = math.min(length, himo_max)
-    hi = high[1]
-    lo = low[1]
-    for i = 1 to n
-        if high[i] > hi
-            hi := high[i]
-        if low[i] < lo
-            lo := low[i]
-    [hi, lo, n]
+himo_bar_ok_up = not use_himo_bar or max_up_run_in_window >= himo_bar_min
+himo_bar_ok_dn = not use_himo_bar or max_dn_run_in_window >= himo_bar_min
 
 
 // ──────────────────────────────────────────────────────────────────
-// 天底ターゲット計算 (四則演算)
+// 紐の成立判定
 // ──────────────────────────────────────────────────────────────────
+purity_eff = math.max(purity, purity_floor)
 
-var float top_target  = na
-var float top_half    = na
-var float top_anchor  = na   // 紐終値 (投影の基準点)
-var int   top_set_bar = na
-
-var float bot_target  = na
-var float bot_half    = na
-var float bot_anchor  = na
-var int   bot_set_bar = na
-
-var line  top_line    = na
-var line  top_line_h  = na
-var line  bot_line    = na
-var line  bot_line_h  = na
-var label top_label   = na
-var label bot_label   = na
-var box   top_box     = na
-var box   bot_box     = na
-
-calc_projection(float himo_open, float himo_close, float himo_high, float himo_low, bool isUp) =>
-    body_w  = math.abs(himo_close - himo_open)
-    range_w = himo_high - himo_low
-    base = switch proj_mode
-        "実体ベース (close−open)" => body_w
-        "高安ベース (high−low)"   => range_w
-        =>                            (body_w + range_w) / 2.0
-    full = base * proj_mult
-    half = base * proj_mult * 0.5
-    target = isUp ? himo_close + full : himo_close - full
-    target_half = isUp ? himo_close + half : himo_close - half
-    [target, target_half]
+himo_up_active = direction > 0 and purity >= purity_thr and himo_bar_ok_up
+himo_dn_active = direction < 0 and purity >= purity_thr and himo_bar_ok_dn
 
 
-// 上紐確定処理 → 天ターゲット (ショート目標) を設定
-if up_himo_just_closed
-    [hi, lo, n] = get_himo_extremes(prev_up)
-    himo_open_v  = open[n]      // 紐の先頭バーの始値
-    himo_close_v = close[1]     // 紐の末尾バーの終値
-    [tgt, half] = calc_projection(himo_open_v, himo_close_v, hi, lo, true)
-    top_target  := tgt
-    top_half    := half
-    top_anchor  := himo_close_v
-    top_set_bar := bar_index
+// ──────────────────────────────────────────────────────────────────
+// 天底計算 (公式)
+//   天井 = x + (f→x) / 純度
+//   底   = x − (f→x) / 純度
+// ──────────────────────────────────────────────────────────────────
+top_target_now = himo_up_active ? himo_x + f_to_x / purity_eff : na
+bot_target_now = himo_dn_active ? himo_x - f_to_x / purity_eff : na
+
+
+// ──────────────────────────────────────────────────────────────────
+// 想定天/底の状態管理 (確定 → 維持 → 到達/失効)
+// ──────────────────────────────────────────────────────────────────
+var float top_target = na
+var float top_fixed_f = na
+var float top_fixed_x = na
+var float top_fixed_pure = na
+var int   top_set_bar  = na
+var line  top_line     = na
+var line  top_seg_line = na
+var label top_label    = na
+
+var float bot_target = na
+var float bot_fixed_f = na
+var float bot_fixed_x = na
+var float bot_fixed_pure = na
+var int   bot_set_bar  = na
+var line  bot_line     = na
+var line  bot_seg_line = na
+var label bot_label    = na
+
+// 上紐: 新規成立 or 紐継続中で目標が更新されたとき
+new_top = himo_up_active and (na(top_target) or top_target_now > top_target)
+// (新規成立) または (紐継続で先端 x が更新されてターゲットが伸びた)
+
+if new_top
+    top_target     := top_target_now
+    top_fixed_f    := himo_f
+    top_fixed_x    := himo_x
+    top_fixed_pure := purity
+    top_set_bar    := bar_index
 
     if show_lines
         if not na(top_line)
             line.delete(top_line)
-        if not na(top_line_h)
-            line.delete(top_line_h)
-        top_line := line.new(bar_index, tgt, bar_index + line_keep, tgt,
-                             color=col_top, width=2, style=line.style_solid,
-                             extend=extend.none)
-        if show_half
-            top_line_h := line.new(bar_index, half, bar_index + line_keep, half,
-                                   color=col_half, width=1, style=line.style_dashed,
-                                   extend=extend.none)
+        top_line := line.new(bar_index, top_target, bar_index + extend_to, top_target,
+                             color=col_top, width=2, style=line.style_solid, extend=extend.none)
+    if show_fx_line
+        if not na(top_seg_line)
+            line.delete(top_seg_line)
+        top_seg_line := line.new(bar_index - N_len, himo_f, bar_index, himo_x,
+                                 color=col_himo_seg, width=2, style=line.style_dotted)
     if show_labels
         if not na(top_label)
             label.delete(top_label)
-        top_label := label.new(bar_index + line_keep, tgt,
-                               "天 " + str.tostring(tgt, format.mintick) +
-                               "\n紐" + str.tostring(n) + "本",
+        top_label := label.new(bar_index + extend_to, top_target,
+                               "天 " + str.tostring(top_target, format.mintick) +
+                               "\n純度=" + str.tostring(purity, "0.00") +
+                               "\nf→x=" + str.tostring(f_to_x / pip_size, "0.0") + "p",
                                style=label.style_label_left, color=col_top,
                                textcolor=color.white, size=size.small)
-    if show_box
-        if not na(top_box)
-            box.delete(top_box)
-        top_box := box.new(bar_index - n, hi, bar_index - 1, lo,
-                           border_color=col_top, bgcolor=color.new(col_top, 90),
-                           border_width=1)
+    if alert_set
+        alert("【上紐確定】 純度=" + str.tostring(purity, "0.00") +
+              " / 天目標=" + str.tostring(top_target, format.mintick),
+              alert.freq_once_per_bar_close)
 
-    if alert_himo
-        alert("【上紐確定】 N=" + str.tostring(n) + "本 / 天目標=" +
-              str.tostring(tgt, format.mintick), alert.freq_once_per_bar_close)
+// 下紐: 同様に
+new_bot = himo_dn_active and (na(bot_target) or bot_target_now < bot_target)
 
-
-// 下紐確定処理 → 底ターゲット (ロング目標) を設定
-if dn_himo_just_closed
-    [hi, lo, n] = get_himo_extremes(prev_dn)
-    himo_open_v  = open[n]
-    himo_close_v = close[1]
-    [tgt, half] = calc_projection(himo_open_v, himo_close_v, hi, lo, false)
-    bot_target  := tgt
-    bot_half    := half
-    bot_anchor  := himo_close_v
-    bot_set_bar := bar_index
+if new_bot
+    bot_target     := bot_target_now
+    bot_fixed_f    := himo_f
+    bot_fixed_x    := himo_x
+    bot_fixed_pure := purity
+    bot_set_bar    := bar_index
 
     if show_lines
         if not na(bot_line)
             line.delete(bot_line)
-        if not na(bot_line_h)
-            line.delete(bot_line_h)
-        bot_line := line.new(bar_index, tgt, bar_index + line_keep, tgt,
-                             color=col_bot, width=2, style=line.style_solid,
-                             extend=extend.none)
-        if show_half
-            bot_line_h := line.new(bar_index, half, bar_index + line_keep, half,
-                                   color=col_half, width=1, style=line.style_dashed,
-                                   extend=extend.none)
+        bot_line := line.new(bar_index, bot_target, bar_index + extend_to, bot_target,
+                             color=col_bot, width=2, style=line.style_solid, extend=extend.none)
+    if show_fx_line
+        if not na(bot_seg_line)
+            line.delete(bot_seg_line)
+        bot_seg_line := line.new(bar_index - N_len, himo_f, bar_index, himo_x,
+                                 color=col_himo_seg, width=2, style=line.style_dotted)
     if show_labels
         if not na(bot_label)
             label.delete(bot_label)
-        bot_label := label.new(bar_index + line_keep, tgt,
-                               "底 " + str.tostring(tgt, format.mintick) +
-                               "\n紐" + str.tostring(n) + "本",
+        bot_label := label.new(bar_index + extend_to, bot_target,
+                               "底 " + str.tostring(bot_target, format.mintick) +
+                               "\n純度=" + str.tostring(purity, "0.00") +
+                               "\nf→x=" + str.tostring(f_to_x / pip_size, "0.0") + "p",
                                style=label.style_label_left, color=col_bot,
                                textcolor=color.white, size=size.small)
-    if show_box
-        if not na(bot_box)
-            box.delete(bot_box)
-        bot_box := box.new(bar_index - n, hi, bar_index - 1, lo,
-                           border_color=col_bot, bgcolor=color.new(col_bot, 90),
-                           border_width=1)
-
-    if alert_himo
-        alert("【下紐確定】 N=" + str.tostring(n) + "本 / 底目標=" +
-              str.tostring(tgt, format.mintick), alert.freq_once_per_bar_close)
+    if alert_set
+        alert("【下紐確定】 純度=" + str.tostring(purity, "0.00") +
+              " / 底目標=" + str.tostring(bot_target, format.mintick),
+              alert.freq_once_per_bar_close)
 
 
 // ──────────────────────────────────────────────────────────────────
-// 引きつけ完了判定 (天/底ターゲット到達)
+// 引きつけ完了 (到達) 判定
 // ──────────────────────────────────────────────────────────────────
+top_hit = not na(top_target) and (sig_close ? close >= top_target : high >= top_target)
+bot_hit = not na(bot_target) and (sig_close ? close <= bot_target : low  <= bot_target)
 
-top_hit = not na(top_target) and (sig_break ? close >= top_target : high >= top_target)
-bot_hit = not na(bot_target) and (sig_break ? close <= bot_target : low  <= bot_target)
-
-// ヒットしたら以降表示を消す (= ターゲット消化済み)
 if top_hit
     if not na(top_line)
         line.set_x2(top_line, bar_index)
-    if not na(top_line_h)
-        line.set_x2(top_line_h, bar_index)
     if alert_hit
         alert("【天到達】価格=" + str.tostring(close, format.mintick) +
-              " / 天目標=" + str.tostring(top_target, format.mintick) +
+              " 天=" + str.tostring(top_target, format.mintick) +
               " → ショート逆張り引きつけ完了", alert.freq_once_per_bar_close)
     top_target := na
 
 if bot_hit
     if not na(bot_line)
         line.set_x2(bot_line, bar_index)
-    if not na(bot_line_h)
-        line.set_x2(bot_line_h, bar_index)
     if alert_hit
         alert("【底到達】価格=" + str.tostring(close, format.mintick) +
-              " / 底目標=" + str.tostring(bot_target, format.mintick) +
+              " 底=" + str.tostring(bot_target, format.mintick) +
               " → ロング逆張り引きつけ完了", alert.freq_once_per_bar_close)
     bot_target := na
 
 
 // ──────────────────────────────────────────────────────────────────
-// ローソク足のハイライト (紐構成バー)
+// 反転 / 紐失効による目標クリア
+//   方向が逆転、または純度が崩壊したら目標を消す
 // ──────────────────────────────────────────────────────────────────
-in_up_himo = up_run >= himo_min
-in_dn_himo = dn_run >= himo_min
+top_invalid = not na(top_target) and (direction <= 0 or purity < purity_thr)
+bot_invalid = not na(bot_target) and (direction >= 0 or purity < purity_thr)
 
-barcolor(show_himo and in_up_himo ? col_up_himo : show_himo and in_dn_himo ? col_dn_himo : na)
+if top_invalid
+    if not na(top_line)
+        line.set_x2(top_line, bar_index)
+    top_target := na
+
+if bot_invalid
+    if not na(bot_line)
+        line.set_x2(bot_line, bar_index)
+    bot_target := na
 
 
 // ──────────────────────────────────────────────────────────────────
-// 引きつけ完了シグナル (▼▲)
+// バーカラー (紐成立中)
+// ──────────────────────────────────────────────────────────────────
+barcolor(show_himo_color and himo_up_active ? col_up_himo :
+         show_himo_color and himo_dn_active ? col_dn_himo : na)
+
+
+// ──────────────────────────────────────────────────────────────────
+// シグナル (▼▲)
 // ──────────────────────────────────────────────────────────────────
 plotshape(show_signal and top_hit, title="天到達 (ショート逆張り候補)",
           style=shape.triangledown, location=location.abovebar,
@@ -346,60 +360,70 @@ plotshape(show_signal and bot_hit, title="底到達 (ロング逆張り候補)",
 // ──────────────────────────────────────────────────────────────────
 // 右上テーブル
 // ──────────────────────────────────────────────────────────────────
-var table info = table.new(position.top_right, 2, 8,
+var table info = table.new(position.top_right, 2, 10,
                             bgcolor=color.new(color.black, 80),
                             border_color=color.gray, border_width=1)
 
 f_state() =>
-    in_up_himo ? "上紐 形成中 (" + str.tostring(up_run) + "本)" :
-     in_dn_himo ? "下紐 形成中 (" + str.tostring(dn_run) + "本)" :
-     up_run > 0 ? "陽線継続 " + str.tostring(up_run) + "本" :
-     dn_run > 0 ? "陰線継続 " + str.tostring(dn_run) + "本" :
+    himo_up_active ? "上紐 成立中" :
+     himo_dn_active ? "下紐 成立中" :
+     purity < purity_thr ? "純度不足 (" + str.tostring(purity, "0.00") + ")" :
      "中立"
 
 f_state_col() =>
-    in_up_himo ? color.new(#26a69a, 50) :
-     in_dn_himo ? color.new(#ef5350, 50) :
+    himo_up_active ? color.new(#26a69a, 50) :
+     himo_dn_active ? color.new(#ef5350, 50) :
      color.new(color.gray, 70)
 
 if show_table and barstate.islast
-    table.cell(info, 0, 0, "天底ひも理論",     bgcolor=color.new(color.navy, 30), text_color=color.white, text_size=size.small)
-    table.cell(info, 1, 0, "Wakkyai Theory",  bgcolor=color.new(color.navy, 30), text_color=color.white, text_size=size.small)
-
-    table.cell(info, 0, 1, "現在の状態", text_color=color.white, text_size=size.small)
-    table.cell(info, 1, 1, f_state(),    bgcolor=f_state_col(), text_color=color.white, text_size=size.small)
-
-    table.cell(info, 0, 2, "紐 最小本数 N", text_color=color.white, text_size=size.small)
-    table.cell(info, 1, 2, str.tostring(himo_min) + " 本",
+    table.cell(info, 0, 0, "天底紐理論", bgcolor=color.new(color.navy, 30),
+               text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 0, "x ± (f→x)/純度", bgcolor=color.new(color.navy, 30),
                text_color=color.white, text_size=size.small)
 
-    table.cell(info, 0, 3, "天目標 (Short)", text_color=color.white, text_size=size.small)
-    table.cell(info, 1, 3, na(top_target) ? "—" : str.tostring(top_target, format.mintick),
-               text_color=na(top_target) ? color.gray : #ef5350, text_size=size.small)
+    table.cell(info, 0, 1, "現在の状態", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 1, f_state(), bgcolor=f_state_col(),
+               text_color=color.white, text_size=size.small)
 
-    table.cell(info, 0, 4, "  └ 距離", text_color=color.gray, text_size=size.small)
-    table.cell(info, 1, 4, na(top_target) ? "—" :
+    table.cell(info, 0, 2, "純度 (ER)", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 2, str.tostring(purity, "0.000") +
+               (purity >= purity_thr ? "  ✓" : "  ✗"),
+               text_color=purity >= purity_thr ? color.lime : color.gray,
+               text_size=size.small)
+
+    table.cell(info, 0, 3, "f (起点)",  text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 3, na(himo_f) ? "—" : str.tostring(himo_f, format.mintick),
+               text_color=color.silver, text_size=size.small)
+    table.cell(info, 0, 4, "x (先端)",  text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 4, na(himo_x) ? "—" : str.tostring(himo_x, format.mintick),
+               text_color=color.silver, text_size=size.small)
+    table.cell(info, 0, 5, "f→x",       text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 5, str.tostring(f_to_x / pip_size, "0.0") + " pips",
+               text_color=color.silver, text_size=size.small)
+
+    table.cell(info, 0, 6, "想定天井 (Short)", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 6, na(top_target) ? "—" : str.tostring(top_target, format.mintick),
+               text_color=na(top_target) ? color.gray : #ef5350, text_size=size.small)
+    table.cell(info, 0, 7, "  └ 残距離", text_color=color.gray, text_size=size.small)
+    table.cell(info, 1, 7, na(top_target) ? "—" :
                str.tostring((top_target - close) / pip_size, "0.0") + " pips",
                text_color=color.gray, text_size=size.small)
 
-    table.cell(info, 0, 5, "底目標 (Long)", text_color=color.white, text_size=size.small)
-    table.cell(info, 1, 5, na(bot_target) ? "—" : str.tostring(bot_target, format.mintick),
+    table.cell(info, 0, 8, "想定底 (Long)", text_color=color.white, text_size=size.small)
+    table.cell(info, 1, 8, na(bot_target) ? "—" : str.tostring(bot_target, format.mintick),
                text_color=na(bot_target) ? color.gray : #26a69a, text_size=size.small)
-
-    table.cell(info, 0, 6, "  └ 距離", text_color=color.gray, text_size=size.small)
-    table.cell(info, 1, 6, na(bot_target) ? "—" :
+    table.cell(info, 0, 9, "  └ 残距離", text_color=color.gray, text_size=size.small)
+    table.cell(info, 1, 9, na(bot_target) ? "—" :
                str.tostring((close - bot_target) / pip_size, "0.0") + " pips",
                text_color=color.gray, text_size=size.small)
 
-    table.cell(info, 0, 7, "投影ロジック", text_color=color.gray, text_size=size.small)
-    table.cell(info, 1, 7, proj_mode + " × " + str.tostring(proj_mult, "0.0"),
-               text_color=color.gray, text_size=size.small)
-
 
 // ──────────────────────────────────────────────────────────────────
-// プロット (情報用、非表示でも内部値として残す)
+// データウィンドウ用プロット
 // ──────────────────────────────────────────────────────────────────
-plot(top_target, title="天目標 (Top Target)", color=na)
-plot(bot_target, title="底目標 (Bottom Target)", color=na)
-plot(up_run,     title="上紐 連続本数", color=na, display=display.data_window)
-plot(dn_run,     title="下紐 連続本数", color=na, display=display.data_window)
+plot(top_target, title="想定天井",  color=na)
+plot(bot_target, title="想定底",    color=na)
+plot(purity,     title="純度 (ER)", color=na, display=display.data_window)
+plot(f_to_x,     title="f→x 値幅",  color=na, display=display.data_window)
+plot(himo_f,     title="f",         color=na, display=display.data_window)
+plot(himo_x,     title="x",         color=na, display=display.data_window)
