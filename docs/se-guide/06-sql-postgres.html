@@ -1,0 +1,684 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>06 自分で書くSQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 06 自分で書くSQL</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">06</div>
+  <div><div class="eyebrow">CHAPTER 06 ・ データベース</div><h1>自分で書くSQL</h1></div>
+  <p class="summary">AIが出したSQLを「実行するだけ」から、「読んで、確かめて、自分で書ける」へ。勤怠の架空テーブルを使って、PostgreSQLの基本から更新の作法・ロック・遅いSQLの見方までを一通り歩きます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>勤怠テーブルのつながり（ER図）と、SQLが実際に動く順番</li>
+    <li>SELECT / JOIN / GROUP BY / サブクエリ / CTE / CASE / ウィンドウ関数の読み書き</li>
+    <li>PostgreSQLの日付時刻とNULLの扱い（ここでの勘違いが一番バグになります）</li>
+    <li>UPDATE・DELETEを安全に流す手順と、本番前チェックリスト</li>
+    <li>ロック待ち・デッドロック・遅いSQL（EXPLAIN）の見方の入り口</li>
+    <li>AIが作ったSQLを分解して読み解く手順</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#why">なぜ自分で</a><a href="#er">テーブルの地図</a><a href="#order">実行順序</a><a href="#select">基本の3つ</a><a href="#join">JOIN</a><a href="#group">集計</a><a href="#advanced">CTE・CASE・窓関数</a><a href="#datetime">日付時刻</a><a href="#null">NULL</a><a href="#update">安全な更新</a><a href="#lock">ロック</a><a href="#explain">遅いSQL</a><a href="#tools">psqlとクライアント</a><a href="#readai">AIのSQLを読む</a><a href="#pitfalls">つまずき</a><a href="#quiz">練習問題</a><a href="#terms">用語</a><a href="#tomorrow">明日から</a>
+  </nav>
+
+  <section id="why">
+    <h2>なぜ「自分で書ける」必要があるのか</h2>
+    <p>AIに「今月の残業時間を社員ごとに出すSQL」と頼めば、それらしいSQLはすぐ出てきます。実行すれば結果も出ます。でも、その結果が<strong>正しいかどうか</strong>は、AIもあなたもまだ確かめていません。</p>
+    <p>勤怠のデータには落とし穴がたくさんあります。退勤打刻のない日（NULL）、日をまたぐ夜勤、退職者、同じ日に2回打刻された行、タイムゾーンのずれ。AIはあなたの会社のテーブル定義も運用ルールも知らないので、それらしい前提で書きます。結果の数字が少しずれていても、エラーにはなりません。<strong>エラーが出ない間違いこそ、一番危ない</strong>のです。</p>
+    <p>この章の目標は、AIを使わなくなることではありません。AIの出したSQLを<strong>1段ずつ分解して実行し、件数と中身を確かめられる</strong>ようになることです。それができれば、AIは「速く書いてくれる相棒」になり、あなたは「確かめて責任を持てる人」になります。</p>
+    <div class="callout info"><b>この章のテーブルについて</b><p>ここで使うテーブル名・列名はすべて<strong>説明用の架空のもの</strong>です。実際の勤怠システムの定義は、psqlの <code>\d テーブル名</code> やクライアントの画面で必ず確認してください（後半で方法を説明します）。</p></div>
+  </section>
+
+  <section id="er">
+    <h2>まず地図を持つ：勤怠テーブルのER図</h2>
+    <p>SQLを書く前に、「どのテーブルに何が入っていて、どの列でつながっているか」を知る必要があります。これを図にしたものがER図（Entity Relationship図）です。知らない街を歩く前に地図を見るのと同じです。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="勤怠テーブルのER図">
+        <!-- departments -->
+        <rect class="box-soft" x="20" y="20" width="190" height="80" rx="6"/>
+        <text x="32" y="42" font-size="14" font-weight="700">departments（部署）</text>
+        <text x="32" y="64" font-size="12">PK department_id</text>
+        <text x="32" y="84" font-size="12">department_name</text>
+        <!-- employees -->
+        <rect class="box" x="250" y="20" width="200" height="140" rx="6"/>
+        <text x="262" y="42" font-size="14" font-weight="700">employees（社員）</text>
+        <text x="262" y="64" font-size="12">PK employee_id</text>
+        <text x="262" y="84" font-size="12">employee_code / name</text>
+        <text x="262" y="104" font-size="12">FK department_id</text>
+        <text x="262" y="124" font-size="12">hire_date</text>
+        <text x="262" y="144" font-size="12">retired_on（NULL=在職）</text>
+        <!-- attendance -->
+        <rect class="box" x="20" y="230" width="200" height="140" rx="6"/>
+        <text x="32" y="252" font-size="14" font-weight="700">attendance（打刻）</text>
+        <text x="32" y="274" font-size="12">PK attendance_id</text>
+        <text x="32" y="294" font-size="12">FK employee_id</text>
+        <text x="32" y="314" font-size="12">work_date（date）</text>
+        <text x="32" y="334" font-size="12">clock_in（timestamp）</text>
+        <text x="32" y="354" font-size="12">clock_out（NULLあり）</text>
+        <!-- leave_requests -->
+        <rect class="box" x="245" y="250" width="200" height="120" rx="6"/>
+        <text x="257" y="272" font-size="14" font-weight="700">leave_requests（休暇）</text>
+        <text x="257" y="294" font-size="12">PK leave_id</text>
+        <text x="257" y="314" font-size="12">FK employee_id</text>
+        <text x="257" y="334" font-size="12">leave_date / leave_type</text>
+        <text x="257" y="354" font-size="12">status</text>
+        <!-- applications -->
+        <rect class="box" x="470" y="230" width="195" height="140" rx="6"/>
+        <text x="482" y="252" font-size="14" font-weight="700">applications（申請）</text>
+        <text x="482" y="274" font-size="12">PK application_id</text>
+        <text x="482" y="294" font-size="12">FK employee_id</text>
+        <text x="482" y="314" font-size="12">app_type（通勤費 等）</text>
+        <text x="482" y="334" font-size="12">status</text>
+        <text x="482" y="354" font-size="12">submitted_at</text>
+        <!-- relations -->
+        <line class="line-accent" x1="210" y1="60" x2="250" y2="100"/>
+        <text x="214" y="56" font-size="12" class="muted">1</text>
+        <text x="232" y="112" font-size="12" class="muted">多</text>
+        <line class="line-accent" x1="300" y1="160" x2="120" y2="230"/>
+        <line class="line-accent" x1="345" y1="160" x2="345" y2="250"/>
+        <line class="line-accent" x1="400" y1="160" x2="560" y2="230"/>
+        <text x="352" y="180" font-size="12" class="muted">1人の社員 → 多数の行</text>
+        <text x="20" y="392" font-size="12" class="muted">PK=主キー（行を一意に決める列） FK=外部キー（他テーブルのPKを指す列）</text>
+      </svg>
+      <figcaption>employees を中心に、部署・打刻・休暇・申請が employee_id でつながる（架空の例）</figcaption>
+    </figure>
+    <p>読み方のポイントは「<strong>1対多</strong>」です。1つの部署に社員は何人もいる。1人の社員に打刻の行は毎日1行ずつ増えていく。JOINしたときに行数が増えるのは、この「多」の側をつなぐからです。この感覚が、後で「なぜ合計が倍になったのか」を見抜く力になります。</p>
+    <div class="callout tip"><b>自社のER図がないときは</b><p>多くの現場ではER図が古いか、存在しません。その場合は、よく使うテーブル5つだけで良いので、自分で紙に書いてみてください。<code>\d attendance</code> で出てくる <code>Foreign-key constraints</code> の行が、線を引く手がかりになります。外部キー制約が張られていない現場もあるので、そのときは列名（<code>employee_id</code> など）から推測し、先輩に確認しましょう。</p></div>
+  </section>
+
+  <section id="order">
+    <h2>書く順と動く順はちがう：SQLの実行順序</h2>
+    <p>SQLは <code>SELECT</code> から書き始めますが、データベースは<strong>SELECTを最後のほうで</strong>処理します（論理的な処理順。実際の内部の処理はオプティマイザが最適化しますが、結果はこの順で考えたのと同じになります）。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 250" style="max-width:680px" role="img" aria-label="SQLの書く順と実行順">
+        <defs><marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <text x="10" y="28" font-size="13" font-weight="700">書く順</text>
+        <g font-size="12">
+          <rect class="box-soft" x="70" y="12" width="66" height="26" rx="4"/><text x="80" y="30">SELECT</text>
+          <rect class="box-soft" x="142" y="12" width="60" height="26" rx="4"/><text x="152" y="30">FROM</text>
+          <rect class="box-soft" x="208" y="12" width="56" height="26" rx="4"/><text x="218" y="30">JOIN</text>
+          <rect class="box-soft" x="270" y="12" width="66" height="26" rx="4"/><text x="280" y="30">WHERE</text>
+          <rect class="box-soft" x="342" y="12" width="84" height="26" rx="4"/><text x="350" y="30">GROUP BY</text>
+          <rect class="box-soft" x="432" y="12" width="70" height="26" rx="4"/><text x="440" y="30">HAVING</text>
+          <rect class="box-soft" x="508" y="12" width="84" height="26" rx="4"/><text x="516" y="30">ORDER BY</text>
+          <rect class="box-soft" x="598" y="12" width="60" height="26" rx="4"/><text x="608" y="30">LIMIT</text>
+        </g>
+        <text x="10" y="98" font-size="13" font-weight="700">動く順</text>
+        <g font-size="12">
+          <rect class="box" x="10" y="110" width="70" height="44" rx="4"/><text x="20" y="128">① FROM</text><text x="18" y="146" class="muted">表を選ぶ</text>
+          <rect class="box" x="94" y="110" width="70" height="44" rx="4"/><text x="104" y="128">② JOIN</text><text x="102" y="146" class="muted">つなぐ</text>
+          <rect class="box" x="178" y="110" width="70" height="44" rx="4"/><text x="186" y="128">③ WHERE</text><text x="186" y="146" class="muted">行を絞る</text>
+          <rect class="box" x="262" y="110" width="78" height="44" rx="4"/><text x="268" y="128">④ GROUP</text><text x="270" y="146" class="muted">まとめる</text>
+          <rect class="box" x="354" y="110" width="74" height="44" rx="4"/><text x="358" y="128">⑤ HAVING</text><text x="360" y="146" class="muted">組を絞る</text>
+          <rect class="box-ok" x="442" y="110" width="74" height="44" rx="4"/><text x="446" y="128">⑥ SELECT</text><text x="448" y="146" class="muted">列を作る</text>
+          <rect class="box" x="530" y="110" width="66" height="44" rx="4"/><text x="536" y="128">⑦ ORDER</text><text x="540" y="146" class="muted">並べる</text>
+          <rect class="box" x="608" y="110" width="62" height="44" rx="4"/><text x="614" y="128">⑧ LIMIT</text><text x="614" y="146" class="muted">切る</text>
+        </g>
+        <g>
+          <line class="line-accent" x1="80" y1="132" x2="92" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="164" y1="132" x2="176" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="248" y1="132" x2="260" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="340" y1="132" x2="352" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="428" y1="132" x2="440" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="516" y1="132" x2="528" y2="132" marker-end="url(#arrA)"/>
+          <line class="line-accent" x1="596" y1="132" x2="606" y2="132" marker-end="url(#arrA)"/>
+        </g>
+        <text x="10" y="190" font-size="12">・SELECTで付けた別名（AS overtime_hours）は、⑥より前の WHERE では使えない</text>
+        <text x="10" y="212" font-size="12">・⑦ ORDER BY は⑥の後なので、別名で並べ替えできる</text>
+        <text x="10" y="234" font-size="12">・集計結果（sum など）で絞るなら WHERE ではなく HAVING</text>
+      </svg>
+      <figcaption>SELECTは「最後に列を整える工程」。上から読むより、FROMから読むと意味が分かる</figcaption>
+    </figure>
+    <p>AIが出した長いSQLを読むときも、<strong>FROMから読む</strong>のがコツです。「どの表から」「何とつないで」「どの行に絞って」「どうまとめて」「何を表示するか」。工場のラインのように、材料（行）が工程を順に通っていくイメージを持ってください。</p>
+    <div class="compare">
+      <div class="bad"><b>エラーになる</b><pre><code><span class="k">SELECT</span> employee_id,
+       clock_out - clock_in <span class="k">AS</span> worked
+<span class="k">FROM</span> attendance
+<span class="k">WHERE</span> worked &gt; <span class="k">INTERVAL</span> <span class="s">'10 hours'</span>;
+<span class="c">-- column "worked" does not exist</span></code></pre></div>
+      <div class="good"><b>正しく動く</b><pre><code><span class="k">SELECT</span> employee_id,
+       clock_out - clock_in <span class="k">AS</span> worked
+<span class="k">FROM</span> attendance
+<span class="k">WHERE</span> clock_out - clock_in &gt; <span class="k">INTERVAL</span> <span class="s">'10 hours'</span>
+<span class="k">ORDER BY</span> worked <span class="k">DESC</span>;</code></pre></div>
+    </div>
+  </section>
+
+  <section id="select">
+    <h2>基本の3つ：SELECT / WHERE / ORDER BY</h2>
+    <p>まずは1つのテーブルだけで「列を選ぶ・行を絞る・並べる」です。これだけで調査の半分はできます。</p>
+    <div class="code-title">特定社員の3月の打刻を日付順に</div>
+<pre><code><span class="k">SELECT</span> work_date, clock_in, clock_out
+<span class="k">FROM</span>   attendance
+<span class="k">WHERE</span>  employee_id = 1234
+  <span class="k">AND</span>  work_date &gt;= <span class="s">'2026-03-01'</span>
+  <span class="k">AND</span>  work_date &lt;  <span class="s">'2026-04-01'</span>   <span class="c">-- 月末日を書かず「翌月1日未満」</span>
+<span class="k">ORDER BY</span> work_date;</code></pre>
+    <ul>
+      <li>範囲は <code>&gt;= 月初</code> と <code>&lt; 翌月1日</code> の組み合わせが安全です。<code>BETWEEN '2026-03-01' AND '2026-03-31'</code> は date 型なら動きますが、timestamp 型に使うと <code>3月31日 00:00:00</code> までしか入らず、31日の日中が漏れます。</li>
+      <li>文字列の比較は <code>=</code>、部分一致は <code>LIKE '%山田%'</code>、大文字小文字を無視するなら PostgreSQL では <code>ILIKE</code>。</li>
+      <li>複数の値は <code>IN ('APPROVED', 'PENDING')</code>。</li>
+      <li>調査では最初に <code>LIMIT 20</code> を付けて、どんな行が返るか眺めると安心です。</li>
+    </ul>
+    <div class="callout warn"><b>AND と OR が混ざったら必ずカッコ</b><p><code>WHERE status = 'PENDING' OR status = 'RETURNED' AND app_type = 'COMMUTE'</code> は、AND が先に結びつくので「PENDINGすべて」＋「差戻しの通勤費」になります。意図が「通勤費のうち PENDING か RETURNED」なら <code>app_type = 'COMMUTE' AND (status = 'PENDING' OR status = 'RETURNED')</code> と書きます。</p></div>
+  </section>
+
+  <section id="join">
+    <h2>JOIN：表と表を対応づける</h2>
+    <p>JOINはよくベン図で説明されますが、実際の動きは「<strong>条件に合う行同士をペアにして横に並べる</strong>」です。表で見るほうが正確に理解できます。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 330" style="max-width:680px" role="img" aria-label="INNER JOINとLEFT JOINの行の対応">
+        <text x="10" y="20" font-size="13" font-weight="700">employees</text>
+        <g font-size="12">
+          <rect class="box-soft" x="10" y="30" width="150" height="26"/><text x="18" y="48">id=1 佐藤</text>
+          <rect class="box-soft" x="10" y="56" width="150" height="26"/><text x="18" y="74">id=2 鈴木</text>
+          <rect class="box-warn" x="10" y="82" width="150" height="26"/><text x="18" y="100">id=3 高橋（打刻なし）</text>
+        </g>
+        <text x="250" y="20" font-size="13" font-weight="700">attendance</text>
+        <g font-size="12">
+          <rect class="box-soft" x="250" y="30" width="170" height="26"/><text x="258" y="48">emp=1 3/2 9:00-18:30</text>
+          <rect class="box-soft" x="250" y="56" width="170" height="26"/><text x="258" y="74">emp=1 3/3 9:05-20:10</text>
+          <rect class="box-soft" x="250" y="82" width="170" height="26"/><text x="258" y="100">emp=2 3/2 8:55-17:50</text>
+        </g>
+        <line class="line-accent" x1="160" y1="43" x2="250" y2="43"/>
+        <line class="line-accent" x1="160" y1="43" x2="250" y2="69"/>
+        <line class="line-accent" x1="160" y1="69" x2="250" y2="95"/>
+        <text x="440" y="48" font-size="12" class="muted">佐藤は2行と対応</text>
+        <text x="440" y="74" font-size="12" class="muted">→ 結果も2行になる</text>
+        <text x="440" y="100" font-size="12" class="muted">高橋は相手がいない</text>
+        <text x="10" y="150" font-size="13" font-weight="700">INNER JOIN の結果（3行）</text>
+        <g font-size="12">
+          <rect class="box-ok" x="10" y="160" width="300" height="24"/><text x="18" y="177">佐藤 | 3/2 9:00-18:30</text>
+          <rect class="box-ok" x="10" y="184" width="300" height="24"/><text x="18" y="201">佐藤 | 3/3 9:05-20:10</text>
+          <rect class="box-ok" x="10" y="208" width="300" height="24"/><text x="18" y="225">鈴木 | 3/2 8:55-17:50</text>
+          <text x="18" y="252" class="muted">高橋は消える</text>
+        </g>
+        <text x="350" y="150" font-size="13" font-weight="700">LEFT JOIN の結果（4行）</text>
+        <g font-size="12">
+          <rect class="box-ok" x="350" y="160" width="320" height="24"/><text x="358" y="177">佐藤 | 3/2 9:00-18:30</text>
+          <rect class="box-ok" x="350" y="184" width="320" height="24"/><text x="358" y="201">佐藤 | 3/3 9:05-20:10</text>
+          <rect class="box-ok" x="350" y="208" width="320" height="24"/><text x="358" y="225">鈴木 | 3/2 8:55-17:50</text>
+          <rect class="box-warn" x="350" y="232" width="320" height="24"/><text x="358" y="249">高橋 | NULL（右側の列はすべてNULL）</text>
+        </g>
+        <text x="10" y="292" font-size="12">LEFT JOIN = 左の表（FROMに書いた表）の行は相手がいなくても必ず残す</text>
+        <text x="10" y="314" font-size="12">「打刻が1件もない社員」を探すときは LEFT JOIN して右側が NULL の行を探す</text>
+      </svg>
+      <figcaption>JOINは「行のペア作り」。1対多をつなぐと左の行が複製される</figcaption>
+    </figure>
+<pre><code><span class="c">-- INNER JOIN：打刻のある社員だけ</span>
+<span class="k">SELECT</span> e.name, a.work_date, a.clock_in, a.clock_out
+<span class="k">FROM</span>   employees e
+<span class="k">JOIN</span>   attendance a <span class="k">ON</span> a.employee_id = e.employee_id
+<span class="k">WHERE</span>  a.work_date = <span class="s">'2026-03-02'</span>;
+
+<span class="c">-- LEFT JOIN：3/2に打刻が1件もない在職者</span>
+<span class="k">SELECT</span> e.employee_code, e.name
+<span class="k">FROM</span>   employees e
+<span class="k">LEFT JOIN</span> attendance a
+       <span class="k">ON</span>  a.employee_id = e.employee_id
+       <span class="k">AND</span> a.work_date = <span class="s">'2026-03-02'</span>   <span class="c">-- 右表の条件は ON に書く</span>
+<span class="k">WHERE</span>  a.attendance_id <span class="k">IS NULL</span>
+  <span class="k">AND</span>  e.retired_on <span class="k">IS NULL</span>;</code></pre>
+    <div class="callout ng"><b>LEFT JOIN が INNER JOIN に化ける</b><p>上の例で <code>a.work_date = '2026-03-02'</code> を <code>WHERE</code> に書くと、相手がいなくて NULL になった行が WHERE で落ち、結果は INNER JOIN と同じになります。「左を残したいのに残らない」ときは、右表の条件が WHERE に書かれていないか見てください。</p></div>
+  </section>
+
+  <section id="group">
+    <h2>GROUP BY と集計：月別の残業時間</h2>
+    <p>GROUP BY は「同じ値の行をひとまとめにして、1グループ1行にする」操作です。仕分け箱に社員ごとの打刻票を入れて、箱ごとに合計を書くイメージです。</p>
+    <p>ここでは説明のため、「所定労働8時間＋休憩1時間で、拘束9時間を超えた分を残業とする」という<strong>単純化したルール</strong>を使います。実際の残業計算は就業規則・シフト・深夜・休日などで複雑なので、本番の数字はアプリの計算ロジックや仕様書と突き合わせてください。</p>
+    <div class="code-title">社員ごと・月ごとの残業時間（単純化ルール）</div>
+<pre><code><span class="k">SELECT</span> a.employee_id,
+       date_trunc(<span class="s">'month'</span>, a.work_date)::date              <span class="k">AS</span> month,
+       count(*)                                           <span class="k">AS</span> days,
+       sum(GREATEST(a.clock_out - a.clock_in - <span class="k">INTERVAL</span> <span class="s">'9 hours'</span>,
+                    <span class="k">INTERVAL</span> <span class="s">'0'</span>))                       <span class="k">AS</span> overtime
+<span class="k">FROM</span>   attendance a
+<span class="k">WHERE</span>  a.work_date &gt;= <span class="s">'2026-01-01'</span>
+  <span class="k">AND</span>  a.clock_out <span class="k">IS NOT NULL</span>          <span class="c">-- 打刻漏れの日は除外（別途確認）</span>
+<span class="k">GROUP BY</span> a.employee_id, date_trunc(<span class="s">'month'</span>, a.work_date)
+<span class="k">HAVING</span> sum(GREATEST(a.clock_out - a.clock_in - <span class="k">INTERVAL</span> <span class="s">'9 hours'</span>,
+                    <span class="k">INTERVAL</span> <span class="s">'0'</span>)) &gt; <span class="k">INTERVAL</span> <span class="s">'30 hours'</span>
+<span class="k">ORDER BY</span> month, overtime <span class="k">DESC</span>;</code></pre>
+    <ul>
+      <li><code>timestamp - timestamp</code> は <code>interval</code>（時間の長さ）になります。<code>GREATEST(..., INTERVAL '0')</code> でマイナスを0に丸めています。</li>
+      <li>SELECT に書く列は「GROUP BY に書いた列」か「集計関数（count, sum, avg, max, min）」のどちらかです。それ以外を書くと <code>must appear in the GROUP BY clause or be used in an aggregate function</code> というエラーになります。</li>
+      <li><code>count(*)</code> は行数、<code>count(clock_out)</code> は clock_out が NULL でない行数。この違いで打刻漏れの件数も出せます。</li>
+    </ul>
+    <div class="callout warn"><b>JOINしてから集計すると合計が膨らむ</b><p>employees と attendance と leave_requests を一度にJOINして sum すると、打刻の行 × 休暇の行の組み合わせ分だけ行が増え、残業時間が2倍・3倍になります。「多」の表を2つ同時につなぐときは、先にそれぞれ集計してからつなぐ（次のCTEが便利）のが基本です。</p></div>
+  </section>
+
+  <section id="advanced">
+    <h2>サブクエリ・CTE・CASE・ウィンドウ関数</h2>
+    <h3>サブクエリ：SQLの中のSQL</h3>
+<pre><code><span class="c">-- 未承認の申請が1件以上ある社員</span>
+<span class="k">SELECT</span> e.employee_code, e.name
+<span class="k">FROM</span>   employees e
+<span class="k">WHERE</span>  <span class="k">EXISTS</span> (
+         <span class="k">SELECT</span> 1 <span class="k">FROM</span> applications ap
+         <span class="k">WHERE</span>  ap.employee_id = e.employee_id
+           <span class="k">AND</span>  ap.status = <span class="s">'PENDING'</span>
+       );</code></pre>
+    <p><code>EXISTS</code> は「相手が1件でもあれば真」。<code>IN (SELECT ...)</code> でも書けますが、<code>NOT IN</code> はサブクエリに NULL が混ざると1行も返らなくなる罠があるので、否定は <code>NOT EXISTS</code> が安全です（NULLの節で説明します）。</p>
+
+    <h3>CTE（WITH）：名前を付けた中間結果</h3>
+    <p>CTEは、長いSQLを「工程ごとに名前を付けた下ごしらえ」に分ける書き方です。料理のレシピで「Aを切っておく」「Bを煮ておく」と準備を分けるのに似ています。読みやすく、1工程ずつ確かめやすいので、AIのSQLを読むときにも自分で書くときにもおすすめです。</p>
+<pre><code><span class="k">WITH</span> daily <span class="k">AS</span> (            <span class="c">-- 工程1：1日ごとの残業</span>
+  <span class="k">SELECT</span> employee_id, work_date,
+         GREATEST(clock_out - clock_in - <span class="k">INTERVAL</span> <span class="s">'9 hours'</span>, <span class="k">INTERVAL</span> <span class="s">'0'</span>) <span class="k">AS</span> ot
+  <span class="k">FROM</span>   attendance
+  <span class="k">WHERE</span>  work_date &gt;= <span class="s">'2026-03-01'</span> <span class="k">AND</span> work_date &lt; <span class="s">'2026-04-01'</span>
+    <span class="k">AND</span>  clock_out <span class="k">IS NOT NULL</span>
+),
+monthly <span class="k">AS</span> (                  <span class="c">-- 工程2：社員ごとに合計</span>
+  <span class="k">SELECT</span> employee_id, sum(ot) <span class="k">AS</span> ot_total
+  <span class="k">FROM</span>   daily
+  <span class="k">GROUP BY</span> employee_id
+)
+<span class="k">SELECT</span> d.department_name, e.name, m.ot_total   <span class="c">-- 工程3：名前を付けて表示</span>
+<span class="k">FROM</span>   monthly m
+<span class="k">JOIN</span>   employees   e <span class="k">ON</span> e.employee_id   = m.employee_id
+<span class="k">JOIN</span>   departments d <span class="k">ON</span> d.department_id = e.department_id
+<span class="k">ORDER BY</span> m.ot_total <span class="k">DESC</span>;</code></pre>
+    <p>確かめるときは、最後の SELECT を <code>SELECT * FROM daily LIMIT 20;</code> に差し替えれば工程1だけの結果が見られます。</p>
+
+    <h3>CASE：条件で値を変える</h3>
+<pre><code><span class="k">SELECT</span> application_id,
+       <span class="k">CASE</span> status
+         <span class="k">WHEN</span> <span class="s">'PENDING'</span>  <span class="k">THEN</span> <span class="s">'承認待ち'</span>
+         <span class="k">WHEN</span> <span class="s">'APPROVED'</span> <span class="k">THEN</span> <span class="s">'承認済'</span>
+         <span class="k">WHEN</span> <span class="s">'RETURNED'</span> <span class="k">THEN</span> <span class="s">'差戻し'</span>
+         <span class="k">ELSE</span> <span class="s">'その他('</span> || status || <span class="s">')'</span>
+       <span class="k">END AS</span> status_label
+<span class="k">FROM</span>   applications;
+
+<span class="c">-- 集計と組み合わせる：部署ごとの状態別件数</span>
+<span class="k">SELECT</span> e.department_id,
+       count(*) <span class="k">FILTER</span> (<span class="k">WHERE</span> ap.status = <span class="s">'PENDING'</span>)  <span class="k">AS</span> pending,
+       sum(<span class="k">CASE WHEN</span> ap.status = <span class="s">'APPROVED'</span> <span class="k">THEN</span> 1 <span class="k">ELSE</span> 0 <span class="k">END</span>) <span class="k">AS</span> approved
+<span class="k">FROM</span>   applications ap
+<span class="k">JOIN</span>   employees e <span class="k">ON</span> e.employee_id = ap.employee_id
+<span class="k">GROUP BY</span> e.department_id;</code></pre>
+    <p><code>FILTER (WHERE ...)</code> は PostgreSQL で使える書き方で、<code>sum(CASE ...)</code> と同じことを短く書けます。両方とも見かけるので、どちらも読めるようにしておきましょう。</p>
+
+    <h3>ウィンドウ関数：行を残したまま集計する</h3>
+    <p>GROUP BY は行をまとめて減らしますが、ウィンドウ関数は<strong>行を残したまま</strong>「同じグループの中での順位・累計・前の行」を横に付け足します。<code>OVER (PARTITION BY 区切り ORDER BY 並び)</code> が目印です。</p>
+<pre><code><span class="k">SELECT</span> employee_id, work_date, clock_in, clock_out,
+       <span class="c">-- 同じ社員・同じ日の打刻に番号（重複打刻の発見）</span>
+       row_number() <span class="k">OVER</span> (<span class="k">PARTITION BY</span> employee_id, work_date <span class="k">ORDER BY</span> clock_in) <span class="k">AS</span> rn,
+       <span class="c">-- 前日の退勤時刻（勤務間インターバルの確認）</span>
+       lag(clock_out) <span class="k">OVER</span> (<span class="k">PARTITION BY</span> employee_id <span class="k">ORDER BY</span> work_date) <span class="k">AS</span> prev_out,
+       <span class="c">-- 月内の累計労働時間</span>
+       sum(clock_out - clock_in) <span class="k">OVER</span> (
+         <span class="k">PARTITION BY</span> employee_id, date_trunc(<span class="s">'month'</span>, work_date)
+         <span class="k">ORDER BY</span> work_date) <span class="k">AS</span> running_total
+<span class="k">FROM</span>   attendance
+<span class="k">WHERE</span>  employee_id = 1234;</code></pre>
+    <p>「同じ日に2行ある打刻を探す」なら、上の rn を CTE にして <code>WHERE rn &gt; 1</code> で絞れます。ウィンドウ関数の結果は WHERE で直接使えない（実行順序を思い出してください。SELECTより前にWHEREが動きます）ので、CTEかサブクエリで包むのが定番です。</p>
+  </section>
+
+  <section id="datetime">
+    <h2>PostgreSQLの日付と時刻</h2>
+    <p>勤怠システムは日付時刻のかたまりです。型と関数を正しく知っておくと、AIのSQLの間違いにも気づけるようになります。</p>
+    <div class="tbl"><table>
+      <tr><th>型・関数</th><th>意味</th><th>例</th></tr>
+      <tr><td><code>date</code></td><td>日付だけ</td><td><code>'2026-03-02'::date</code></td></tr>
+      <tr><td><code>timestamp</code></td><td>日付＋時刻（タイムゾーンなし）</td><td><code>'2026-03-02 09:00'::timestamp</code></td></tr>
+      <tr><td><code>timestamptz</code></td><td>日付＋時刻（タイムゾーンあり。内部はUTCで保存し、表示時にセッションのTimeZone設定で変換）</td><td><code>now()</code> の型</td></tr>
+      <tr><td><code>interval</code></td><td>時間の長さ</td><td><code>INTERVAL '1 hour 30 minutes'</code></td></tr>
+      <tr><td><code>current_date</code> / <code>now()</code></td><td>今日 / 現在日時（トランザクション開始時点）</td><td><code>current_date - 1</code> は昨日</td></tr>
+      <tr><td><code>date_trunc</code></td><td>指定単位で切り捨て</td><td><code>date_trunc('month', now())</code> → 月初0時</td></tr>
+      <tr><td><code>extract</code></td><td>一部を数値で取り出す</td><td><code>extract(hour FROM clock_in)</code>、<code>extract(epoch FROM interval)</code> は秒数</td></tr>
+      <tr><td><code>to_char</code></td><td>書式を付けて文字列に</td><td><code>to_char(clock_in, 'YYYY/MM/DD HH24:MI')</code></td></tr>
+      <tr><td><code>AT TIME ZONE</code></td><td>タイムゾーンの変換</td><td>下で説明</td></tr>
+    </table></div>
+<pre><code><span class="c">-- interval を「時間(小数)」に直す。extract の戻り値の型はバージョンで違うので numeric にそろえる</span>
+<span class="k">SELECT</span> round((extract(epoch <span class="k">FROM</span> <span class="k">INTERVAL</span> <span class="s">'47 hours 30 minutes'</span>) / 3600)::numeric, 1);
+<span class="c">-- → 47.5</span>
+
+<span class="c">-- 曜日：extract(dow ...) は 0=日曜〜6=土曜、isodow は 1=月曜〜7=日曜</span>
+<span class="k">SELECT</span> work_date, extract(isodow <span class="k">FROM</span> work_date) <span class="k">AS</span> dow <span class="k">FROM</span> attendance <span class="k">LIMIT</span> 5;
+
+<span class="c">-- 今月の範囲（月初〜翌月1日未満）</span>
+<span class="k">WHERE</span> work_date &gt;= date_trunc(<span class="s">'month'</span>, current_date)::date
+  <span class="k">AND</span> work_date &lt;  (date_trunc(<span class="s">'month'</span>, current_date) + <span class="k">INTERVAL</span> <span class="s">'1 month'</span>)::date</code></pre>
+    <h3>AT TIME ZONE は向きに注意</h3>
+    <p><code>AT TIME ZONE</code> は、元の型によって逆向きに働きます。ここは経験者でも混乱するところです。</p>
+    <ul>
+      <li><code>timestamp（TZなし） AT TIME ZONE 'Asia/Tokyo'</code> → 「この時刻は東京時間です」と解釈して <code>timestamptz</code> にする。</li>
+      <li><code>timestamptz AT TIME ZONE 'Asia/Tokyo'</code> → その瞬間を東京の壁時計で見た <code>timestamp（TZなし）</code> にする。</li>
+    </ul>
+<pre><code><span class="k">SHOW</span> TimeZone;   <span class="c">-- 今のセッションのタイムゾーンを確認</span>
+<span class="k">SELECT</span> <span class="k">TIMESTAMPTZ</span> <span class="s">'2026-03-02 00:30:00+00'</span> <span class="k">AT TIME ZONE</span> <span class="s">'Asia/Tokyo'</span>;
+<span class="c">-- → 2026-03-02 09:30:00（UTC 0:30 は東京 9:30）</span></code></pre>
+    <div class="callout warn"><b>「9時間ずれている」と言われたら</b><p>DBサーバーやクライアントのタイムゾーン設定がUTCになっていて、timestamptz がUTCで表示されているのかもしれません。データが壊れているとは限りません。<code>SHOW TimeZone;</code> と、列の型が <code>timestamp</code> か <code>timestamptz</code> かを先に確認しましょう。</p></div>
+  </section>
+
+  <section id="null">
+    <h2>NULL：「値がない」は「0」でも「空文字」でもない</h2>
+    <p>NULLは「分からない・まだない」という状態です。退勤打刻をしていない日の <code>clock_out</code> がまさにそれです。NULLを含む計算や比較は、結果もNULL（＝真でも偽でもない）になります。</p>
+    <div class="tbl"><table>
+      <tr><th>書き方</th><th>結果</th><th>説明</th></tr>
+      <tr><td><code>clock_out = NULL</code></td><td>常にNULL（1行も選ばれない）</td><td>NULLとの比較は <code>=</code> では書けない</td></tr>
+      <tr><td><code>clock_out IS NULL</code></td><td>真/偽</td><td>正しい書き方。否定は <code>IS NOT NULL</code></td></tr>
+      <tr><td><code>clock_out - clock_in</code></td><td>NULL</td><td>片方がNULLなら計算結果もNULL</td></tr>
+      <tr><td><code>sum(...)</code>、<code>avg(...)</code></td><td>NULLの行は無視</td><td>平均の分母も減るので注意</td></tr>
+      <tr><td><code>COALESCE(x, 0)</code></td><td>xがNULLなら0</td><td>表示や計算の既定値に</td></tr>
+      <tr><td><code>status &lt;&gt; 'APPROVED'</code></td><td>statusがNULLの行は選ばれない</td><td>NULLも含めたいなら <code>status IS DISTINCT FROM 'APPROVED'</code></td></tr>
+      <tr><td><code>x NOT IN (SELECT y ...)</code></td><td>yにNULLが1つでもあると0行</td><td><code>NOT EXISTS</code> を使う</td></tr>
+    </table></div>
+<pre><code><span class="c">-- 打刻漏れを含めて、日ごとの労働時間を「未確定」と表示</span>
+<span class="k">SELECT</span> work_date,
+       COALESCE(to_char(clock_out - clock_in, <span class="s">'HH24:MI'</span>), <span class="s">'未確定'</span>) <span class="k">AS</span> worked
+<span class="k">FROM</span>   attendance
+<span class="k">WHERE</span>  employee_id = 1234
+<span class="k">ORDER BY</span> work_date;</code></pre>
+  </section>
+
+  <section id="update">
+    <h2>更新系の安全な作法：UPDATE / DELETE の前に</h2>
+    <p>SELECTは何度間違えてもデータは壊れません。でも UPDATE と DELETE は、WHERE を1つ間違えるだけで全社員の打刻を書き換えてしまいます。だからこそ、毎回同じ<strong>型（手順）</strong>で流すことが大切です。料理人が包丁を使う前に必ず同じ構えをとるのと同じです。</p>
+    <ol class="steps">
+      <li><b>同じWHEREでSELECTして件数と中身を見る</b>依頼された件数（例：「3件」）と一致するか。一致しなければ、そこで止まって依頼者に確認します。</li>
+      <li><b>BEGIN; でトランザクションを開始する</b>ここから COMMIT するまでは、他の人からは変更前の状態が見えています。</li>
+      <li><b>UPDATE / DELETE を実行し、表示される件数を見る</b>psqlなら <code>UPDATE 3</code> のように出ます。<code>RETURNING</code> を付けると変更後の行も見られます。</li>
+      <li><b>もう一度SELECTして結果を確認する</b>意図した値になっているか、関係ない行が変わっていないか。</li>
+      <li><b>正しければ COMMIT;、少しでも違えば ROLLBACK;</b>迷ったら ROLLBACK。やり直しはいつでもできます。</li>
+    </ol>
+<pre><code><span class="c">-- 例：通勤費申請3件を差戻し状態に戻す（申請IDは依頼票のもの）</span>
+<span class="k">SELECT</span> application_id, employee_id, status
+<span class="k">FROM</span>   applications
+<span class="k">WHERE</span>  application_id <span class="k">IN</span> (50121, 50122, 50130);    <span class="c">-- まず3件か確認</span>
+
+<span class="k">BEGIN</span>;
+
+<span class="k">UPDATE</span> applications
+<span class="k">SET</span>    status = <span class="s">'RETURNED'</span>
+<span class="k">WHERE</span>  application_id <span class="k">IN</span> (50121, 50122, 50130)
+  <span class="k">AND</span>  status = <span class="s">'APPROVED'</span>                       <span class="c">-- 想定外の状態は触らない保険</span>
+<span class="k">RETURNING</span> application_id, status;
+<span class="c">-- UPDATE 3 と出ることを確認</span>
+
+<span class="k">SELECT</span> application_id, status <span class="k">FROM</span> applications
+<span class="k">WHERE</span>  application_id <span class="k">IN</span> (50121, 50122, 50130);
+
+<span class="k">ROLLBACK</span>;   <span class="c">-- 予行演習ならここで戻す。本番で確認が取れたら COMMIT;</span></code></pre>
+    <div class="callout ng"><b>クライアントの「自動コミット」に注意</b><p>A5:SQL Mk-2、pgAdmin、DBeaver などのクライアントには自動コミット（1文ごとに即確定）の設定があり、オンだと BEGIN を書き忘れた UPDATE は実行した瞬間に確定します。psql も既定は自動コミットです。自分の使うツールの設定がどうなっているか、更新作業の前に必ず確認してください。また、BEGIN したまま放置すると行ロックを持ち続け、他の処理を止めます（次の節）。</p></div>
+    <h3>本番で実行する前のチェックリスト</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="pc1"><label for="pc1">接続先が本番か検証か、画面・プロンプトで確認した（DB名・ホスト名を声に出して読む）</label></li>
+      <li><input type="checkbox" id="pc2"><label for="pc2">同じWHEREのSELECTで件数を確認し、依頼の件数と一致した</label></li>
+      <li><input type="checkbox" id="pc3"><label for="pc3">検証環境で同じSQLを流して結果を確認した</label></li>
+      <li><input type="checkbox" id="pc4"><label for="pc4">変更前のデータを退避した（SELECT結果の保存、または <code>CREATE TABLE ... AS SELECT</code> などのバックアップ手順を社内ルールに従って）</label></li>
+      <li><input type="checkbox" id="pc5"><label for="pc5">BEGIN から始め、COMMIT/ROLLBACK まで手順書に書いた</label></li>
+      <li><input type="checkbox" id="pc6"><label for="pc6">締め処理・バッチの時間帯や、利用者が多い時間を避けた</label></li>
+      <li><input type="checkbox" id="pc7"><label for="pc7">実施の承認（誰がOKしたか）と、実施後の報告先が決まっている</label></li>
+      <li><input type="checkbox" id="pc8"><label for="pc8">戻し方（元に戻すSQL）を用意した</label></li>
+    </ul>
+    <div class="callout info"><b>先輩・社内Wikiに確認する項目</b><ul>
+      <li>本番DBへのデータ修正の申請・承認フローはあるか（誰の承認が必要か）</li>
+      <li>本番に直接つなげるのは誰か、作業は画面共有やダブルチェックで行うか</li>
+      <li>変更前データの退避方法の決まり</li>
+      <li>締め処理・夜間バッチの実行時間帯</li>
+    </ul></div>
+  </section>
+
+  <section id="lock">
+    <h2>トランザクションとロック</h2>
+    <p>トランザクションは「全部成功するか、全部なかったことにするか」の単位です。そして、同じ行を2人が同時に書き換えないように、データベースは<strong>ロック</strong>をかけます。トイレの鍵のようなもので、誰かが入っている（ロックを持っている）間、次の人はドアの前で待ちます。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 270" style="max-width:680px" role="img" aria-label="ロック待ちの時系列">
+        <defs><marker id="arrL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
+        <line class="line" x1="110" y1="240" x2="660" y2="240" marker-end="url(#arrL)"/>
+        <text x="620" y="262" font-size="12" class="muted">時間</text>
+        <text x="10" y="64" font-size="13" font-weight="700">セッションA</text>
+        <text x="10" y="80" font-size="12" class="muted">あなたの作業</text>
+        <text x="10" y="164" font-size="13" font-weight="700">セッションB</text>
+        <text x="10" y="180" font-size="12" class="muted">打刻画面</text>
+        <rect class="box" x="110" y="45" width="90" height="34" rx="4"/><text x="120" y="67" font-size="12">BEGIN;</text>
+        <rect class="box-warn" x="205" y="45" width="300" height="34" rx="4"/><text x="215" y="67" font-size="12">UPDATE attendance … id=1（行ロック保持）</text>
+        <rect class="box-ok" x="510" y="45" width="100" height="34" rx="4"/><text x="522" y="67" font-size="12">COMMIT;</text>
+        <rect class="box" x="260" y="145" width="140" height="34" rx="4"/><text x="268" y="167" font-size="12">UPDATE … id=1</text>
+        <rect class="box-ng" x="400" y="145" width="110" height="34" rx="4"/><text x="410" y="167" font-size="12">待ち（固まる）</text>
+        <rect class="box-ok" x="510" y="145" width="110" height="34" rx="4"/><text x="520" y="167" font-size="12">やっと実行</text>
+        <line class="line" x1="560" y1="79" x2="560" y2="145" marker-end="url(#arrL)"/>
+        <text x="570" y="118" font-size="12" class="muted">鍵が開く</text>
+        <text x="110" y="215" font-size="12">AがCOMMITもROLLBACKもせず放置すると、Bはずっと待つ → 画面が固まる・タイムアウト</text>
+      </svg>
+      <figcaption>ロック待ち：先に行をつかんだトランザクションが終わるまで、後続は待たされる</figcaption>
+    </figure>
+    <h3>誰が何を待っているかを見る</h3>
+    <p><code>pg_stat_activity</code> は「今つながっているセッションの一覧」、<code>pg_locks</code> は「ロックの一覧」です。見るだけなら安全なので、検証環境で一度実行してみてください（他人のクエリ内容を見るには権限が必要な場合があります）。</p>
+<pre><code><span class="c">-- 実行中・放置中のセッション（古いトランザクションほど上）</span>
+<span class="k">SELECT</span> pid, usename, application_name, state,
+       wait_event_type, wait_event,
+       now() - xact_start  <span class="k">AS</span> xact_age,
+       now() - query_start <span class="k">AS</span> query_age,
+       left(query, 60)     <span class="k">AS</span> query
+<span class="k">FROM</span>   pg_stat_activity
+<span class="k">WHERE</span>  datname = current_database()
+<span class="k">ORDER BY</span> xact_start <span class="k">NULLS LAST</span>;
+
+<span class="c">-- 待たされているセッションと、待たせている相手のpid</span>
+<span class="k">SELECT</span> pid, pg_blocking_pids(pid) <span class="k">AS</span> blocked_by,
+       wait_event_type, left(query, 60) <span class="k">AS</span> query
+<span class="k">FROM</span>   pg_stat_activity
+<span class="k">WHERE</span>  cardinality(pg_blocking_pids(pid)) &gt; 0;
+
+<span class="c">-- まだ取れていない（granted = false）ロック</span>
+<span class="k">SELECT</span> locktype, relation::regclass, mode, granted, pid
+<span class="k">FROM</span>   pg_locks
+<span class="k">WHERE</span>  <span class="k">NOT</span> granted;</code></pre>
+    <ul>
+      <li><code>state = 'idle in transaction'</code> で <code>xact_age</code> が長い行は、BEGIN したまま放置されたセッションです。ロック待ちの犯人であることがよくあります。</li>
+      <li><code>wait_event_type = 'Lock'</code> は、ロックを待っている状態です。</li>
+      <li>セッションを止める <code>pg_cancel_backend(pid)</code>（クエリを中断）や <code>pg_terminate_backend(pid)</code>（接続ごと切断）もありますが、<strong>本番では必ず先輩・責任者の判断で</strong>行ってください。バッチを途中で切ると、別の問題を生むことがあります。</li>
+    </ul>
+    <h3>デッドロック</h3>
+    <p>AがXの行をつかんでYを待ち、BがYの行をつかんでXを待つと、永遠に終わりません。PostgreSQLはこれを検出して<strong>片方をエラーで終わらせます</strong>。ログには次のように出ます。</p>
+<pre><code>ERROR:  deadlock detected
+DETAIL:  Process 24512 waits for ShareLock on transaction 918273; blocked by process 24877.
+        Process 24877 waits for ShareLock on transaction 918270; blocked by process 24512.
+HINT:  See server log for query details.</code></pre>
+    <p>対策の基本は「複数の行を更新するときは、どの処理も同じ順番（例：employee_id の昇順）で更新する」「トランザクションを短くする」です。アプリの処理順の問題なので、見つけたらログの日時と処理名を添えて相談しましょう。</p>
+  </section>
+
+  <section id="explain">
+    <h2>遅いSQL：EXPLAIN の読み方入門</h2>
+    <div class="analogy">
+      <div><span class="lbl">本で「打刻」の説明を探す</span>索引がなければ、1ページ目から最後まで全部めくる。索引があれば「打刻…p.120」を見て直接開く。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">データベースで行を探す</span>インデックスがなければ全行を読む（Seq Scan）。あれば索引をたどって該当行だけ読む（Index Scan）。</div>
+    </div>
+    <p>ただし索引も万能ではありません。本の半分以上のページを読むなら、索引を何度も引くより最初からめくったほうが速いですよね。データベースも同じ判断をするので、「Seq Scan＝悪」ではありません。</p>
+    <p><code>EXPLAIN</code> は「どうやって探すつもりか（実行計画）」を表示し、<code>EXPLAIN ANALYZE</code> は<strong>実際に実行して</strong>かかった時間も表示します。</p>
+<pre><code><span class="k">EXPLAIN ANALYZE</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> attendance <span class="k">WHERE</span> employee_id = 1234;
+
+<span class="c">-- インデックスがない場合（例）</span>
+Seq Scan on attendance  (cost=0.00..18334.00 rows=52 width=40) (actual time=0.015..85.210 rows=48 loops=1)
+  Filter: (employee_id = 1234)
+  Rows Removed by Filter: 999952
+Planning Time: 0.080 ms
+Execution Time: 85.240 ms
+
+<span class="c">-- CREATE INDEX idx_attendance_emp_date ON attendance (employee_id, work_date); の後（例）</span>
+Index Scan using idx_attendance_emp_date on attendance  (cost=0.42..12.31 rows=52 width=40) (actual time=0.020..0.065 rows=48 loops=1)
+  Index Cond: (employee_id = 1234)
+Planning Time: 0.110 ms
+Execution Time: 0.090 ms</code></pre>
+    <div class="tbl"><table>
+      <tr><th>見る場所</th><th>意味</th></tr>
+      <tr><td><code>Seq Scan</code> / <code>Index Scan</code> / <code>Bitmap Heap Scan</code></td><td>どう探したか。全件読み／索引で直接／索引でまとめて当たりを付けてから読む</td></tr>
+      <tr><td><code>Rows Removed by Filter</code></td><td>読んだけど捨てた行数。大きいほど無駄読み</td></tr>
+      <tr><td><code>rows=52</code>（cost側）と <code>rows=48</code>（actual側）</td><td>見積もりと実際の行数。大きくずれていたら統計情報が古い可能性（<code>ANALYZE テーブル名</code>）</td></tr>
+      <tr><td><code>actual time=...</code></td><td>その工程にかかった時間（ミリ秒）。インデントが深い行から先に動く</td></tr>
+      <tr><td><code>Execution Time</code></td><td>全体の実行時間</td></tr>
+    </table></div>
+    <div class="callout ng"><b>EXPLAIN ANALYZE は本当に実行する</b><p>UPDATE や DELETE に <code>EXPLAIN ANALYZE</code> を付けると、実際に更新されます。試すなら <code>BEGIN; EXPLAIN ANALYZE UPDATE ...; ROLLBACK;</code> の形で。また、本番でのインデックス追加は書き込みを止めることがあり（<code>CREATE INDEX CONCURRENTLY</code> という方法もあります）、効果と影響の検討が必要なので、自分で判断せず改修案として相談してください。</p></div>
+    <p>インデックスが効かなくなる典型も覚えておきましょう：列に関数をかける（<code>WHERE to_char(work_date, 'YYYY-MM') = '2026-03'</code>）、前方が<code>%</code>のLIKE（<code>LIKE '%田'</code>）、型の違う比較。最初の例は <code>work_date &gt;= '2026-03-01' AND work_date &lt; '2026-04-01'</code> と範囲で書けばインデックスが使えます。</p>
+  </section>
+
+  <section id="tools">
+    <h2>psqlの基本と、GUIクライアント</h2>
+    <p>psqlはPostgreSQL付属のコマンドラインのクライアントです。サーバーにSSHで入ったときなど、GUIが使えない場面で頼りになります。</p>
+<pre><code>psql -h dbhost -p 5432 -U kintai_user -d kintai   <span class="c"># 接続（値は一般的な例）</span></code></pre>
+    <div class="tbl"><table>
+      <tr><th>コマンド</th><th>やること</th></tr>
+      <tr><td><code>\dt</code></td><td>テーブル一覧</td></tr>
+      <tr><td><code>\d attendance</code></td><td>テーブルの列・型・インデックス・外部キーを表示</td></tr>
+      <tr><td><code>\x</code></td><td>縦表示の切り替え（列が多い行を読みやすく）。<code>\x auto</code> で自動</td></tr>
+      <tr><td><code>\timing</code></td><td>以後のSQLの実行時間を表示</td></tr>
+      <tr><td><code>\l</code> / <code>\dn</code> / <code>\df</code></td><td>データベース一覧 / スキーマ一覧 / 関数一覧</td></tr>
+      <tr><td><code>\i file.sql</code></td><td>ファイルのSQLを実行</td></tr>
+      <tr><td><code>\conninfo</code></td><td>今どこにつないでいるかを表示（本番確認に）</td></tr>
+      <tr><td><code>\q</code></td><td>終了</td></tr>
+    </table></div>
+    <p>GUIのクライアントでは、日本の現場でよく使われる <strong>A5:SQL Mk-2</strong>（Windows、ER図の作成機能もある）、PostgreSQL公式の管理ツール <strong>pgAdmin</strong>、多くのDBに対応する <strong>DBeaver</strong> などがあります。どれを使うかは社内の決まりに従ってください。どのツールでも、「接続先の表示」「自動コミットの設定」「結果の件数表示」の場所だけは最初に確認しておくと事故を防げます。</p>
+  </section>
+
+  <section id="readai">
+    <h2>AIが作ったSQLを読み解く手順</h2>
+    <p>AIのSQLは長く、一見正しそうに見えます。次の手順で、<strong>1段ずつ実行して件数を確かめる</strong>習慣をつけましょう。これは学習にもなります。</p>
+    <ol class="steps">
+      <li><b>使っているテーブルと列を書き出す</b>FROM / JOIN に出てくる表を全部挙げ、<code>\d</code> で列名・型が実在するか確認する。AIは存在しない列名を作ることがあります。</li>
+      <li><b>FROMの表だけで件数を数える</b><code>SELECT count(*) FROM attendance WHERE ...;</code> 条件ごとに件数がどう変わるかを見る。</li>
+      <li><b>JOINを1つずつ足して件数を見る</b>JOINを足したときに件数が増えたら「1対多」でつないだ証拠。意図どおりか考える。</li>
+      <li><b>CTEは1つずつ <code>SELECT * FROM cte名 LIMIT 20</code> で中身を見る</b>工程ごとの結果を目で確かめる。</li>
+      <li><b>知っている1人で検算する</b>自分や特定の社員1人に絞り、画面の表示や手計算と一致するか比べる。</li>
+      <li><b>NULL・境界をわざと確かめる</b>打刻漏れの日、月末日、日をまたぐ勤務、退職者が入っているとどうなるか。</li>
+      <li><b>分からない部分をAIに質問する</b>「この LEFT JOIN を INNER JOIN にすると何が変わる？」のように、部分を指して聞く。丸ごと「合ってる？」と聞くより学びになります。</li>
+    </ol>
+    <div class="callout tip"><b>AIへの頼み方を変える</b><p>「〜を出すSQLを書いて」に加えて、「テーブル定義は次のとおり（<code>\d</code> の結果を貼る）」「打刻漏れはclock_outがNULL」「CTEで工程を分けて、各工程にコメントを付けて」と伝えると、読みやすく検証しやすいSQLが返ってきます。AIとの付き合い方は <a href="10-ai-learning.html">10 AIと一緒に強くなる</a> でも扱います。本番データの中身（氏名など）をAIに貼らないことも忘れずに。</p></div>
+  </section>
+
+  <section id="pitfalls">
+    <h2>よくあるつまずき</h2>
+    <div class="cards">
+      <div class="card"><h4>合計が倍になる</h4><p>1対多の表を2つ同時にJOINして集計した。先に集計してからつなぐ。JOINごとに件数を確認する。</p></div>
+      <div class="card"><h4>LEFT JOINなのに行が消える</h4><p>右表の条件をWHEREに書いた。ONに移す。</p></div>
+      <div class="card"><h4>月末の打刻が漏れる</h4><p>timestampにBETWEENで月末日を指定した。「翌月1日未満」で書く。</p></div>
+      <div class="card"><h4>= NULL で0件</h4><p>NULLの比較は IS NULL。<code>&lt;&gt;</code> ではNULLの行が除外されることも忘れずに。</p></div>
+      <div class="card"><h4>9時間ずれる</h4><p>timestamptzの表示タイムゾーン。<code>SHOW TimeZone;</code> と列の型を確認。</p></div>
+      <div class="card"><h4>画面が固まった</h4><p>BEGINしたままCOMMITを忘れてロックを持っている。自分のセッションを確認してCOMMITかROLLBACK。</p></div>
+      <div class="card"><h4>GROUP BYのエラー</h4><p>SELECTにGROUP BYにない列を書いた。GROUP BYに足すか集計関数で包む。</p></div>
+      <div class="card"><h4>round がエラー</h4><p><code>round(double precision, integer)</code> は存在しない。<code>::numeric</code> にキャストしてから丸める。</p></div>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>練習問題</h2>
+    <p>上の架空テーブルを前提にしています。まず自分で書いてから答えを開いてください。検証環境があれば、実際のテーブルに置き換えて動かしてみるのが一番の練習です。</p>
+    <details class="quiz">
+      <summary>Q1. 今月の残業（拘束9時間超の部分の合計）が45時間を超える在職社員を、社員コード・氏名・残業時間（小数1桁）で、多い順に出してください。</summary>
+      <div class="ans">
+<pre><code><span class="k">WITH</span> daily <span class="k">AS</span> (
+  <span class="k">SELECT</span> employee_id,
+         GREATEST(clock_out - clock_in - <span class="k">INTERVAL</span> <span class="s">'9 hours'</span>, <span class="k">INTERVAL</span> <span class="s">'0'</span>) <span class="k">AS</span> ot
+  <span class="k">FROM</span>   attendance
+  <span class="k">WHERE</span>  work_date &gt;= date_trunc(<span class="s">'month'</span>, current_date)::date
+    <span class="k">AND</span>  work_date &lt;  (date_trunc(<span class="s">'month'</span>, current_date) + <span class="k">INTERVAL</span> <span class="s">'1 month'</span>)::date
+    <span class="k">AND</span>  clock_out <span class="k">IS NOT NULL</span>
+)
+<span class="k">SELECT</span> e.employee_code, e.name,
+       round((extract(epoch <span class="k">FROM</span> sum(d.ot)) / 3600)::numeric, 1) <span class="k">AS</span> overtime_hours
+<span class="k">FROM</span>   daily d
+<span class="k">JOIN</span>   employees e <span class="k">ON</span> e.employee_id = d.employee_id
+<span class="k">WHERE</span>  e.retired_on <span class="k">IS NULL</span>
+<span class="k">GROUP BY</span> e.employee_code, e.name
+<span class="k">HAVING</span> sum(d.ot) &gt; <span class="k">INTERVAL</span> <span class="s">'45 hours'</span>
+<span class="k">ORDER BY</span> overtime_hours <span class="k">DESC</span>;</code></pre>
+        <p>ポイント：月の範囲は「月初〜翌月1日未満」。集計値での絞り込みは HAVING。ORDER BY では SELECT の別名が使えます。打刻漏れの日を除外しているので、Q2の結果と合わせて見ないと残業が少なく見える点にも注意しましょう。</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Q2. 昨日までの今月分で「出勤打刻はあるのに退勤打刻がない日（打刻漏れ）」を、社員コード・氏名・日付で一覧にしてください。</summary>
+      <div class="ans">
+<pre><code><span class="k">SELECT</span> e.employee_code, e.name, a.work_date, a.clock_in
+<span class="k">FROM</span>   attendance a
+<span class="k">JOIN</span>   employees e <span class="k">ON</span> e.employee_id = a.employee_id
+<span class="k">WHERE</span>  a.clock_in  <span class="k">IS NOT NULL</span>
+  <span class="k">AND</span>  a.clock_out <span class="k">IS NULL</span>
+  <span class="k">AND</span>  a.work_date &gt;= date_trunc(<span class="s">'month'</span>, current_date)::date
+  <span class="k">AND</span>  a.work_date &lt;  current_date          <span class="c">-- 今日は勤務中かもしれないので除く</span>
+<span class="k">ORDER BY</span> a.work_date, e.employee_code;</code></pre>
+        <p><code>clock_out = NULL</code> と書くと0件になります。「今日」を除く理由（まだ退勤していないだけ）まで考えられたら十分です。夜勤で日付をまたぐ運用がある場合は、退勤が翌日の行に入っていないかも確認が必要です。</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Q3. 社員ID 1234 について、今月の平日（月〜金）で打刻の行が1件もない日を出してください（祝日・休暇は考えなくて構いません）。</summary>
+      <div class="ans">
+<pre><code><span class="k">SELECT</span> d::date <span class="k">AS</span> work_date
+<span class="k">FROM</span>   generate_series(date_trunc(<span class="s">'month'</span>, current_date),
+                       current_date - 1,
+                       <span class="k">INTERVAL</span> <span class="s">'1 day'</span>) <span class="k">AS</span> g(d)
+<span class="k">LEFT JOIN</span> attendance a
+       <span class="k">ON</span>  a.employee_id = 1234
+       <span class="k">AND</span> a.work_date   = d::date
+<span class="k">WHERE</span>  extract(isodow <span class="k">FROM</span> d) <span class="k">BETWEEN</span> 1 <span class="k">AND</span> 5
+  <span class="k">AND</span>  a.attendance_id <span class="k">IS NULL</span>
+<span class="k">ORDER BY</span> work_date;</code></pre>
+        <p><code>generate_series</code> で「あるべき日付の一覧」を作り、LEFT JOIN で相手がいない日を探します。「ないもの」を探すには、まず「あるべきもの」の表を用意する、という考え方は調査でよく使います。実務では休暇（leave_requests）や会社カレンダーのテーブルを NOT EXISTS で除外します。</p>
+      </div>
+    </details>
+    <details class="quiz">
+      <summary>Q4. 先輩から「申請ID 70001 の通勤費申請を削除して」と頼まれました。安全に実行するためのSQLの流れを書いてください。</summary>
+      <div class="ans">
+<pre><code><span class="k">SELECT</span> * <span class="k">FROM</span> applications <span class="k">WHERE</span> application_id = 70001;   <span class="c">-- 1件・対象の申請か確認</span>
+<span class="k">BEGIN</span>;
+<span class="k">DELETE FROM</span> applications <span class="k">WHERE</span> application_id = 70001 <span class="k">RETURNING</span> *;   <span class="c">-- DELETE 1 を確認</span>
+<span class="k">SELECT</span> count(*) <span class="k">FROM</span> applications <span class="k">WHERE</span> application_id = 70001;    <span class="c">-- 0 を確認</span>
+<span class="k">COMMIT</span>;   <span class="c">-- 少しでもおかしければ ROLLBACK;</span></code></pre>
+        <p>加えて確認したいこと：明細や承認履歴など、この申請を参照している別テーブルはないか（外部キー制約でエラーになる、または孤児データが残る）。物理削除ではなく「取消」ステータスにする運用ではないか。変更前の行を保存したか。これらは依頼者に聞いてよい質問です。</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="terms">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>主キー（PK）</dt><dd>行を1つに特定する列。employee_id など。</dd>
+      <dt>外部キー（FK）</dt><dd>他のテーブルの主キーを指す列。テーブル同士をつなぐ線になる。</dd>
+      <dt>INNER JOIN</dt><dd>両方の表に相手がいる行だけをペアにする。</dd>
+      <dt>LEFT JOIN</dt><dd>左の表の行は相手がいなくても残し、右側をNULLで埋める。</dd>
+      <dt>GROUP BY / HAVING</dt><dd>同じ値でまとめる / まとめた後の組を条件で絞る。</dd>
+      <dt>CTE（WITH）</dt><dd>名前を付けた中間結果。長いSQLを工程に分けられる。</dd>
+      <dt>ウィンドウ関数</dt><dd>行を残したまま、グループ内の順位・累計・前後の行を計算する。<code>OVER (...)</code> が目印。</dd>
+      <dt>interval</dt><dd>時間の長さを表す型。timestamp同士の引き算の結果。</dd>
+      <dt>NULL</dt><dd>値がない状態。比較は IS NULL / IS NOT NULL。</dd>
+      <dt>トランザクション</dt><dd>BEGIN〜COMMIT/ROLLBACKの、全部やるか全部やめるかの単位。</dd>
+      <dt>ロック / デッドロック</dt><dd>同時更新を防ぐ鍵 / 互いに相手の鍵を待って進めない状態。</dd>
+      <dt>実行計画（EXPLAIN）</dt><dd>データベースがどうやってデータを探すかの計画。ANALYZEを付けると実測。</dd>
+      <dt>インデックス</dt><dd>本の索引のような、検索を速くする仕組み。更新は少し遅くなる。</dd>
+      <dt>Seq Scan / Index Scan</dt><dd>全行を順に読む / インデックスをたどって読む。</dd>
+    </dl>
+  </section>
+
+  <section id="tomorrow">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="t1"><label for="t1">検証環境で <code>\dt</code> と、よく使うテーブル3つの <code>\d</code> を実行し、紙にER図を書く</label></li>
+      <li><input type="checkbox" id="t2"><label for="t2">自分の今月の打刻を、AIを使わずにSELECTで出してみる</label></li>
+      <li><input type="checkbox" id="t3"><label for="t3">次にAIからSQLをもらったら、FROMから読んで、JOINを1つずつ足して件数を確かめる</label></li>
+      <li><input type="checkbox" id="t4"><label for="t4">使っているクライアントの「接続先表示」と「自動コミット設定」の場所を確認する</label></li>
+      <li><input type="checkbox" id="t5"><label for="t5">検証環境で BEGIN → UPDATE → SELECT → ROLLBACK を1回やってみる</label></li>
+      <li><input type="checkbox" id="t6"><label for="t6"><code>pg_stat_activity</code> を一度眺めて、自分のセッションを見つける</label></li>
+      <li><input type="checkbox" id="t7"><label for="t7">よく使うSELECTに <code>EXPLAIN ANALYZE</code> を付けて、Seq Scan か Index Scan かを見る</label></li>
+    </ul>
+    <p>ログの中にSQLのエラーや遅いSQLが出てきたときの追いかけ方は、次の <a href="07-logs-incident.html">07 ログと障害調査</a> で扱います。</p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="05-build-env.html"><span>← 前の章</span>05 開発環境をつくる</a><a class="next" href="07-logs-incident.html"><span>次の章 →</span>07 ログと障害調査</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>

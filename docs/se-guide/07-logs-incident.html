@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>07 ログと障害調査</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 07 ログと障害調査</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">07</div>
+  <div><div class="eyebrow">CHAPTER 07 ・ 運用・保守</div><h1>ログと障害調査</h1></div>
+  <p class="summary">ログをAIに丸ごと渡して答えをもらう、から一歩進んで、「どのログを・どの順で・何を探すか」を自分で決められるようになる章です。スタックトレースの読み方、典型的な障害パターン、調査の手順とコマンドをまとめます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>Apache・Tomcat・アプリ・PostgreSQLのログがどこにあり、それぞれ何が分かるか</li>
+    <li>ログ1行・アクセスログ1行の読み方</li>
+    <li>スタックトレースのどこを見れば根本原因にたどり着けるか</li>
+    <li>メモリ不足・コネクション枯渇・ロック待ちなど典型的な障害の「症状→証拠→原因→対処」</li>
+    <li>発生時刻の確定から再発防止までの調査フローと、grep / awk / Select-String の使い方</li>
+    <li>AIにログを渡すときの注意と、AIの推測を自分で裏取りする方法</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#why">なぜ自分で</a><a href="#map">ログの地図</a><a href="#line">1行の読み方</a><a href="#stack">スタックトレース</a><a href="#examples">例外の実例</a><a href="#patterns">障害パターン</a><a href="#flow">調査フロー</a><a href="#commands">コマンド</a><a href="#impact">影響調査</a><a href="#ai">AIに渡すとき</a><a href="#pitfalls">つまずき</a><a href="#quiz">練習問題</a><a href="#terms">用語</a><a href="#tomorrow">明日から</a>
+  </nav>
+
+  <section id="why">
+    <h2>なぜ「自分で読める」必要があるのか</h2>
+    <p>障害の連絡は、たいてい曖昧な形でやってきます。「朝、打刻ができなかったらしい」「申請画面が重い」。AIにログを貼れば、それらしい原因を答えてくれるでしょう。実際、それで解決できてきたと思います。</p>
+    <p>でも、次のような場面ではAIだけでは前に進めません。</p>
+    <ul>
+      <li>ログが数GBあり、どこを渡せばいいか分からない</li>
+      <li>AIの答えが2つに割れて、どちらが正しいか判断できない</li>
+      <li>上司から「影響は何人？いつから？データは大丈夫？」と聞かれる</li>
+      <li>個人情報を含むログを社外のAIに渡せない</li>
+    </ul>
+    <p>障害調査は、刑事ドラマの捜査に似ています。「いつ・どこで・何が起きたか」を確定し、証拠（ログ）を時系列に並べ、最初の異変を探し、動機（根本原因）を突き止める。AIは優秀な助手ですが、<strong>現場の証拠を集めて、どれを助手に見せるかを決めるのは担当者</strong>です。この章では、その「集め方」を身につけます。</p>
+  </section>
+
+  <section id="map">
+    <h2>ログの地図：どこに何が書かれるか</h2>
+    <p>勤怠システムへのリクエストは、ブラウザ → Apache → Tomcat → アプリ（Spring Boot）→ PostgreSQL の順に流れます（全体像は <a href="02-system-map.html">02 システムの全体像</a>）。<strong>それぞれの層が、それぞれのログを書きます</strong>。どの層で止まったかによって、見るべきログが変わります。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 360" style="max-width:680px" role="img" aria-label="層ごとのログの種類">
+        <defs><marker id="arM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <g font-size="13">
+          <rect class="box-soft" x="10" y="20" width="110" height="50" rx="6"/><text x="30" y="50" font-weight="700">ブラウザ</text>
+          <rect class="box" x="150" y="20" width="110" height="50" rx="6"/><text x="172" y="50" font-weight="700">Apache</text>
+          <rect class="box" x="290" y="20" width="110" height="50" rx="6"/><text x="312" y="50" font-weight="700">Tomcat</text>
+          <rect class="box" x="430" y="20" width="110" height="50" rx="6"/><text x="446" y="44" font-weight="700">アプリ</text><text x="446" y="62" font-size="11" class="muted">Spring Boot</text>
+          <rect class="box" x="570" y="20" width="100" height="50" rx="6"/><text x="580" y="50" font-weight="700">PostgreSQL</text>
+        </g>
+        <line class="line-accent" x1="120" y1="45" x2="148" y2="45" marker-end="url(#arM)"/>
+        <line class="line-accent" x1="260" y1="45" x2="288" y2="45" marker-end="url(#arM)"/>
+        <line class="line-accent" x1="400" y1="45" x2="428" y2="45" marker-end="url(#arM)"/>
+        <line class="line-accent" x1="540" y1="45" x2="568" y2="45" marker-end="url(#arM)"/>
+        <g font-size="12">
+          <rect class="box-warn" x="150" y="100" width="110" height="80" rx="4"/>
+          <text x="158" y="122">access_log</text><text x="158" y="142">error_log</text><text x="158" y="166" class="muted">受付と応答</text>
+          <rect class="box-warn" x="290" y="100" width="110" height="160" rx="4"/>
+          <text x="298" y="122">catalina.out</text><text x="298" y="142">catalina.日付.log</text><text x="298" y="162">localhost.日付.log</text><text x="298" y="182">localhost_access</text><text x="298" y="198">_log.日付.txt</text><text x="298" y="222">GCログ（JVM）</text><text x="298" y="246" class="muted">起動・配備・例外</text>
+          <rect class="box-warn" x="430" y="100" width="110" height="80" rx="4"/>
+          <text x="438" y="122">アプリ独自ログ</text><text x="438" y="142">logback /</text><text x="438" y="160">log4j2</text>
+          <rect class="box-warn" x="570" y="100" width="100" height="80" rx="4"/>
+          <text x="578" y="122">postgresql</text><text x="578" y="140">-日付.log</text><text x="578" y="166" class="muted">SQLエラー等</text>
+        </g>
+        <line class="line" x1="205" y1="70" x2="205" y2="100"/>
+        <line class="line" x1="345" y1="70" x2="345" y2="100"/>
+        <line class="line" x1="485" y1="70" x2="485" y2="100"/>
+        <line class="line" x1="620" y1="70" x2="620" y2="100"/>
+        <text x="10" y="300" font-size="12">・アクセスログ＝「誰が・いつ・何に・結果どうだったか」の受付台帳（影響範囲を数える）</text>
+        <text x="10" y="322" font-size="12">・エラーログ／アプリログ＝「なぜ失敗したか」の詳細（原因を探す）</text>
+        <text x="10" y="344" font-size="12">・同じ時刻で層をまたいで突き合わせると、どこで止まったかが見える</text>
+      </svg>
+      <figcaption>リクエストの通り道と、各層が書くログ（ファイル名は一般的な既定値の例）</figcaption>
+    </figure>
+    <div class="tbl"><table>
+      <tr><th>ログ</th><th>主な場所（一般的な例）</th><th>何が分かるか</th></tr>
+      <tr><td><code>catalina.out</code></td><td><code>$CATALINA_BASE/logs/</code></td><td>Tomcatの標準出力・標準エラー。アプリがコンソールに出したログ、<code>System.out</code>、捕まえられなかった例外、OutOfMemoryError などがここに出ることが多い。肥大化しやすい</td></tr>
+      <tr><td><code>catalina.YYYY-MM-DD.log</code></td><td>同上</td><td>Tomcat本体のログ。起動・停止、アプリの配備（デプロイ）成功・失敗</td></tr>
+      <tr><td><code>localhost.YYYY-MM-DD.log</code></td><td>同上</td><td>ホスト（localhost）単位のログ。サーブレットやフィルタで発生しアプリが処理しきれなかった例外、アプリ初期化の失敗</td></tr>
+      <tr><td><code>localhost_access_log.YYYY-MM-DD.txt</code></td><td>同上</td><td>Tomcatが受けたリクエストの一覧（AccessLogValve）。URL・ステータス・処理時間</td></tr>
+      <tr><td>Apache <code>access_log</code></td><td><code>/var/log/httpd/</code>（RHEL系）、<code>/var/log/apache2/</code>（Debian系）、Windowsは <code>Apache24\logs\</code></td><td>入口で受けた全リクエスト。利用者のIP、時刻、ステータス</td></tr>
+      <tr><td>Apache <code>error_log</code></td><td>同上</td><td>Apache自体のエラー。Tomcatにつなげない（プロキシエラー、503）、設定ミス</td></tr>
+      <tr><td>アプリ独自ログ</td><td>logback-spring.xml / log4j2.xml の設定次第</td><td>業務処理のログ。どの社員の何の処理で失敗したか、スタックトレース</td></tr>
+      <tr><td>GCログ</td><td>JVM起動オプション（例：<code>-Xlog:gc*:file=...</code>）の設定次第</td><td>ガベージコレクションの頻度と停止時間、ヒープ使用量。メモリ不足の兆候</td></tr>
+      <tr><td>PostgreSQLログ</td><td>データディレクトリの <code>log/</code> など（<code>log_directory</code> 設定次第）</td><td>SQLのエラー、デッドロック、遅いSQL（<code>log_min_duration_statement</code> 設定時）、接続数超過</td></tr>
+    </table></div>
+    <div class="callout info"><b>構成によって変わるところ</b><ul>
+      <li>Windowsのサービスとして動くTomcatでは、<code>catalina.out</code> の代わりに <code>tomcat9-stdout.日付.log</code> / <code>tomcat9-stderr.日付.log</code> のようなファイルに出ます。</li>
+      <li>Spring Bootを実行可能jar（組み込みTomcat）で動かしている場合、<code>catalina.*</code> のファイルはなく、アクセスログは <code>server.tomcat.accesslog.*</code> の設定で出します。warをTomcatに配備している場合は上の表のとおりです。</li>
+    </ul></div>
+    <div class="callout info"><b>先輩・社内Wikiに確認する項目</b><ul>
+      <li>本番・検証サーバーのホスト名と、各ログの実際の置き場所</li>
+      <li>アプリ独自ログのファイル名、ローテーション（何日分残るか、圧縮されるか）</li>
+      <li>ログを見るための権限・手順（直接ログインか、転送された場所を見るか）</li>
+      <li>アクセスログに処理時間（%D）が入っているか、GCログ・遅いSQLのログは有効か</li>
+    </ul></div>
+  </section>
+
+  <section id="line">
+    <h2>ログ1行の読み方</h2>
+    <h3>アプリのログ（logbackの例）</h3>
+    <p>形式は設定（パターン）で変わりますが、Spring Bootの既定に近い形はこうです。</p>
+<pre><code>2026-03-12 09:03:41.512 ERROR 21844 --- [nio-8080-exec-7] c.e.kintai.service.ClockService : 打刻登録に失敗しました employeeCode=E01234</code></pre>
+    <div class="tbl"><table>
+      <tr><th>部分</th><th>例</th><th>意味・使い方</th></tr>
+      <tr><td>日時</td><td><code>2026-03-12 09:03:41.512</code></td><td>いつ。他のログと突き合わせる軸。サーバー間で時計がずれていないかも意識する</td></tr>
+      <tr><td>レベル</td><td><code>ERROR</code></td><td>重要度。ERROR（処理失敗）&gt; WARN（注意・続行）&gt; INFO（通常の記録）&gt; DEBUG（開発用の詳細）。本番は通常INFO以上だけ出す</td></tr>
+      <tr><td>プロセスID</td><td><code>21844</code></td><td>どのJavaプロセスか。再起動するとかわる</td></tr>
+      <tr><td>スレッド名</td><td><code>nio-8080-exec-7</code></td><td>どの作業員が処理したか。Tomcatのリクエスト処理スレッド（<code>http-nio-8080-exec-N</code> の省略表示）。同じスレッド名で前後の行を追うと、1リクエストの流れが分かる</td></tr>
+      <tr><td>ロガー名</td><td><code>c.e.kintai.service.ClockService</code></td><td>どのクラスが書いたか（パッケージ名は省略される）。自社のコードかライブラリかの判別に</td></tr>
+      <tr><td>メッセージ</td><td><code>打刻登録に失敗しました …</code></td><td>開発者が書いた説明。直後にスタックトレースが続くことが多い</td></tr>
+    </table></div>
+    <h3>アクセスログ</h3>
+    <p>Apacheでよく使われる combined 形式に、処理時間 <code>%D</code> を末尾に追加した例です。</p>
+<pre><code>10.20.31.45 - - [12/Mar/2026:09:03:41 +0900] "POST /kintai/clock/in HTTP/1.1" 500 1243 "https://kintai.example.local/kintai/top" "Mozilla/5.0 (Windows NT 10.0; ...)" 30215871</code></pre>
+    <div class="tbl"><table>
+      <tr><th>項目</th><th>書式</th><th>例と意味</th></tr>
+      <tr><td>クライアントIP</td><td><code>%h</code></td><td><code>10.20.31.45</code>。プロキシ経由だとプロキシのIPになる</td></tr>
+      <tr><td>ユーザー</td><td><code>%l %u</code></td><td><code>- -</code>。アプリのログインとは別物で、通常は空</td></tr>
+      <tr><td>時刻</td><td><code>%t</code></td><td><code>[12/Mar/2026:09:03:41 +0900]</code>。応答を返した時刻ではなく、リクエストを受けた時刻</td></tr>
+      <tr><td>リクエスト行</td><td><code>"%r"</code></td><td>メソッド・URL・プロトコル。どの機能か</td></tr>
+      <tr><td>ステータス</td><td><code>%&gt;s</code></td><td><code>500</code>。2xx成功、3xx転送、4xx利用者側（404など）、5xxサーバー側の失敗（500アプリエラー、502/503は裏側につながらない、504は裏側の応答待ちタイムアウト）</td></tr>
+      <tr><td>バイト数</td><td><code>%b</code></td><td>返したデータ量。0や「-」が並ぶと中身なしの応答</td></tr>
+      <tr><td>参照元・ブラウザ</td><td><code>"%{Referer}i" "%{User-Agent}i"</code></td><td>どの画面から来たか、どのブラウザか</td></tr>
+      <tr><td>処理時間</td><td><code>%D</code></td><td><code>30215871</code>。Apacheではマイクロ秒なので約30.2秒。Tomcatの AccessLogValve の <code>%D</code> は Tomcat 9 まではミリ秒、10.1以降はマイクロ秒</td></tr>
+    </table></div>
+    <div class="callout warn"><b>処理時間は既定では出ていないことが多い</b><p>Tomcatの既定のアクセスログパターンは <code>%h %l %u %t "%r" %s %b</code> で、処理時間は入っていません。「遅い」障害の調査には処理時間が欠かせないので、入っていなければ追加を改善提案にできます（設定変更は所定の手順で）。</p></div>
+  </section>
+
+  <section id="stack">
+    <h2>スタックトレースの読み方</h2>
+    <p>スタックトレースは「例外がどこで起き、どういう呼び出しの道をたどってきたか」の記録です。長くて怖く見えますが、見るべき場所は決まっています。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="スタックトレースの各部分の意味">
+        <g font-size="12">
+          <rect class="box-soft" x="10" y="14" width="420" height="40" rx="4"/>
+          <text x="18" y="30">o.s.dao.DuplicateKeyException:</text>
+          <text x="18" y="46">  PreparedStatementCallback; ...</text>
+          <text x="18" y="76">  at o.s.jdbc.core.JdbcTemplate.update(...)</text>
+          <text x="18" y="94" class="muted">  at ...（Springの行が続く）</text>
+          <rect class="box-ok" x="10" y="102" width="420" height="44" rx="4"/>
+          <text x="18" y="120">  at c.e.kintai.repo.ClockRepository</text>
+          <text x="18" y="138">       .insert(ClockRepository.java:58)</text>
+          <text x="18" y="164">  at c.e.kintai.service.ClockService.clockIn(...:31)</text>
+          <text x="18" y="184" class="muted">  ... 23 more</text>
+          <rect class="box-ng" x="10" y="200" width="420" height="96" rx="4"/>
+          <text x="18" y="218">Caused by: o.postgresql.util.PSQLException:</text>
+          <text x="18" y="236">  ERROR: duplicate key value violates</text>
+          <text x="18" y="254">  unique constraint "attendance_emp_date_key"</text>
+          <text x="18" y="272">  Detail: Key (employee_id, work_date)</text>
+          <text x="18" y="288">          =(1234, 2026-03-12) already exists.</text>
+          <text x="18" y="316">  at o.postgresql.core.v3.QueryExecutorImpl...</text>
+          <text x="18" y="334" class="muted">  ... 40 more</text>
+        </g>
+        <g font-size="12">
+          <line class="line" x1="430" y1="34" x2="450" y2="34"/>
+          <text x="455" y="30" font-weight="700">① 例外クラス：メッセージ</text>
+          <text x="455" y="48" class="muted">何が起きたか（外側の包み）</text>
+          <line class="line" x1="430" y1="124" x2="450" y2="124"/>
+          <text x="455" y="118" font-weight="700">② 自社パッケージの最初の行</text>
+          <text x="455" y="136" class="muted">自分たちのコードのどこか</text>
+          <text x="455" y="152" class="muted">（ファイル名:行番号）</text>
+          <line class="line" x1="430" y1="184" x2="450" y2="184"/>
+          <text x="455" y="182" font-weight="700">③ ... 23 more</text>
+          <text x="455" y="198" class="muted">上と同じ行なので省略</text>
+          <line class="line" x1="430" y1="248" x2="450" y2="248"/>
+          <text x="455" y="236" font-weight="700">④ 一番下の Caused by</text>
+          <text x="455" y="254" class="muted">＝根本原因に一番近い</text>
+          <text x="455" y="272" class="muted">ここのメッセージを最初に読む</text>
+        </g>
+        <text x="10" y="366" font-size="12">読む順番：④ 一番下の Caused by のメッセージ → ② 自社パッケージの行 → ① 一番上</text>
+        <text x="10" y="388" font-size="12" class="muted">（o.s.=org.springframework、c.e.=com.example の省略。実際のログは省略されない）</text>
+      </svg>
+      <figcaption>スタックトレースは上が「外側の結果」、Caused by を下へたどるほど「内側の原因」</figcaption>
+    </figure>
+    <ul>
+      <li><strong>例外クラス名とメッセージ</strong>：<code>java.lang.NullPointerException</code> や <code>PSQLException</code> の部分。まずここで「何の種類の失敗か」が分かります。</li>
+      <li><strong>at 行</strong>：呼び出しの履歴。上ほど「最後に実行していた場所」です。<code>クラス名.メソッド名(ファイル名:行番号)</code> の形です。</li>
+      <li><strong>自社パッケージの行</strong>：<code>com.example.kintai...</code> のような自社のパッケージ名で始まる最初の行が、自分たちのコードの「現場」です。Spring・Tomcat・JDBCの行は道のりなので読み飛ばして構いません。</li>
+      <li><strong>Caused by</strong>：例外が別の例外で包まれていることを表します。Springはよく低レベルの例外（PSQLExceptionなど）を自分の例外で包みます。<strong>一番下の Caused by が根本原因に一番近い</strong>ので、そこのメッセージを最初に読みます。</li>
+      <li><strong>... 23 more</strong>：「残り23行は上の（外側の）トレースと同じなので省略」という意味です。消えた情報ではありません。</li>
+    </ul>
+    <div class="callout tip"><b>最初の1件を探す</b><p>障害時は同じ例外が何百回も出ます。調べるべきは<strong>一番最初に出たもの</strong>です。後のエラーは、最初の失敗の巻き添え（連鎖）であることがよくあります。</p></div>
+  </section>
+
+  <section id="examples">
+    <h2>例外の実例と読み方</h2>
+    <p>勤怠システムでよく見る例外を、架空の例で並べます。クラス名やパッケージ名は一般的な例です。</p>
+
+    <h3>NullPointerException：値がないのに使おうとした</h3>
+<pre><code>java.lang.NullPointerException: Cannot invoke "java.time.LocalDateTime.isBefore(java.time.chrono.ChronoLocalDateTime)" because the return value of "com.example.kintai.domain.Attendance.getClockOut()" is null
+	at com.example.kintai.service.OvertimeCalculator.calc(OvertimeCalculator.java:42)
+	at com.example.kintai.service.MonthlyCloseService.closeEmployee(MonthlyCloseService.java:88)
+	...</code></pre>
+    <p>Java 14以降では「何がnullだったか」がメッセージに出ます。この例は「退勤時刻（clockOut）がnullなのに比較しようとした」、つまり<strong>打刻漏れのデータ</strong>で締め処理が落ちた可能性を示します。<code>OvertimeCalculator.java</code> の42行目を開き、その社員のデータを <a href="06-sql-postgres.html">06 自分で書くSQL</a> の方法で確認します。</p>
+
+    <h3>PSQLException：データベースがSQLを拒否した</h3>
+<pre><code>org.postgresql.util.PSQLException: ERROR: column "clock_out_time" does not exist
+  Hint: Perhaps you meant to reference the column "attendance.clock_out".
+  Position: 45</code></pre>
+    <p><code>ERROR:</code> の後ろはPostgreSQL自身のメッセージです。列名の間違い（デプロイ後ならSQLとテーブル定義の食い違い）、一意制約違反（二重登録）、<code>value too long for type character varying(50)</code>（入力が長すぎる）、<code>canceling statement due to statement timeout</code>（SQLが時間切れ）などがあります。同じ時刻のPostgreSQLログにも対応するエラーが出ているはずです。</p>
+
+    <h3>SQLTransientConnectionException：コネクションプールが空</h3>
+<pre><code>org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.
+	...
+Caused by: java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.
+	at com.zaxxer.hikari.pool.HikariPool.createTimeoutException(HikariPool.java:696)
+	...</code></pre>
+    <p>HikariCPはDB接続を貸し出す「貸し傘置き場」です。傘（コネクション）が全部貸し出されていて30秒待っても返ってこなかった、という意味です。新しめのHikariCPでは <code>(total=10, active=10, idle=0, waiting=25)</code> のように内訳が付きます。<strong>原因は「傘が少ない」より「返ってこない」ことが多い</strong>ので、同じ時刻に長時間SQLやロック待ちがないかをPostgreSQL側（<code>pg_stat_activity</code>、ログ）で確認します。</p>
+
+    <h3>OutOfMemoryError: Java heap space：メモリが尽きた</h3>
+<pre><code>Exception in thread "http-nio-8080-exec-15" java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:237)
+	at com.example.kintai.export.CsvExportService.loadAll(CsvExportService.java:64)
+	...</code></pre>
+    <p>Javaに割り当てたメモリ（ヒープ）を使い切りました。at行は「最後にメモリを取ろうとした場所」で、<strong>犯人とは限りません</strong>（満員電車で最後に乗った人が悪いとは限らないのと同じ）。この例のように全件をリストに読み込むCSV出力などは疑わしいですが、GCログやヒープダンプで確かめる必要があります。OOM後のJVMは不安定なので、通常は再起動が必要です。</p>
+
+    <h3>SocketTimeoutException：相手が応答しない</h3>
+<pre><code>org.springframework.web.client.ResourceAccessException: I/O error on POST request for "https://payroll.example.local/api/attendance": Read timed out; nested exception is java.net.SocketTimeoutException: Read timed out</code></pre>
+    <p>外部システム（この例では給与システム）に送ったが、決めた時間内に返事が来なかった、という意味です。<code>connect timed out</code> なら接続自体ができていない（相手が停止・ネットワーク不通）、<code>Read timed out</code> なら接続はできたが応答が遅い、と区別できます。相手側の障害やメンテナンス情報を確認します。</p>
+
+    <h3>ClientAbortException：利用者が待たずに去った</h3>
+<pre><code>org.apache.catalina.connector.ClientAbortException: java.io.IOException: Broken pipe</code></pre>
+    <p>応答を返そうとしたら、ブラウザがもう接続を切っていた、という意味です。利用者がページを閉じた・再読み込みしただけなら<strong>単発では問題ない</strong>ことが多いです。ただし、遅い処理に待ちきれず利用者が離脱した結果として大量に出ている場合は、「遅い」ことのほうが本当の問題です。</p>
+  </section>
+
+  <section id="patterns">
+    <h2>典型的な障害パターンと見るべきログ</h2>
+    <p>障害の種類はそれほど多くありません。パターンを知っていると、症状から「まずどこを見るか」が決まります。</p>
+    <div class="cards">
+      <div class="card"><h4>メモリ不足（OOM・GC多発）</h4><p><b>症状</b>全体が徐々に重くなり、最後は無応答。<br><b>証拠</b>catalina.out の <code>OutOfMemoryError</code>、GCログでFull GCが頻発し停止時間が長い。<br><b>原因</b>大量データの一括読み込み、メモリリーク、ヒープ設定不足。<br><b>対処</b>再起動で一時回復→原因処理の特定、ページング化、設定見直し。</p></div>
+      <div class="card"><h4>DBコネクション枯渇</h4><p><b>症状</b>DBを使う画面が30秒ほど待って500。<br><b>証拠</b>アプリログの <code>Connection is not available</code>、pg_stat_activity で長時間のSQLや idle in transaction。<br><b>原因</b>遅いSQL・ロック待ちで接続が返らない、接続の閉じ忘れ。<br><b>対処</b>詰まっている処理の特定と解消。プール拡大は根本対策ではないことが多い。</p></div>
+      <div class="card"><h4>スレッド枯渇（maxThreads）</h4><p><b>症状</b>静的なページまで遅い・つながらない。Apacheで502/503。<br><b>証拠</b>アクセスログの処理時間が全体に伸びる、スレッドダンプ（<code>jstack</code>）で exec スレッドが同じ場所で待機。<br><b>原因</b>各リクエストが何か（DB・外部連携）を待ち続け、Tomcatの作業員（既定200）が全員ふさがる。<br><b>対処</b>待っている先を解消。タイムアウト設定。</p></div>
+      <div class="card"><h4>長時間SQL・ロック待ち</h4><p><b>症状</b>特定の画面・更新だけ固まる。<br><b>証拠</b>PostgreSQLログの遅いSQL・<code>deadlock detected</code>、pg_stat_activity の <code>wait_event_type = Lock</code>。<br><b>原因</b>バッチと画面の同時更新、BEGINしたまま放置、インデックス不足。<br><b>対処</b>ブロック元の特定（<a href="06-sql-postgres.html#lock">06章</a>）、実行時間帯の調整、SQL改善。</p></div>
+      <div class="card"><h4>ディスクフル</h4><p><b>症状</b>突然の書き込み失敗、ログが途中で途切れる、DBが停止。<br><b>証拠</b><code>No space left on device</code>、PostgreSQLの <code>could not write to file</code>、<code>df -h</code> で100%。<br><b>原因</b>catalina.out の肥大化、ローテーション不備、ダンプファイルの放置。<br><b>対処</b>不要ファイルの退避・削除（手順に従う）、ローテーション設定。</p></div>
+      <div class="card"><h4>外部連携のタイムアウト</h4><p><b>症状</b>連携を伴う処理だけ遅い・失敗。<br><b>証拠</b><code>SocketTimeoutException</code>、連携先URLへのリクエストの処理時間。<br><b>原因</b>相手側の障害・遅延、ネットワーク、証明書期限切れ（この場合はSSL系の例外）。<br><b>対処</b>相手先への確認、再送手順、タイムアウトと再試行の設計見直し。</p></div>
+      <div class="card"><h4>デプロイ後の起動失敗</h4><p><b>症状</b>リリース直後から全画面が404や503。<br><b>証拠</b>catalina.日付.log の配備失敗、localhost.日付.log やアプリログの <code>APPLICATION FAILED TO START</code>、<code>BeanCreationException</code>。<br><b>原因</b>設定ファイルの不足・誤り、DB接続情報、ライブラリの不整合、ポート競合。<br><b>対処</b>一番下の Caused by を読む。切り戻し判断（<a href="04-spring-boot.html">04章</a>）。</p></div>
+      <div class="card"><h4>締め処理バッチの遅延</h4><p><b>症状</b>朝になってもバッチが終わらない、締め後の画面が使えない。<br><b>証拠</b>バッチログの開始・終了時刻と件数の進み方、PostgreSQLの遅いSQL、ロック待ち。<br><b>原因</b>データ量の増加、実行計画の変化、他処理とのロック競合。<br><b>対処</b>進捗の確認、止めてよいかの判断（必ず責任者と）、SQL改善。</p></div>
+    </div>
+    <div class="callout warn"><b>「再起動で直った」は解決ではない</b><p>再起動はサービスを戻すための応急処置です。原因がメモリリークやデータ量なら、同じ障害はまた起きます。再起動の前に、可能ならスレッドダンプやヒープの状態など「証拠」を残すべきか、手順書と先輩に確認しておきましょう。</p></div>
+  </section>
+
+  <section id="flow">
+    <h2>調査フロー：最初の異変を探す</h2>
+    <ol class="steps">
+      <li><b>発生時刻と症状を確定する</b>「朝」ではなく「3/12 9:03ごろから」。誰が、どの画面で、どういう表示（エラー画面・固まる・遅い）だったか。分からなければ問い合わせ元に確認します。</li>
+      <li><b>時系列を整理する</b>その前後に何があったか：リリース、設定変更、バッチの実行、利用集中（始業・締め日）、外部システムのメンテナンス。</li>
+      <li><b>アクセスログで影響範囲をつかむ</b>500や遅いリクエストが何時から何時まで、何件、どのURLで、いくつのIP（利用者）から出ているか。「全画面か、特定機能か」もここで分かります。</li>
+      <li><b>エラーログで最初のエラーを探す</b>影響が始まった時刻の少し前から、アプリログ・catalina.out・PostgreSQLログを読み、最初に出たERRORを見つけます。</li>
+      <li><b>根本原因にたどり着く</b>一番下の Caused by、自社コードの行、DB側の状態。「なぜ」を2〜3回繰り返して、表面の症状ではなく原因まで行きます。</li>
+      <li><b>影響調査をする</b>どの機能が、どのデータが、何人に影響したか。登録されなかった打刻、二重登録、途中で止まったバッチのデータはないか。</li>
+      <li><b>再発防止を考える</b>直接の修正だけでなく、検知（監視・アラート）、手順、設計の改善まで。</li>
+    </ol>
+    <figure class="figure">
+      <svg viewBox="0 0 680 300" style="max-width:680px" role="img" aria-label="障害のタイムラインの例">
+        <defs><marker id="arT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
+        <line class="line" x1="20" y1="150" x2="665" y2="150" marker-end="url(#arT)"/>
+        <g font-size="12">
+          <circle class="box-warn" cx="60" cy="150" r="7"/>
+          <text x="40" y="136" font-weight="700">09:00</text>
+          <text x="20" y="180">締めバッチ開始</text>
+          <text x="20" y="198" class="muted">attendance を</text>
+          <text x="20" y="214" class="muted">大量UPDATE</text>
+          <circle class="box-ng" cx="190" cy="150" r="7"/>
+          <text x="170" y="136" font-weight="700">09:02</text>
+          <text x="150" y="70">打刻のUPDATEが</text>
+          <text x="150" y="88">ロック待ちに</text>
+          <text x="150" y="106" class="muted">（最初の異変）</text>
+          <circle class="box-ng" cx="320" cy="150" r="7"/>
+          <text x="300" y="136" font-weight="700">09:03</text>
+          <text x="282" y="180">Connection is</text>
+          <text x="282" y="198">not available</text>
+          <text x="282" y="214" class="muted">打刻・申請で500</text>
+          <circle class="box-ng" cx="440" cy="150" r="7"/>
+          <text x="420" y="136" font-weight="700">09:10</text>
+          <text x="410" y="70">問い合わせ</text>
+          <text x="410" y="88">「打刻できない」</text>
+          <circle class="box-ok" cx="560" cy="150" r="7"/>
+          <text x="540" y="136" font-weight="700">09:25</text>
+          <text x="520" y="180">バッチ完了</text>
+          <text x="520" y="198">500が止まる</text>
+          <text x="520" y="214" class="muted">（自然回復）</text>
+        </g>
+        <rect class="box-ng" x="190" y="232" width="370" height="16" rx="3"/>
+        <text x="200" y="270" font-size="12">影響時間帯 09:02〜09:25（アクセスログで500を数える範囲）</text>
+        <text x="20" y="292" font-size="12" class="muted">問い合わせの時刻（09:10）は発生時刻ではない。ログで本当の始まりを探す</text>
+      </svg>
+      <figcaption>架空の例：締めバッチのロックで打刻が待たされ、コネクションが枯渇した</figcaption>
+    </figure>
+    <p>このタイムラインのように、<strong>問い合わせが来た時刻・エラーが大量に出た時刻・最初の異変の時刻はそれぞれ違います</strong>。報告で「9:10に障害発生」と書くと、9:02〜9:10に打刻できなかった人を見落とします。</p>
+  </section>
+
+  <section id="commands">
+    <h2>ログを絞り込むコマンド</h2>
+    <p>巨大なログをエディタで開くと固まります。コマンドで「時刻で絞る」「数える」「種類ごとに集計する」のが基本です。</p>
+    <h3>Linux（grep / less / tail / awk）</h3>
+<pre><code><span class="c"># 流れてくるログをリアルタイムに見る（ローテーションに追従するなら -F）</span>
+tail -F /opt/tomcat/logs/catalina.out
+
+<span class="c"># less で開く：/文字列 で検索、n 次、N 前、G 末尾、F 追従（Ctrl+C で解除）</span>
+less /opt/tomcat/logs/catalina.out
+
+<span class="c"># 例外名を含む行と、後ろ30行（スタックトレース）を表示</span>
+grep -n -A 30 'SQLTransientConnectionException' app.log | less
+
+<span class="c"># 圧縮済みの古いログも検索</span>
+zgrep -c 'OutOfMemoryError' catalina.out-20260311.gz
+
+<span class="c"># アプリログ：9:00〜9:30 の行だけ（行頭が日時の形式の場合）</span>
+awk '$1" "$2 &gt;= "2026-03-12 09:00" &amp;&amp; $1" "$2 &lt; "2026-03-12 09:30"' app.log &gt; app_0900.log
+
+<span class="c"># アクセスログ（combined形式）：ステータス500の件数（9番目の項目がステータス）</span>
+awk '$9 == 500' access_log | wc -l
+
+<span class="c"># 500が出たURLの上位</span>
+awk '$9 == 500 {print $7}' access_log | sort | uniq -c | sort -rn | head
+
+<span class="c"># 9時台の500を、1分ごとに数える（時刻の「時:分」まで切り出す）</span>
+grep '12/Mar/2026:09:' access_log | awk '$9 == 500 {print substr($4, 2, 17)}' | uniq -c
+
+<span class="c"># 500を受けたIPの種類数（影響を受けた端末数の目安）</span>
+awk '$9 == 500 {print $1}' access_log | sort -u | wc -l
+
+<span class="c"># 処理時間（末尾の %D、マイクロ秒）が10秒を超えたリクエスト</span>
+awk '$NF &gt; 10000000' access_log | head
+
+<span class="c"># 例外名ごとの件数</span>
+grep -oE '[A-Za-z.]+(Exception|Error)' app.log | sort | uniq -c | sort -rn | head</code></pre>
+    <div class="callout warn"><b>時刻で絞るときの落とし穴</b><p>スタックトレースの行は日時で始まらないので、上の awk の時刻絞り込みでは消えてしまいます。原因を読むときは <code>grep -A</code> や less の検索を使い、awk は件数を数えるために使うと分けて考えましょう。また、ログの時刻がサーバーごとにずれていないか（NTPで同期されているか）も意識してください。</p></div>
+
+    <h3>Windows（findstr / PowerShell）</h3>
+<pre><code><span class="c">REM 例外名を含む行を探す（/N 行番号、/C: で文字列そのもの）</span>
+findstr /N /C:"OutOfMemoryError" catalina.2026-03-12.log
+
+<span class="c"># PowerShell：tail -f 相当</span>
+Get-Content .\app.log -Wait -Tail 50
+
+<span class="c"># ステータス500の件数（" 500 " を含む行）</span>
+(Select-String -Path .\localhost_access_log.2026-03-12.txt -Pattern '" 500 ').Count
+
+<span class="c"># 例外名の行と、その後ろ30行</span>
+Select-String -Path .\app.log -Pattern 'SQLTransientConnectionException' -Context 0,30
+
+<span class="c"># 例外名ごとの件数</span>
+Select-String -Path .\app.log -Pattern '[A-Za-z.]+(Exception|Error)' -AllMatches |
+  ForEach-Object { $_.Matches.Value } | Group-Object | Sort-Object Count -Descending |
+  Select-Object -First 10 Count, Name</code></pre>
+    <p>GUIなら、<strong>サクラエディタのGrep</strong>（メニュー「検索」→「Grep」）が便利です。フォルダとファイル名（<code>*.log</code>）を指定し、「正規表現」にチェックを入れれば、複数ファイルを横断して検索でき、結果の行をダブルクリックすると該当箇所に飛べます。</p>
+    <div class="callout info"><b>文字コードに注意</b><p>ログがUTF-8だと、<code>findstr</code> では日本語の検索がうまくいかないことがあります。PowerShellの <code>Select-String</code> では <code>-Encoding UTF8</code> を指定できます（PowerShell 7 は既定でUTF-8）。サクラエディタは文字コードの自動判別か、指定を確認しましょう。</p></div>
+  </section>
+
+  <section id="impact">
+    <h2>影響調査：事実を集める型</h2>
+    <p>障害の後に必ず聞かれるのが「影響は？」です。この章では<strong>事実の集め方</strong>を扱い、それをどう伝えるかは <a href="11-communication.html">11 伝える技術</a> で扱います。集めるべき事実は次の型で整理すると漏れません。</p>
+    <div class="tbl"><table>
+      <tr><th>項目</th><th>何を調べるか</th><th>根拠にするもの</th></tr>
+      <tr><td>発生時間帯</td><td>最初の異変〜回復の時刻</td><td>エラーログの最初と最後、アクセスログの500の分布</td></tr>
+      <tr><td>事象</td><td>利用者から見て何が起きたか（エラー画面、固まった）</td><td>問い合わせ内容、ステータスコード</td></tr>
+      <tr><td>影響機能</td><td>どの画面・処理か</td><td>アクセスログのURL集計</td></tr>
+      <tr><td>影響人数・件数</td><td>失敗したリクエスト数、利用者数</td><td>アクセスログの件数・IP数、アプリログの社員コード</td></tr>
+      <tr><td>データへの影響</td><td>登録漏れ、二重登録、途中で止まった更新</td><td>SQLでの確認（例：その時間帯の打刻の欠落）</td></tr>
+      <tr><td>原因</td><td>判明しているもの／推定のもの（区別して書く）</td><td>スタックトレース、DBの状態</td></tr>
+      <tr><td>対応状況</td><td>実施済みの対処、残作業、回避策</td><td>作業記録</td></tr>
+    </table></div>
+    <div class="compare">
+      <div class="bad"><b>あいまいな報告</b><p>「朝、DBが重くて打刻できない人がいたようです。今は直っています。」</p></div>
+      <div class="good"><b>事実がそろった報告</b><p>「3/12 9:02〜9:25、打刻と申請の画面で500エラー。アクセスログ上の失敗は打刻412件・申請37件、端末数は298。締めバッチのロック待ちでDB接続が枯渇したと見ています（ロック待ちはログで確認済み、バッチ側SQLの特定は調査中）。失敗した打刻は再登録が必要で、対象者の一覧を作成中です。」</p></div>
+    </div>
+    <p>「確認済み」と「推定」を分けて書くのが大事です。AIの答えをそのまま書くと、推定が事実のように見えてしまいます。</p>
+  </section>
+
+  <section id="ai">
+    <h2>AIにログを渡すときの注意</h2>
+    <ul>
+      <li><strong>個人情報・機密を消す</strong>：氏名、社員コード、メールアドレス、IPアドレス、セッションID、パスワードを含む接続文字列など。そもそも社外のAIにログを渡してよいか、社内のルールを先に確認してください。</li>
+      <li><strong>全体ではなく範囲を絞る</strong>：発生時刻の前後数分、最初のエラーとそのスタックトレース、同時刻のアクセスログ数行。大量に貼ると、AIは目立つが無関係なエラーに引っ張られます。</li>
+      <li><strong>状況を言葉で添える</strong>：「9:02から打刻で500。9:00に締めバッチ開始。構成は Apache + Tomcat 9 + Spring Boot + PostgreSQL」。</li>
+      <li><strong>AIの推測を自分でログで裏取りする</strong>：「コネクション枯渇です」と言われたら、<code>Connection is not available</code> が本当に出ているか、何時からか、pg_stat_activity で詰まった処理が見えるかを自分で確認します。</li>
+      <li><strong>「なぜそう判断したのか」を聞く</strong>：根拠の行を示してもらい、自分で読めるかを試す。これが一番の学習になります（<a href="10-ai-learning.html">10 AIと一緒に強くなる</a>）。</li>
+    </ul>
+<pre><code><span class="c"># 渡す前の簡易マスキングの例（IPアドレスと社員コードを置き換え）。完全ではないので目でも確認する</span>
+sed -E -e 's/[0-9]{1,3}(\.[0-9]{1,3}){3}/x.x.x.x/g' \
+       -e 's/employeeCode=[A-Z0-9]+/employeeCode=****/g' app_0900.log &gt; app_0900_masked.log</code></pre>
+  </section>
+
+  <section id="pitfalls">
+    <h2>よくあるつまずき</h2>
+    <div class="cards">
+      <div class="card"><h4>一番上の例外だけ読む</h4><p>外側の包みしか見ていない。一番下の Caused by まで下りる。</p></div>
+      <div class="card"><h4>最後のエラーを原因と思う</h4><p>大量のエラーの後半は巻き添え。最初の1件を探す。</p></div>
+      <div class="card"><h4>問い合わせ時刻＝発生時刻</h4><p>利用者が連絡するまでには時間差がある。ログで本当の開始時刻を確定する。</p></div>
+      <div class="card"><h4>ログの日付を間違える</h4><p>日付ごとのファイルは日付の切り替わりで分かれる。日をまたぐ障害は前日のファイルも見る。ローテーション済みの .gz も忘れずに。</p></div>
+      <div class="card"><h4>ClientAbortException に驚く</h4><p>単発なら利用者の離脱。大量なら「遅さ」が本当の問題。</p></div>
+      <div class="card"><h4>WARNを全部無視する</h4><p>普段から出ているWARNを知っておくと、「いつもと違うWARN」に気づける。平常時のログを一度眺めておく。</p></div>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>練習問題</h2>
+    <p>架空のログです。まず自分で原因の仮説と、次に確認することを考えてから答えを開いてください。</p>
+    <p><b>Q1. 3月の締め日、9時過ぎから打刻画面がエラーになりました。アプリログに次の行が大量にあります。原因の候補と、次に見るべきものは？</b></p>
+<pre><code>2026-03-31 09:04:12.033 ERROR 21844 --- [nio-8080-exec-41] o.a.c.c.C.[.[.[/].[dispatcherServlet] : Servlet.service() ... threw exception
+org.springframework.jdbc.CannotGetJdbcConnectionException: Failed to obtain JDBC Connection; nested exception is java.sql.SQLTransientConnectionException: HikariPool-1 - Connection is not available, request timed out after 30000ms.</code></pre>
+    <details class="quiz">
+      <summary>Q1 の答えを見る</summary>
+      <div class="ans">
+        <p><b>候補</b>：DBコネクションプールの枯渇。コネクションが「返ってこない」理由として、締め処理バッチの長時間SQLやロック待ちが疑わしいです。</p>
+        <p><b>次に見るもの</b>：(1) この行が最初に出た時刻（9:04より前にもないか）。(2) 同時刻の PostgreSQL の状態：<code>pg_stat_activity</code> で長時間実行中・<code>wait_event_type = 'Lock'</code> のセッション、PostgreSQLログの遅いSQL。(3) バッチログの開始時刻。(4) アクセスログで500の件数と時間帯（影響範囲）。プールのサイズを増やすだけでは、詰まっている原因が残ります。</p>
+      </div>
+    </details>
+    <p><b>Q2. 昨日リリースした後、全画面が404になりました。catalina.日付.log に次のような記録があります。どこを読めば原因が分かりますか？</b></p>
+<pre><code>12-Mar-2026 22:15:03.118 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal One or more listeners failed to start. Full details will be found in the appropriate container log file
+12-Mar-2026 22:15:03.121 SEVERE [main] org.apache.catalina.core.StandardContext.startInternal Context [/kintai] startup failed due to previous errors</code></pre>
+    <details class="quiz">
+      <summary>Q2 の答えを見る</summary>
+      <div class="ans">
+        <p>これは「アプリ（/kintai）の起動に失敗した」という結果だけです。メッセージのとおり、詳細は別のログ（<code>localhost.日付.log</code> やアプリログ）にあります。そこで同時刻の例外を探し、<strong>一番下の Caused by</strong> を読みます。たとえば次のような行があれば、DB接続の設定（パスワードなど）が新しい環境で間違っていると分かります。</p>
+<pre><code>Caused by: org.postgresql.util.PSQLException: FATAL: password authentication failed for user "kintai_app"</code></pre>
+        <p>アプリが起動していないので、URLが存在せず404になっていたわけです。対処は設定の修正か切り戻しで、どちらにするかは手順書と責任者の判断です。</p>
+      </div>
+    </details>
+    <p><b>Q3. 夕方から申請画面が少しずつ重くなり、19時ごろに応答しなくなりました。catalina.out の最後のほうにこうあります。何が起きた可能性が高く、何を確認しますか？</b></p>
+<pre><code>Exception in thread "http-nio-8080-exec-88" java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3537)
+	at java.base/java.lang.AbstractStringBuilder.ensureCapacityInternal(AbstractStringBuilder.java:228)
+	at com.example.kintai.report.ApplicationReportService.buildCsv(ApplicationReportService.java:112)</code></pre>
+    <details class="quiz">
+      <summary>Q3 の答えを見る</summary>
+      <div class="ans">
+        <p><b>可能性</b>：ヒープ不足（OOM）。「少しずつ重くなった」のは、メモリが逼迫してGCが頻発していた兆候です。</p>
+        <p><b>確認すること</b>：(1) GCログで、夕方からFull GCの回数と停止時間が増えていないか。(2) アクセスログで、OOMの前に申請一覧のCSV出力など重い処理が繰り返し呼ばれていないか（URLと処理時間）。(3) at行の <code>buildCsv</code> は最後にメモリを取ろうとした場所であって、犯人と断定はできない点に注意。ヒープダンプが取れていれば、何がメモリを占めていたかを分析できます。</p>
+      </div>
+    </details>
+  </section>
+
+  <section id="terms">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>ログレベル</dt><dd>ERROR / WARN / INFO / DEBUG の重要度。設定より低いレベルは出力されない。</dd>
+      <dt>アクセスログ</dt><dd>受け付けたリクエストの台帳。影響範囲を数えるのに使う。</dd>
+      <dt>スタックトレース</dt><dd>例外が起きた場所と、そこまでの呼び出しの履歴。</dd>
+      <dt>Caused by</dt><dd>包まれた内側の例外。一番下が根本原因に近い。</dd>
+      <dt>コネクションプール</dt><dd>DB接続を使い回す仕組み。Spring Bootの既定はHikariCP。</dd>
+      <dt>maxThreads</dt><dd>Tomcatが同時に処理できるリクエスト数の上限（既定200）。</dd>
+      <dt>ヒープ / GC</dt><dd>Javaのオブジェクトを置くメモリ / 使われなくなったメモリを回収する仕組み。</dd>
+      <dt>スレッドダンプ</dt><dd>その瞬間に各スレッドが何をしているかの一覧。<code>jstack</code> などで取得。</dd>
+      <dt>ローテーション</dt><dd>ログファイルを日付やサイズで切り替え、古いものを圧縮・削除する運用。</dd>
+      <dt>根本原因</dt><dd>表面の症状ではなく、それを引き起こした元の原因。</dd>
+      <dt>影響調査</dt><dd>障害でどの機能・データ・利用者が影響を受けたかを事実で確定する作業。</dd>
+    </dl>
+  </section>
+
+  <section id="tomorrow">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="t1"><label for="t1">検証環境のサーバーで、Tomcat・Apache・アプリ・PostgreSQLのログの場所を実際に確認し、メモする</label></li>
+      <li><input type="checkbox" id="t2"><label for="t2">平常時のアプリログを10分眺めて、いつも出ているWARNを知る</label></li>
+      <li><input type="checkbox" id="t3"><label for="t3">アクセスログで「昨日のステータス500の件数」を grep / awk か Select-String で数えてみる</label></li>
+      <li><input type="checkbox" id="t4"><label for="t4">次にスタックトレースを見たら、AIに貼る前に「一番下の Caused by」と「自社パッケージの最初の行」を自分で指さす</label></li>
+      <li><input type="checkbox" id="t5"><label for="t5">AIの回答を受け取ったら、根拠のログ行を1つ自分で見つけて裏取りする</label></li>
+      <li><input type="checkbox" id="t6"><label for="t6">過去の障害報告を1件読み、この章の調査フローに当てはめてみる</label></li>
+      <li><input type="checkbox" id="t7"><label for="t7">「先輩・社内Wikiに確認する項目」を1つ聞いてみる</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="06-sql-postgres.html"><span>← 前の章</span>06 自分で書くSQL</a><a class="next" href="08-xml-forms.html"><span>次の章 →</span>08 XMLのWeb申請</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>
