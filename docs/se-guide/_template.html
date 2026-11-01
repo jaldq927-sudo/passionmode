@@ -7,28 +7,103 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
-<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="visual.css">
 </head>
 <body>
-<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / NN タイトル</span></div></div>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">NN タイトル</span><a href="v1/NN-xxx.html">文字で詳しく読む</a></div><div class="progress"></div></div>
 
-<header class="chapter"><div class="wrap">
+<header class="hero"><div class="wrap">
   <div class="no">NN</div>
-  <div><div class="eyebrow">CHAPTER NN ・ 分類</div><h1>タイトル</h1></div>
-  <p class="summary">この章の要約を1〜2文で。</p>
+  <div><div class="eyebrow">CHAPTER NN</div><h1>タイトル</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-target"/></svg>3秒でわかる要点1（20字以内）</div>
+    <div><svg class="ic"><use href="#i-bulb"/></svg>要点2</div>
+    <div><svg class="ic"><use href="#i-check"/></svg>要点3</div>
+  </div>
 </div></header>
 
 <main class="wrap">
-  <div class="goals"><b>この章でわかること</b><ul><li>…</li></ul></div>
-  <nav class="ltoc" aria-label="この章の目次"><a href="#s1">見出し</a></nav>
 
-  <section id="s1">
-    <h2>見出し</h2>
-    <p>本文</p>
+  <!-- ===== 部品見本：pipe（アイコンの流れ図） ===== -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 1</span><h2>見出しは20字以内</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b>押す</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b>受付</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b>保存</div>
+    </div>
+    <p class="say">説明は1〜2行まで。</p>
+  </section>
+
+  <!-- ===== 部品見本：stepper（紙芝居） ===== -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 2</span><h2>紙芝居で進める</h2></div></div>
+    <div class="stepper">
+      <div class="frame"><div class="big">1枚目：<em>大きな一言</em></div><p class="cap">補足1行</p></div>
+      <div class="frame"><div class="pipe">…</div><p class="cap">2枚目の補足</p></div>
+    </div>
+  </section>
+
+  <!-- ===== 部品見本：explore（クリックで説明） ===== -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 3</span><h2>押して確かめる</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-a"><svg class="ic"><use href="#i-web"/></svg><span>Apache<small>受付係</small></span></button>
+        <button class="spot" data-show="p-b"><svg class="ic"><use href="#i-server"/></svg><span>Tomcat<small>厨房</small></span></button>
+      </div>
+      <div class="panel" id="p-a"><h3><svg class="ic"><use href="#i-web"/></svg>Apache</h3><ul><li>短い箇条書き</li></ul></div>
+      <div class="panel" id="p-b" hidden><h3>Tomcat</h3><ul><li>…</li></ul></div>
+    </div>
+  </section>
+
+  <!-- ===== 部品見本：tabs / vs / like / tiles / stack / talk / meter / fig(SVG) / pre+anno ===== -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 4</span><h2>切り替えて比べる</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="JAR">…</div>
+      <div class="tab" data-label="WAR">…</div>
+    </div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>悪い例</b>…</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>良い例</b>…</div>
+    </div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-web"/></svg><b>Apache</b><span class="eq">受付</span></div>
+    </div>
+    <div class="tiles"><div class="tile ok"><svg class="ic"><use href="#i-check"/></svg><b>見出し</b><span>1行</span></div></div>
+    <div class="stack"><div><svg class="ic"><use href="#i-user"/></svg>層1<span>補足</span></div></div>
+    <div class="talk">
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>先輩のセリフ</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>自分のセリフ</p></div>
+    </div>
+    <div class="meter"><div><span>ラベル</span><div class="track"><i style="width:60%"></i></div><span class="v">60%</span></div></div>
+    <div class="fig"><svg viewBox="0 0 520 200" style="min-width:420px;max-width:620px">…</svg></div>
+    <pre><code>短いコード<span class="tag">①</span></code></pre>
+    <div class="anno"><div><span class="num">1</span>注釈</div></div>
+  </section>
+
+  <!-- ===== 部品見本：flips（タップで答え） ===== -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>問題文（短く）</summary><div class="a">答え（2行以内）</div></details>
+    </div>
+  </section>
+
+  <!-- ===== 部品見本：checklist ===== -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="chNN">
+      <li><input type="checkbox" id="chNN-1"><label for="chNN-1">1行のやること</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/NN-xxx.html">文字版（v1）のNN章</a></p>
   </section>
 
   <nav class="pager"><a class="prev" href="前.html"><span>← 前の章</span>NN タイトル</a><a class="next" href="次.html"><span>次の章 →</span>NN タイトル</a></nav>
 </main>
-<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
 </body>
 </html>
