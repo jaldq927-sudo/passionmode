@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>01 このままでいいのか</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 01 このままでいいのか</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">01</div>
+  <div><div class="eyebrow">CHAPTER 01 ・ 考え方</div><h1>このままでいいのか</h1></div>
+  <p class="summary">AIに頼って問題は解決できている。でも自分の力になっている気がしない。その不安に、正面から答える章です。いまの現在地を確かめ、何を積めばプロに近づくのかを整理します。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>11か月目のSEとして、いま自分が「どこにいるか」の見取り図</li>
+    <li>「解決できる」と「プロとして仕事ができる」の差は何か</li>
+    <li>AI時代でも価値が下がらないSEのスキルの層</li>
+    <li>「わかったつもり」から「わかる」へ進むための、小さな習慣の始め方</li>
+    <li>このガイドの残りの章を、どう読み進めればよいか</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">その不安は正しい</a><a href="#s2">たとえ話</a><a href="#s3">いまの現在地</a><a href="#s4">プロとの差</a><a href="#s5">スキルの層</a><a href="#s6">わかったつもり</a><a href="#s7">アウトプットへ</a><a href="#s8">実物：振り返りメモ</a><a href="#s9">このガイドの読み方</a><a href="#s10">つまずき</a><a href="#s11">練習問題</a><a href="#s12">用語</a><a href="#s13">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>その不安は、正しい感覚です</h2>
+    <p>ログ調査を頼まれたら、ログをAIに貼りつけて原因を聞く。改修の相談が来たら、関連しそうなコードを貼って「どこを直せばいいか」を聞く。SQLが必要ならAIに書いてもらって、そのまま実行する。結果として、問題は片づいている。先輩からも大きく怒られてはいない。それでも、終わったあとに「自分は何を理解したんだろう」と空っぽな感じが残る——。</p>
+    <p>この不安は、気のせいでも甘えでもありません。むしろ<strong>正しく状況を見ている</strong>からこそ出てくる感覚です。理由はシンプルで、いまのやり方だと「解決」は手に入っても、「次に同じことが起きたとき、自分で考えられる力」が手元に残りにくいからです。</p>
+    <p>11か月目というタイミングにも意味があります。1年目は、とにかく業務に慣れること、担当システムの名前を覚えること、問い合わせに答えられるようになることで手いっぱいです。それが少し落ち着いて周りが見えてきたからこそ、「このままでいいのか」と考えられるようになった、とも言えます。</p>
+    <div class="callout info"><b>この章の立場</b>
+      <p>AIを使うことは悪くありません。これからのSEにとってAIは標準の道具です。問題は「AIを使うこと」ではなく、「AIを使った結果、自分の中に何も残らない使い方」になっていることです。この章では、使い方を少し変えるだけで、同じ仕事から理解が積み上がるようにする方法を考えます。</p>
+    </div>
+    <p>また、「動画ばかり見ている」「人とあまり話さない」という悩みもあるかもしれません。これらも、才能や性格の問題ではなく<strong>習慣の偏り</strong>です。偏りは、意識して少しずつ反対側に寄せれば直せます。ここから先は、そのための具体的な道筋を書いていきます。</p>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：カーナビと地図</h2>
+    <p>AIに丸投げして解決する状態は、カーナビに従って運転している状態に似ています。目的地には着きます。それ自体は立派なことです。でも、何度通っても道を覚えていない、ということがよくあります。</p>
+    <div class="analogy">
+      <div><span class="lbl">カーナビだけで運転</span>目的地には着く。でも、通行止めや電波切れのときに自分で迂回路を考えられない。同じ道を何度走っても覚えない。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">AIに丸投げで解決</span>障害は片づく。でも、AIが的外れな答えを返したときに気づけない。似た障害が来ても毎回ゼロから聞き直す。</div>
+    </div>
+    <p>一方、プロのドライバー（タクシー運転手など）はカーナビも使いますが、頭の中に「地図」を持っています。だから「ナビはこう言っているけど、この時間帯はこっちが空いている」と判断できるし、ナビが明らかにおかしいルートを出したときにすぐ気づけます。</p>
+    <div class="analogy">
+      <div><span class="lbl">地図を持ったうえでカーナビを使う</span>ナビの提案を評価できる。おかしければ気づく。初めての道でも大まかな方角がわかる。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">理解したうえでAIを使う</span>AIの回答を検証できる。誤りに気づける。初めての障害でも「どのあたりが怪しいか」の見当がつく。</div>
+    </div>
+    <p>目指すのは「カーナビを捨てること」ではなく、<strong>頭の中に地図を少しずつ描いていくこと</strong>です。地図は一気には描けません。毎日通る道（＝担当している勤怠システムやWeb申請）から、一本ずつ描き足していけばよいのです。</p>
+  </section>
+
+  <section id="s3">
+    <h2>11か月目SEの、一般的な現在地</h2>
+    <p>まず、いまの自分を正確に眺めてみましょう。以下は、この読者像（勤怠システムとWeb申請を担当する11か月目のSE）を想定した一般的な見取り図です。自分に当てはまるものとそうでないものがあるはずなので、頭の中でチェックしながら見てください。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 380" style="max-width:560px" role="img" aria-label="できていることと、まだのことの対比図">
+        <rect class="box-ok" x="10" y="10" width="260" height="360" rx="10"/>
+        <rect class="box-warn" x="290" y="10" width="260" height="360" rx="10"/>
+        <text x="140" y="40" text-anchor="middle" font-size="15" font-weight="700">できていること</text>
+        <text x="420" y="40" text-anchor="middle" font-size="15" font-weight="700">まだのこと</text>
+        <text x="28" y="78" font-size="13">・担当システムの名前と役割を知っている</text>
+        <text x="28" y="108" font-size="13">・問い合わせを受けて動ける</text>
+        <text x="28" y="138" font-size="13">・ログを探して取り出せる</text>
+        <text x="28" y="168" font-size="13">・AIを使って原因の候補を出せる</text>
+        <text x="28" y="198" font-size="13">・SQLを実行して結果を確認できる</text>
+        <text x="28" y="228" font-size="13">・XML定義を見て修正箇所を探せる</text>
+        <text x="28" y="258" font-size="13">・締め処理や有給の業務の流れを</text>
+        <text x="40" y="278" font-size="13">なんとなく知っている</text>
+        <text x="28" y="308" font-size="13">・期限までに案件を片づけている</text>
+        <text x="308" y="78" font-size="13">・なぜその原因なのか自分で説明する</text>
+        <text x="308" y="108" font-size="13">・SQLを自分で組み立てる</text>
+        <text x="308" y="138" font-size="13">・Spring Bootの仕組みを理解する</text>
+        <text x="308" y="168" font-size="13">・ローカルでビルド・起動・デバッグ</text>
+        <text x="320" y="188" font-size="13">（Maven環境構築が止まっている）</text>
+        <text x="308" y="218" font-size="13">・現象を再現して直ったと確かめる</text>
+        <text x="308" y="248" font-size="13">・AIの回答の誤りに気づく</text>
+        <text x="308" y="278" font-size="13">・調査結果を相手に合わせて伝える</text>
+        <text x="308" y="308" font-size="13">・人に質問・相談する習慣</text>
+        <text x="280" y="354" text-anchor="middle" font-size="12" class="muted">左は「業務を回す力」、右は「仕組みを理解し、検証し、伝える力」</text>
+      </svg>
+      <figcaption>図1：11か月目の一般的な現在地。左側は確かに積み上がっている。</figcaption>
+    </figure>
+    <h3>「解決できている」こと自体には、価値がある</h3>
+    <p>右側に目が行きがちですが、まず左側を正当に評価してください。問い合わせを受けて、ログを探し、AIを使って原因候補を出し、期限までに片づける——これは1年前の自分にはできなかったことです。業務の流れを知っていること、どのログがどこにあるか知っていること、誰に何を聞けばいいか知っていることは、AIでは代わりがききません。</p>
+    <p>また、「AIを使って解決まで持っていける」こと自体も一つのスキルです。どんな情報を貼ればよい回答が返るかを、あなたはすでに経験的に知っているはずです。これは、あとで「AIと一緒に強くなる」（<a href="10-ai-learning.html">10章</a>）ときの土台になります。</p>
+    <div class="callout tip"><b>ポイント</b>
+      <p>不安なときほど「全部だめだ」と考えがちですが、実際は「業務を回す力」はついていて、「理解して説明する力」がまだ薄い、という状態です。足りない部分がはっきりしていれば、そこだけを積めばよいので、やることは意外と絞れます。</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2>「解決できる」と「プロ」の差</h2>
+    <p>では、プロのSEと何が違うのでしょうか。解決できたかどうかだけ見れば、差は見えにくいかもしれません。差が出るのは、次の3つの問いに答えられるかどうかです。</p>
+    <div class="cards">
+      <div class="card"><h4>1. なぜそうなるか説明できるか</h4><p>「このログのこの行が出ているから、この処理でこの値がnullになり、だから画面がエラーになった」と、因果の鎖を自分の言葉でつなげられるか。</p></div>
+      <div class="card"><h4>2. 再現・検証できるか</h4><p>同じ条件を作って現象を再現できるか。直したあと「本当に直った」「他を壊していない」と確かめられるか。</p></div>
+      <div class="card"><h4>3. AIの誤りに気づけるか</h4><p>AIが自信満々に間違った原因や、存在しない設定項目を答えたとき、「それは変だ」と引っかかれるか。</p></div>
+    </div>
+    <p>具体例で比べてみます。「先月分の残業時間が、勤怠画面と給与連携ファイルで合わない」という問い合わせが来たとします。</p>
+    <div class="compare">
+      <div class="bad"><b>丸投げのままの対応</b>
+        <p>ログとSQLをAIに貼り、「締め処理後に打刻修正が入ったため」という回答を得る。そのまま「締め後の修正が原因のようです」と報告。先輩に「どの社員の、どの日の修正？件数は？」と聞かれ、答えられない。</p>
+      </div>
+      <div class="good"><b>プロに近い対応</b>
+        <p>AIの回答を仮説として受け取り、打刻修正履歴を自分でSQLで確認。締め日時より後に更新された3件を特定。「締め後の打刻修正3件（社員A：10/12ほか）が連携ファイルに反映されていません。再連携で解消見込みです」と報告。</p>
+      </div>
+    </div>
+    <p>右側の対応で使っているAIは、左側とまったく同じでも構いません。違いは、<strong>AIの答えを「結論」ではなく「仮説」として扱い、自分で確かめた</strong>点です。確かめる作業を通じて、「締め処理の後に打刻修正が入るとどうなるか」という地図が頭の中に一本描き足されます。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>観点</th><th>いまの状態</th><th>プロの状態</th></tr></thead>
+      <tbody>
+        <tr><td>原因</td><td>AIが言った原因を伝える</td><td>根拠（ログ行・データ）とセットで原因を説明する</td></tr>
+        <tr><td>修正</td><td>AIが示した修正を当てる</td><td>修正の影響範囲を考え、再現環境で確かめてから当てる</td></tr>
+        <tr><td>SQL</td><td>AIが書いたものを実行</td><td>何を取っているか読める。危ない更新SQLを見抜ける</td></tr>
+        <tr><td>次回</td><td>同じ種類の障害でもまたAIに聞く</td><td>前回の経験から当たりをつけ、AIには確認だけ頼む</td></tr>
+        <tr><td>報告</td><td>結論があいまい</td><td>事実・推測・対応・依頼を分けて伝える</td></tr>
+      </tbody>
+    </table></div>
+    <p>この差は、才能の差ではありません。<strong>「確かめる」「説明する」を毎回1つずつ挟んでいるかどうか</strong>の差です。逆に言えば、明日からの仕事でその1つを挟むだけで、少しずつ右側に寄っていけます。</p>
+  </section>
+
+  <section id="s5">
+    <h2>AI時代のSEのスキルの層</h2>
+    <p>「AIがコードもSQLも書いてくれるなら、自分は何を身につければいいのか」と思うかもしれません。答えは、SEのスキルをいくつかの層に分けて考えると見えてきます。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 360" style="max-width:560px" role="img" aria-label="SEのスキルの5つの層">
+        <rect class="box-soft" x="20" y="14" width="400" height="56" rx="8"/>
+        <text x="36" y="38" font-size="14" font-weight="700">伝える力</text>
+        <text x="36" y="58" font-size="12" class="muted">報告・質問・相手に合わせた説明</text>
+        <rect class="box-soft" x="20" y="82" width="400" height="56" rx="8"/>
+        <text x="36" y="106" font-size="14" font-weight="700">調査力</text>
+        <text x="36" y="126" font-size="12" class="muted">ログを読む・仮説を立てる・再現して確かめる</text>
+        <rect class="box" x="20" y="150" width="400" height="56" rx="8"/>
+        <text x="36" y="174" font-size="14" font-weight="700">言語 / SQL</text>
+        <text x="36" y="194" font-size="12" class="muted">Java・SQL・XMLを「読める」こと</text>
+        <rect class="box" x="20" y="218" width="400" height="56" rx="8"/>
+        <text x="36" y="242" font-size="14" font-weight="700">システム構造</text>
+        <text x="36" y="262" font-size="12" class="muted">Apache→Tomcat→Spring Boot→Postgres のつながり</text>
+        <rect class="box-ok" x="20" y="286" width="400" height="56" rx="8"/>
+        <text x="36" y="310" font-size="14" font-weight="700">業務知識（勤怠ドメイン）</text>
+        <text x="36" y="330" font-size="12" class="muted">締め・36協定・有給・変形労働時間・申請の流れ</text>
+        <line class="line" x1="450" y1="330" x2="450" y2="30" marker-end="url(#ar1)"/>
+        <defs><marker id="ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-muted" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <text x="462" y="60" font-size="12" class="muted">AIの</text>
+        <text x="462" y="78" font-size="12" class="muted">代わりが</text>
+        <text x="462" y="96" font-size="12" class="muted">ききにくい</text>
+        <text x="462" y="170" font-size="12" class="muted">AIが</text>
+        <text x="462" y="188" font-size="12" class="muted">得意</text>
+        <text x="462" y="290" font-size="12" class="muted">AIは</text>
+        <text x="462" y="308" font-size="12" class="muted">知らない</text>
+      </svg>
+      <figcaption>図2：スキルの層。真ん中（言語/SQL）はAIが得意だが、上下の層はAIが知らない・代われない部分が多い。</figcaption>
+    </figure>
+    <p>真ん中の「言語/SQL」は、AIがもっとも得意な層です。ここは「ゼロから書ける」必要は薄れつつありますが、<strong>読めること</strong>は依然として必須です。読めなければ、AIが書いたコードやSQLが正しいか判断できないからです。</p>
+    <p>その下の「システム構造」は、あなたの会社の勤怠システムがどうつながっているか、という知識です。リクエストがApacheを通ってTomcatに届き、Spring Bootのアプリが動き、Postgresに問い合わせる——この流れが頭にあれば、エラーが出たときに「どの層で起きているか」を絞り込めます。AIは一般論は知っていますが、<strong>あなたの会社の構成は知りません</strong>。</p>
+    <p>上の「調査力」と「伝える力」は、AIに任せきれない部分です。AIに何を聞くかを決めるのも、回答を確かめるのも、結果を担当者や顧客に伝えて納得してもらうのも、人の仕事です。</p>
+    <h3>勤怠のドメイン知識は、立派な武器になる</h3>
+    <p>一番下の「業務知識」は、軽く見られがちですが、実は大きな武器です。勤怠システムの不具合や要望の多くは、業務ルールが絡んだところで起きます。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>業務知識</th><th>システムでいうと</th><th>知っていると何が速くなるか</th></tr></thead>
+      <tbody>
+        <tr><td>締め処理</td><td>月次の集計・確定・ロック、給与連携</td><td>「締め後に修正されたデータ」系の問い合わせの当たりがすぐつく</td></tr>
+        <tr><td>36協定</td><td>時間外労働の上限（原則は月45時間・年360時間）とアラート</td><td>残業アラートの閾値や特別条項の扱いの要望を正しく理解できる</td></tr>
+        <tr><td>年次有給休暇</td><td>付与日・付与日数・繰越・時効・年5日の取得義務</td><td>残日数が合わない問い合わせで、付与と消化のどちらを疑うべきかわかる</td></tr>
+        <tr><td>変形労働時間制</td><td>1か月単位・1年単位などで所定時間が日ごとに変わる</td><td>「この日は残業扱いにならないはず」という問い合わせの意味がわかる</td></tr>
+        <tr><td>申請・承認フロー</td><td>Web申請の状態遷移・承認ルート</td><td>通勤費申請や氏名変更届が「止まっている」理由を推測できる</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">※労働時間や有給のルールは法改正や会社の就業規則によって扱いが変わります。正確な社内ルールは就業規則や人事部門の資料で確認してください。</p>
+    <p>AIは36協定の一般論は説明できますが、「あなたの会社の、この部署の特別条項がどう設定されていて、それがどのテーブルのどの値で表現されているか」は知りません。<strong>業務とシステムの両方を知っている人</strong>は、現場で非常に頼りにされます。11か月の間に、あなたはすでにその入り口に立っています。</p>
+  </section>
+
+  <section id="s6">
+    <h2>「わかったつもり」と「わかる」の違い</h2>
+    <p>AIの回答を読んで「なるほど」と思う。動画を見て「わかった」と感じる。でも翌週、同じことを聞かれると答えられない。これが「わかったつもり」です。人は、説明を<strong>読んで理解できること</strong>と、<strong>自分で説明・再現できること</strong>を混同しやすいのです。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 300" style="max-width:560px" role="img" aria-label="理解の4段階">
+        <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-accent" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <rect class="box-ng" x="14" y="220" width="250" height="60" rx="8"/>
+        <text x="28" y="244" font-size="14" font-weight="700">① 聞いたことがある</text>
+        <text x="28" y="266" font-size="12" class="muted">「Spring Boot、名前は知ってる」</text>
+        <rect class="box-warn" x="100" y="150" width="250" height="60" rx="8"/>
+        <text x="114" y="174" font-size="14" font-weight="700">② 読めばわかる</text>
+        <text x="114" y="196" font-size="12" class="muted">AIの説明を読んで「なるほど」</text>
+        <rect class="box-soft" x="186" y="80" width="250" height="60" rx="8"/>
+        <text x="200" y="104" font-size="14" font-weight="700">③ 自分で説明できる</text>
+        <text x="200" y="126" font-size="12" class="muted">何も見ずに人に説明できる</text>
+        <rect class="box-ok" x="272" y="10" width="270" height="60" rx="8"/>
+        <text x="286" y="34" font-size="14" font-weight="700">④ 再現・応用できる</text>
+        <text x="286" y="56" font-size="12" class="muted">手を動かして確かめ、別の場面に使える</text>
+        <path class="line-accent" d="M264,240 C300,235 300,215 300,212" marker-end="url(#ar2)"/>
+        <path class="line-accent" d="M350,170 C386,165 386,145 386,142" marker-end="url(#ar2)"/>
+        <path class="line-accent" d="M436,100 C470,95 470,75 470,72" marker-end="url(#ar2)"/>
+        <text x="20" y="118" font-size="12" class="muted">②で止まりがち</text>
+        <text x="20" y="136" font-size="12" class="muted">＝わかったつもり</text>
+      </svg>
+      <figcaption>図3：理解の4段階。②と③の間に大きな段差がある。そこを越えるのが「アウトプット」。</figcaption>
+    </figure>
+    <p>②から③に上がるには、読むだけでは足りません。<strong>何も見ずに、自分の言葉で書いたり話したりする</strong>ことで、初めて「どこがわかっていないか」が見えます。説明しようとして言葉に詰まる箇所こそが、まだ理解できていない箇所です。</p>
+    <p>③から④に上がるには、<strong>手を動かす</strong>ことが必要です。たとえば「このSQLは締め済みの月のデータを取っている」と説明できても、条件を1つ変えたら結果がどう変わるかを実際に試してみないと、本当に理解しているかはわかりません。</p>
+    <div class="callout warn"><b>自分でできる簡単なテスト</b>
+      <p>AIの回答を読んだあと、画面を閉じて、紙かメモ帳に「原因は何か、なぜそう言えるか」を3行で書いてみてください。書けなければ②の段階です。それは悪いことではなく、「ここをもう一度見ればいい」というサインです。</p>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2>インプット偏重から、アウトプットへ</h2>
+    <p>動画や記事を眺める時間が長いのに身につかない、と感じるなら、それはインプットとアウトプットのバランスが偏っているサインです。インプットは気持ちよく、進んでいる感じがします。でも、記憶にも理解にも残りやすいのは、アウトプットした内容です。</p>
+    <div class="flow">
+      <div class="node alt"><b>インプット</b>動画・記事・AIの回答を読む</div>
+      <div class="arrow"></div>
+      <div class="node"><b>手を動かす</b>SQLを1行変えて実行、ログを自分で検索</div>
+      <div class="arrow"></div>
+      <div class="node"><b>説明する</b>メモ3行、先輩への報告、自分あての解説</div>
+      <div class="arrow"></div>
+      <div class="node"><b>ずれに気づく</b>説明できない所＝次に調べる所</div>
+    </div>
+    <p>この流れは一周で終わりではありません。「ずれに気づく」から、また次のインプットに戻ります。ただし、次のインプットは「なんとなく関連動画を見る」ではなく「説明できなかったこの1点を調べる」になります。<strong>目的がはっきりしたインプット</strong>は、ずっと効率がよいのです。</p>
+    <h3>動画を見るなら、手を動かしながら</h3>
+    <p>動画をやめる必要はありません。ただし、見方を変えます。</p>
+    <div class="compare">
+      <div class="bad"><b>眺めるだけ</b>
+        <p>ソファで「Spring Boot入門」を1.5倍速で1時間。見終わって満足するが、翌日何も残っていない。</p>
+      </div>
+      <div class="good"><b>手を動かしながら</b>
+        <p>PCの前で、動画と同じコードを自分で打つ。5分ごとに止めて、動かす。わからない言葉はメモに残す。見終わったら「今日わかったこと3行」を書く。</p>
+      </div>
+    </div>
+    <h3>小さく始める：1日15〜30分</h3>
+    <p>「毎日2時間勉強する」と決めると、たいてい3日で止まります。止まると自己嫌悪になり、さらに手が止まる。これを避けるには、<strong>拍子抜けするくらい小さく始める</strong>ことです。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>時間</th><th>やることの例</th></tr></thead>
+      <tbody>
+        <tr><td>15分</td><td>今日AIに聞いた内容を、何も見ずに3行で書く。書けなかった所に印をつける</td></tr>
+        <tr><td>15分</td><td>今日実行したSQLを1本選び、SELECT・FROM・WHEREが何をしているか日本語でコメントをつける</td></tr>
+        <tr><td>30分</td><td>ログの1件について、どのクラスのどのメソッドで出たか、ソースを開いて追いかける</td></tr>
+        <tr><td>30分</td><td><a href="05-build-env.html">05章</a>の手順を1ステップだけ進める（例：JDKのバージョン確認だけ）</td></tr>
+      </tbody>
+    </table></div>
+    <p>大事なのは量より<strong>続くこと</strong>です。1日15分でも、1か月で7時間以上、1年で90時間以上になります。しかもそれが「業務で実際に触ったもの」についての時間なら、効果は動画を何十時間見るよりずっと大きくなります。</p>
+    <h3>人と話さないことについて</h3>
+    <p>人と話す機会が少ないと、自分の理解のずれを指摘してもらう機会も減ります。いきなり雑談上手になる必要はありません。まずは<strong>質問を1日1回、短く文章で送る</strong>ところからで十分です。質問の型は<a href="11-communication.html">11章 伝える技術</a>で詳しく扱います。</p>
+  </section>
+
+  <section id="s8">
+    <h2>実物：AIの回答を「自分のもの」にする振り返りメモ</h2>
+    <p>具体的に、いつもの仕事の後に何をすればよいか、例で示します。たとえば、打刻データの登録でエラーが出た問い合わせを、AIの助けを借りて解決したとします。ログはこんな感じだったとしましょう（一般的な例です。実際のログ形式は会社のシステムによって違います）。</p>
+    <p class="code-title">application.log（一般的な例）</p>
+<pre><code>2026-10-14 09:02:11.384 ERROR 2187 --- [nio-8080-exec-7] c.e.kintai.service.StampService : 打刻登録に失敗しました empNo=10234
+org.springframework.dao.DuplicateKeyException: ...
+<span class="hl">  Detail: Key (emp_no, stamp_date, stamp_type)=(10234, 2026-10-14, IN) already exists.</span>
+    at c.e.kintai.repository.StampRepository.insert(StampRepository.java:58)
+    at c.e.kintai.service.StampService.register(StampService.java:102)</code></pre>
+    <p>AIは「同じ社員・同じ日・同じ打刻種別のデータがすでにあるため、一意制約違反になっています。二重打刻が原因です」と答えたとします。解決はこれでできるかもしれません。でも、ここで終わらせずに、次のような振り返りメモを10分で書きます。</p>
+    <p class="code-title">振り返りメモ（自分用）</p>
+<pre><code><span class="c"># 2026-10-14 打刻登録エラー</span>
+<span class="k">■ 何が起きたか（事実）</span>
+  社員10234の 10/14 出勤打刻で DuplicateKeyException。
+<span class="k">■ なぜそう言えるか（根拠）</span>
+  ログの Detail 行：(emp_no, stamp_date, stamp_type) が重複。
+  → このテーブルには3列の組み合わせで一意制約がある。
+<span class="k">■ 自分で確かめたこと</span>
+  SELECT で 10234 / 10/14 / IN を検索 → 09:01 の行がすでにあった。
+<span class="k">■ まだわからないこと（次に調べる）</span>
+  ・なぜ1分後にもう一度打刻できたのか？画面で二重押し防止はない？
+  ・StampService.java の102行目の前で重複チェックしていない理由は？
+<span class="k">■ 3行で説明すると</span>
+  打刻テーブルは「社員・日付・種別」で1件だけ登録できる。
+  同じ組み合わせを2回登録しようとして、DBが拒否した。
+  画面側で二重押しを防げていない可能性があり、要確認。</code></pre>
+    <p>このメモのうち、「自分で確かめたこと」と「まだわからないこと」がとくに重要です。前者が③→④への一歩、後者が次のインプットの目的になります。そして「3行で説明すると」は、そのまま先輩や担当者への報告の下書きにもなります。</p>
+    <div class="callout tip"><b>メモは完璧でなくてよい</b>
+      <p>最初は「なぜそう言えるか」が書けない日も多いはずです。空欄のままでも構いません。空欄があること自体が「ここを次に調べる」という情報です。続けるうちに、空欄は自然と減っていきます。</p>
+    </div>
+  </section>
+
+  <section id="s9">
+    <h2>このガイドの読み方</h2>
+    <p>ここから先の章は、図2の「スキルの層」に沿って並んでいます。すべてを順番に読む必要はありませんが、おすすめの流れはあります。</p>
+    <div class="flow">
+      <div class="node"><b>地図を描く</b><a href="02-system-map.html">02 全体像</a><br><a href="03-java.html">03 Java</a><br><a href="04-spring-boot.html">04 Spring Boot</a></div>
+      <div class="arrow"></div>
+      <div class="node hot"><b>手元で動かす</b><a href="05-build-env.html">05 開発環境</a><br>（最優先）</div>
+      <div class="arrow"></div>
+      <div class="node"><b>実務の技術</b><a href="06-sql-postgres.html">06 SQL</a><br><a href="07-logs-incident.html">07 ログ調査</a><br><a href="08-xml-forms.html">08 XML申請</a><br><a href="09-change-request.html">09 改修</a></div>
+      <div class="arrow"></div>
+      <div class="node alt"><b>伸ばし方</b><a href="10-ai-learning.html">10 AIと学ぶ</a><br><a href="11-communication.html">11 伝える</a><br><a href="12-roadmap.html">12 ロードマップ</a></div>
+    </div>
+    <ul>
+      <li><strong>まず02を読む</strong>：自分の担当システムがどうつながっているかの地図を作ります。以降の章はすべてこの地図の上で話が進みます。</li>
+      <li><strong>05は、読むだけでなく実際にやる</strong>：Maven環境構築が止まっているなら、これが一番の伸びしろです。ローカルで動かせるようになると、「再現・検証」ができるようになり、学び方そのものが変わります。</li>
+      <li><strong>06〜09は、業務で出てきたときに該当章を開く</strong>：問い合わせや改修のたびに、関係する章を辞書のように使ってください。</li>
+      <li><strong>10と11は、早めに一度読む</strong>：AIの使い方と伝え方は、毎日の仕事にすぐ効きます。</li>
+      <li><strong>12で全体の計画を立てる</strong>：1年かけてどう進めるかの目安を示しています。</li>
+    </ul>
+    <p>どの章にも最後に「練習問題」と「明日からやること」があります。全部できなくても大丈夫です。1章につき1つだけでも、実際にやってみることを大事にしてください。</p>
+  </section>
+
+  <section id="s10">
+    <h2>よくあるつまずき</h2>
+    <h3>「全部わかってからAIを使おう」と考えてしまう</h3>
+    <p>AIを封印して全部自力でやろうとすると、業務が回らなくなり、結局続きません。AIは使い続けてください。変えるのは「答えをもらって終わり」ではなく「答えを確かめて、説明できるようにして終わり」にする部分だけです。</p>
+    <h3>勉強計画が大きすぎて止まる</h3>
+    <p>「Javaの本を1冊読む」「資格を3か月で取る」のような大きな目標は、達成できないと自信を削ります。まずは「1日15分、今日の仕事の振り返りメモ」から。小さく続いたら、少しずつ広げます。</p>
+    <h3>周りと比べて落ち込む</h3>
+    <p>同期や先輩が何でも知っているように見えることがあります。でも、人が何をどれくらい積んできたかは外からは見えません。比べる相手は「1か月前の自分」にしてください。振り返りメモは、その比較のための記録にもなります。</p>
+    <h3>「わからない」と言えない</h3>
+    <p>わからないことをわからないまま進めると、あとで大きな手戻りになります。「ここまでは理解しました。ここから先がわかりません」と範囲を区切って言えば、相手も答えやすく、印象も悪くなりません。</p>
+    <h3>完璧なメモを書こうとする</h3>
+    <p>振り返りメモは自分用です。誤字があっても、箇条書きが乱れていてもかまいません。きれいに書くことより、毎日書くことのほうが何倍も大事です。</p>
+  </section>
+
+  <section id="s11">
+    <h2>練習問題</h2>
+    <details class="quiz">
+      <summary>問1：AIが「原因はA」と答えました。プロに近い次の一手は何でしょう？</summary>
+      <div class="ans"><p>「原因はA」を<strong>仮説</strong>として扱い、根拠を自分で確かめることです。たとえば、Aが原因ならどのログ行に何が出ているはずか、どのデータがどうなっているはずかを考え、実際にログやSQLで確認します。確かめた結果を「事実」として報告し、確かめきれていない部分は「推測」として分けて伝えます。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問2：「わかったつもり」かどうかを、自分で確かめる簡単な方法は？</summary>
+      <div class="ans"><p>何も見ずに、自分の言葉で3行で説明を書いてみることです。言葉に詰まる箇所、「なぜ」が書けない箇所が、まだ理解できていない箇所です。さらに一段上を確かめるなら、条件を少し変えて手を動かし、予想どおりの結果になるか試します。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問3：図2のスキルの層のうち、AIが「知らない」ので自分で身につける価値が特に高いのはどれ？理由も。</summary>
+      <div class="ans"><p>「業務知識（勤怠ドメイン）」と「システム構造」です。AIは36協定や有給の一般論、Spring Bootの一般的な構成は説明できますが、あなたの会社の就業ルールがどう設定されているか、どのサーバーで何が動いているかは知りません。これらを知っていると、AIへの質問の精度が上がり、回答の誤りにも気づきやすくなります。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問4：動画学習を続けたい場合、どう変えると効果が上がりますか？</summary>
+      <div class="ans"><p>眺めるのではなく、手を動かしながら見ることです。PCの前で同じコードを打ち、こまめに止めて実行します。見終わったら「わかったこと3行」と「わからなかった言葉」をメモし、次に調べるべきことをはっきりさせます。</p></div>
+    </details>
+  </section>
+
+  <section id="s12">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>わかったつもり</dt><dd>説明を読んで理解できた気がするが、自分では説明・再現できない状態。</dd>
+      <dt>アウトプット</dt><dd>書く・話す・手を動かすなど、頭の中の理解を外に出す行為。理解のずれが見つかる。</dd>
+      <dt>仮説</dt><dd>まだ確かめていない「たぶんこうだろう」という考え。AIの回答はまず仮説として扱う。</dd>
+      <dt>再現</dt><dd>問題が起きたのと同じ条件を作り、同じ現象をもう一度起こすこと。原因の確認と修正の確認に必要。</dd>
+      <dt>検証</dt><dd>修正や説明が正しいかを、事実（ログ・データ・実行結果）で確かめること。</dd>
+      <dt>ドメイン知識</dt><dd>システムが扱う業務の知識。勤怠なら締め処理、36協定、有給、変形労働時間制など。</dd>
+      <dt>36協定</dt><dd>労働基準法36条に基づく、時間外・休日労働に関する労使協定。時間外労働には原則の上限がある。</dd>
+      <dt>変形労働時間制</dt><dd>一定期間を平均して法定労働時間内に収めることを条件に、日や週ごとの所定労働時間を変えられる制度。</dd>
+    </dl>
+  </section>
+
+  <section id="s13">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="m01-1"><label for="m01-1">図1を見て、「できていること」と「まだのこと」を自分の言葉で書き出す（5分）</label></li>
+      <li><input type="checkbox" id="m01-2"><label for="m01-2">次にAIに聞いた案件で、回答を「仮説」として1つだけ自分で確かめる</label></li>
+      <li><input type="checkbox" id="m01-3"><label for="m01-3">その日の仕事について、振り返りメモ（事実・根拠・確かめたこと・まだわからないこと・3行説明）を書く</label></li>
+      <li><input type="checkbox" id="m01-4"><label for="m01-4">毎日15〜30分の時間帯を1つ決める（始業前、昼休みの後半など）</label></li>
+      <li><input type="checkbox" id="m01-5"><label for="m01-5">動画を見るときはPCの前で、手を動かしながら見る</label></li>
+      <li><input type="checkbox" id="m01-6"><label for="m01-6">担当業務で知っている勤怠ルール（締め日、有給の付与日など）を3つ書き出し、不明点を先輩に1つ聞く</label></li>
+      <li><input type="checkbox" id="m01-7"><label for="m01-7"><a href="02-system-map.html">02 システムの全体像</a>を読む</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="00-index.html"><span>← 前の章</span>目次</a><a class="next" href="02-system-map.html"><span>次の章 →</span>02 システムの全体像</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>

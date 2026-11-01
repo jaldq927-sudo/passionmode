@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>12 12か月ロードマップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .progress{display:flex;align-items:center;gap:12px;margin:14px 0 4px;font-size:.9rem;font-weight:700}
+  .progress .bar{flex:1;height:10px;border-radius:999px;background:var(--accent-soft);overflow:hidden;min-width:0}
+  .progress .bar span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+  .month{margin-top:1.8em}
+  .month h3{margin-top:0}
+  .month .aim{color:var(--muted);font-size:.92rem;margin:-.2em 0 .4em}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 12 12か月ロードマップ</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">12</div>
+  <div><div class="eyebrow">CHAPTER 12 ・ 計画</div><h1>12か月ロードマップ</h1></div>
+  <p class="summary">これまでの章を、1年間でどの順に読み、実践していくかの道筋です。最優先は、止まっている開発環境構築を終わらせて「ローカルでビルド・起動・デバッグできる状態」になること。そこから先は、毎日30分の小さな積み重ねで進みます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>1年を4つのフェーズに分けた全体像と、各フェーズのゴール</li>
+    <li>なぜ最初に開発環境構築（05章）をやり切るべきなのか</li>
+    <li>毎日30分の習慣と、週次の振り返りのやり方</li>
+    <li>月ごとの到達目標とチェックリスト（チェックはこのブラウザに保存されます）</li>
+    <li>資格や学習方法の位置づけと、各章を読む順番</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">なぜ計画が要るか</a><a href="#s2">たとえ話</a><a href="#s3">4つのフェーズ</a><a href="#s4">最優先：環境構築</a><a href="#s5">毎日30分</a><a href="#s6">週次の振り返り</a><a href="#s7">月ごとのチェック</a><a href="#s8">資格の位置づけ</a><a href="#s9">学習方法</a><a href="#s10">章を読む順番</a><a href="#s11">つまずき</a><a href="#s12">練習問題</a><a href="#s13">用語</a><a href="#s14">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>なぜ「計画」が要るのか</h2>
+    <p>ここまでの章で、学ぶべきことはたくさん出てきました。システムの全体像、Java、Spring Boot、Maven、SQL、ログ調査、XML、改修の進め方、AIの使い方、伝え方。全部を一度にやろうとすると、何から手をつければいいかわからなくなり、結局「今日は動画でも見るか」に戻ってしまいます。</p>
+    <p>計画の役割は、<strong>「今日やること」を1つに絞ること</strong>です。1年分の道筋が見えていれば、「今月は環境構築、今日はJDKのバージョン確認だけ」と迷わず決められます。迷う時間が減るだけで、実際に手を動かす時間は増えます。</p>
+    <p>このロードマップは一般的な目安です。業務の繁忙期（月末の締め、年末調整や年度替わりなど）や、担当案件によって進み方は変わります。遅れても問題ありません。<strong>順番を守ること</strong>と、<strong>止まらないこと</strong>のほうが、スピードより大事です。</p>
+    <div class="callout info"><b>このページのチェックについて</b>
+      <p>月ごとのチェックリストは、チェックした状態がこのブラウザに保存されます（別の端末やブラウザには引き継がれません）。保存できない環境でも、チェック自体は使えます。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：登山は「次のキャンプ地」だけ見て歩く</h2>
+    <p>高い山に登るとき、登山者は山頂だけを見て歩くわけではありません。ルートを決め、途中のキャンプ地を決め、「今日はあのキャンプ地まで」と区切って進みます。山頂ばかり見ていると、遠さに気持ちが折れてしまうからです。</p>
+    <div class="analogy">
+      <div><span class="lbl">登山</span>山頂（プロのSE）を目指しつつ、今日は次のキャンプ地まで。最初に装備（靴・地図）を整えないと、途中で必ず困る。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">12か月ロードマップ</span>1年後の姿を目指しつつ、今月はこのフェーズのゴールまで。最初に開発環境（装備）を整えないと、学びが「読むだけ」で止まる。</div>
+    </div>
+    <p>このたとえで一番大事なのは「装備」です。開発環境がない状態で学ぶのは、靴を履かずに山を登るようなものです。読んで理解したつもりにはなれても、実際に動かして確かめることができません。だから、このロードマップは<strong>装備を整えるところから</strong>始まります。</p>
+  </section>
+
+  <section id="s3">
+    <h2>4つのフェーズ</h2>
+    <p>1年を3か月ずつ、4つのフェーズに分けます。それぞれのフェーズには「これができるようになったら次へ」というゴールがあります。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 470" style="max-width:560px" role="img" aria-label="12か月を4つのフェーズに分けた図">
+        <defs><marker id="r-ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-accent" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <line class="line-accent" x1="60" y1="20" x2="60" y2="450" marker-end="url(#r-ar1)"/>
+        <circle class="box-ng" cx="60" cy="62" r="20"/>
+        <text x="60" y="67" text-anchor="middle" font-size="13" font-weight="700">1</text>
+        <rect class="box-ng" x="96" y="16" width="450" height="96" rx="8"/>
+        <text x="112" y="40" font-size="14" font-weight="700">1〜3か月：装備を整える（最優先）</text>
+        <text x="112" y="62" font-size="12">05 開発環境を完了。ローカルでビルド・起動・デバッグ</text>
+        <text x="112" y="82" font-size="12">02 全体像で地図を描く。振り返りメモを習慣にする</text>
+        <text x="112" y="102" font-size="12" class="muted">ゴール：手元で動かして確かめられる</text>
+        <circle class="box-warn" cx="60" cy="168" r="20"/>
+        <text x="60" y="173" text-anchor="middle" font-size="13" font-weight="700">2</text>
+        <rect class="box-warn" x="96" y="122" width="450" height="96" rx="8"/>
+        <text x="112" y="146" font-size="14" font-weight="700">4〜6か月：読めるようになる</text>
+        <text x="112" y="168" font-size="12">03 Java・04 Spring Boot をデバッガで追いながら読む</text>
+        <text x="112" y="188" font-size="12">06 SQL を自分で書く（SELECTから）</text>
+        <text x="112" y="208" font-size="12" class="muted">ゴール：画面からDBまで処理を追える</text>
+        <circle class="box-soft" cx="60" cy="274" r="20"/>
+        <text x="60" y="279" text-anchor="middle" font-size="13" font-weight="700">3</text>
+        <rect class="box-soft" x="96" y="228" width="450" height="96" rx="8"/>
+        <text x="112" y="252" font-size="14" font-weight="700">7〜9か月：自分で調べて直す</text>
+        <text x="112" y="274" font-size="12">07 ログと障害調査・08 XML申請・09 改修の流れ</text>
+        <text x="112" y="294" font-size="12">AIは「確認役」に。仮説は自分で立てる</text>
+        <text x="112" y="314" font-size="12" class="muted">ゴール：小さな改修を一人で再現〜検証まで</text>
+        <circle class="box-ok" cx="60" cy="380" r="20"/>
+        <text x="60" y="385" text-anchor="middle" font-size="13" font-weight="700">4</text>
+        <rect class="box-ok" x="96" y="334" width="450" height="96" rx="8"/>
+        <text x="112" y="358" font-size="14" font-weight="700">10〜12か月：説明し、任される</text>
+        <text x="112" y="380" font-size="12">11 伝える技術で報告・回答の質を上げる</text>
+        <text x="112" y="400" font-size="12">手順書や調査メモを残し、人に説明する</text>
+        <text x="112" y="420" font-size="12" class="muted">ゴール：調査〜報告を任せてもらえる</text>
+        <text x="24" y="462" font-size="12" class="muted">時間</text>
+      </svg>
+      <figcaption>図1：1年を4つのフェーズに分ける。フェーズ1（装備）が終わらないと、2以降の学びが「読むだけ」になる。</figcaption>
+    </figure>
+    <p>フェーズの順番には理由があります。</p>
+    <ul>
+      <li><strong>フェーズ1（装備）</strong>：ローカルで動かせないと、コードを読んでも「本当にそう動くか」を確かめられません。最初にやり切ります。</li>
+      <li><strong>フェーズ2（読む）</strong>：動かせる環境ができたら、デバッガで1行ずつ止めながらJavaとSpring Bootを読みます。止めて変数の中身を見ると、読むだけの何倍も理解が進みます。</li>
+      <li><strong>フェーズ3（調べて直す）</strong>：コードとSQLが読めるようになったら、実際の障害調査や改修で、AIに頼る前に自分で仮説を立てる練習をします。</li>
+      <li><strong>フェーズ4（説明し、任される）</strong>：理解したことを人に伝え、文書に残します。説明できるようになると、仕事を任されるようになり、さらに経験が積み上がります。</li>
+    </ul>
+    <p>伝える技術（<a href="11-communication.html">11章</a>）とAIとの付き合い方（<a href="10-ai-learning.html">10章</a>）は、フェーズ4だけでなく<strong>最初から毎日使います</strong>。図では最後のフェーズに置いていますが、それは「意識して仕上げる時期」という意味です。</p>
+  </section>
+
+  <section id="s4">
+    <h2>最優先：05 開発環境構築を終わらせる</h2>
+    <p>Mavenの環境構築が4か月止まっているなら、これがいま一番の伸びしろです。止まっている理由は、たいてい技術的な難しさより「どこで詰まっているかがはっきりしない」「誰に聞けばいいかわからない」ことです。</p>
+    <p>ゴールは「なんとなく動いた」ではなく、次の状態です。</p>
+    <div class="flow">
+      <div class="node"><b>ソース取得</b>社内リポジトリからソースを手元に持ってくる</div>
+      <div class="arrow"></div>
+      <div class="node"><b>ビルド</b><code>mvn package</code>などが成功する</div>
+      <div class="arrow"></div>
+      <div class="node"><b>起動</b>ローカルでアプリが起動し、ブラウザで画面が出る</div>
+      <div class="arrow"></div>
+      <div class="node hot"><b>デバッグ</b>ブレークポイントで止めて、変数の中身を見られる</div>
+    </div>
+    <p>この4つがそろうと、学び方が根本から変わります。「AIが言っていたこの処理、本当にここを通るのかな？」と思ったら、ブレークポイントを置いて確かめればいい。ログに出ていた値がどこで作られたか、1行ずつ追いかけられる。<strong>再現と検証</strong>ができるようになるのです（具体的な手順は<a href="05-build-env.html">05章</a>）。</p>
+    <h3>止まっている環境構築を動かすコツ</h3>
+    <ol class="steps">
+      <li><b>詰まっている場所を1行で書く</b>「依存ライブラリのダウンロードで証明書エラー」「DB接続先がわからない」など、具体的に。</li>
+      <li><b>エラーメッセージを全文保存する</b>スクリーンショットではなくテキストで。AIにも先輩にも渡しやすくなります。</li>
+      <li><b>社内で確認する項目を洗い出す</b>下のリストを参考に、自分で調べてもわからないものを先輩に聞きます。</li>
+      <li><b>1日1ステップだけ進める</b>「今日はJDKのバージョンを確認する」だけでもよい。進んだことを振り返りメモに残します。</li>
+      <li><b>できたら手順書を書く</b>自分が詰まった点と解決策を残せば、次に来る後輩の役にも立ち、説明の練習にもなります。</li>
+    </ol>
+    <div class="callout warn"><b>先輩・社内Wikiに確認する項目（一般的な例）</b>
+      <ul>
+        <li>社内リポジトリの場所と、アクセス権の申請方法</li>
+        <li>使うJDKのバージョンとMavenのバージョン</li>
+        <li>社内プロキシや社内Mavenリポジトリの設定（<code>settings.xml</code> の置き場所・内容）</li>
+        <li>ローカルで使うDB（ローカルPostgres／共有の開発DBなど）と接続情報の受け取り方</li>
+        <li>ローカル起動用の設定ファイルやプロファイルの指定方法</li>
+        <li>既存の環境構築手順書があるか、誰が一番詳しいか</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2>毎日30分の習慣</h2>
+    <p>1日30分を、目的別に3つに分けるのがおすすめです。30分が取れない日は、最初の10分だけでも構いません。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 200" style="max-width:560px" role="img" aria-label="毎日30分の内訳">
+        <rect class="box-soft" x="20" y="30" width="170" height="56" rx="6"/>
+        <rect class="box" x="190" y="30" width="255" height="56" rx="6"/>
+        <rect class="box-ok" x="445" y="30" width="95" height="56" rx="6"/>
+        <text x="105" y="54" text-anchor="middle" font-size="14" font-weight="700">振り返り 10分</text>
+        <text x="105" y="74" text-anchor="middle" font-size="12" class="muted">今日の仕事を3行で</text>
+        <text x="317" y="54" text-anchor="middle" font-size="14" font-weight="700">手を動かす 15分</text>
+        <text x="317" y="74" text-anchor="middle" font-size="12" class="muted">いまのフェーズの課題を1つ</text>
+        <text x="492" y="54" text-anchor="middle" font-size="14" font-weight="700">5分</text>
+        <text x="492" y="74" text-anchor="middle" font-size="12" class="muted">次の一手</text>
+        <text x="20" y="20" font-size="12" class="muted">0分</text>
+        <text x="540" y="20" text-anchor="end" font-size="12" class="muted">30分</text>
+        <text x="20" y="116" font-size="13">・振り返り：AIに聞いたこと、調べたことを、何も見ずに書く</text>
+        <text x="20" y="140" font-size="13">・手を動かす：SQLを1本書く、デバッガで1か所止める、など</text>
+        <text x="20" y="164" font-size="13">・次の一手：明日やる「1つ」を決めてメモ。迷う時間をなくす</text>
+        <text x="20" y="188" font-size="12" class="muted">時間帯は固定する（始業前・昼休みの後半・終業後すぐ など）</text>
+      </svg>
+      <figcaption>図2：毎日30分の内訳。「振り返り」で理解を固め、「手を動かす」で確かめ、「次の一手」で翌日の迷いをなくす。</figcaption>
+    </figure>
+    <div class="tbl"><table>
+      <thead><tr><th>フェーズ</th><th>「手を動かす15分」の例</th></tr></thead>
+      <tbody>
+        <tr><td>1（装備）</td><td>05章の手順を1ステップ進める／エラーを全文保存して先輩への質問を書く</td></tr>
+        <tr><td>2（読む）</td><td>打刻登録の処理にブレークポイントを置き、Controller→Service→Repositoryを追う／SELECT文を1本自分で書く</td></tr>
+        <tr><td>3（調べて直す）</td><td>過去の障害ログを1件選び、AIに聞く前に仮説を3つ書いてから確かめる</td></tr>
+        <tr><td>4（説明する）</td><td>今週の調査を、担当者向けの報告文として書いてみる／手順書を1ページ書く</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><b>習慣を続けるコツ</b>
+      <ul>
+        <li>やる時間と場所を固定する（「昼休みの後半、自席で」など）</li>
+        <li>やることは前日に決めておく（「次の一手5分」の役割）</li>
+        <li>できなかった日は責めない。翌日10分だけやれば習慣は切れない</li>
+        <li>振り返りメモの日付が並んでいくのを見ると、続ける力になる</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>週次の振り返り</h2>
+    <p>毎日の30分に加えて、週に1回15分だけ、1週間を振り返ります。金曜の夕方や月曜の朝など、決まった時間にしましょう。毎日の振り返りメモを読み返しながら、次のテンプレートを埋めます。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 250" style="max-width:520px" role="img" aria-label="週次の振り返りサイクル">
+        <defs><marker id="r-ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-accent" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <rect class="box" x="200" y="10" width="160" height="50" rx="8"/>
+        <text x="280" y="34" text-anchor="middle" font-size="14" font-weight="700">毎日30分</text>
+        <text x="280" y="52" text-anchor="middle" font-size="12" class="muted">メモが5日分たまる</text>
+        <rect class="box-soft" x="390" y="100" width="160" height="50" rx="8"/>
+        <text x="470" y="124" text-anchor="middle" font-size="14" font-weight="700">金曜15分</text>
+        <text x="470" y="142" text-anchor="middle" font-size="12" class="muted">メモを読み返す</text>
+        <rect class="box-warn" x="200" y="190" width="160" height="50" rx="8"/>
+        <text x="280" y="214" text-anchor="middle" font-size="14" font-weight="700">わかった／まだ</text>
+        <text x="280" y="232" text-anchor="middle" font-size="12" class="muted">を仕分ける</text>
+        <rect class="box-ok" x="10" y="100" width="160" height="50" rx="8"/>
+        <text x="90" y="124" text-anchor="middle" font-size="14" font-weight="700">来週の3つ</text>
+        <text x="90" y="142" text-anchor="middle" font-size="12" class="muted">やることを決める</text>
+        <path class="line-accent" d="M360,40 C420,40 470,60 470,96" marker-end="url(#r-ar2)"/>
+        <path class="line-accent" d="M470,150 C470,190 420,215 364,215" marker-end="url(#r-ar2)"/>
+        <path class="line-accent" d="M200,215 C140,215 90,190 90,154" marker-end="url(#r-ar2)"/>
+        <path class="line-accent" d="M90,100 C90,60 140,35 196,35" marker-end="url(#r-ar2)"/>
+      </svg>
+      <figcaption>図3：週次の振り返りサイクル。毎日のメモを素材に、来週やる3つを決めて次の週に戻る。</figcaption>
+    </figure>
+    <p class="code-title">週次振り返りテンプレート</p>
+<pre><code><span class="c"># 第◯週（11/4〜11/8）振り返り</span>
+<span class="k">■ 今週わかったこと（自分の言葉で説明できるもの）</span>
+  ・締め処理後の打刻修正は、再連携しないと給与側に反映されない
+<span class="k">■ まだわからないこと（来週以降に調べる）</span>
+  ・StampService で重複チェックをしていない理由
+<span class="k">■ 毎日30分の実施</span>
+  月〇 火〇 水× 木〇 金〇（4/5日）
+<span class="k">■ 人に質問・報告できたこと</span>
+  ・先輩に settings.xml の置き場所を質問した
+<span class="k">■ 来週やる3つ</span>
+  1. ローカル起動でDB接続エラーを解消する
+  2. 打刻登録のSQLに日本語コメントをつける
+  3. 会議で1回、確認の質問をする</code></pre>
+    <p>「まだわからないこと」が毎週出てくるのは、正常なことです。むしろ、わからないことを言葉にできているのは前進の証拠です。数週間前の「まだわからないこと」が、いつのまにか「わかったこと」に移っていることに気づくはずです。</p>
+  </section>
+
+  <section id="s7">
+    <h2>月ごとの到達目標とチェックリスト</h2>
+    <p>各月の目標と、確認用のチェックリストです。全部にチェックが入らなくても次の月に進んで構いません。残った項目は、次の月に持ち越しましょう。</p>
+    <div class="progress" aria-live="polite"><span id="rm-count">0 / 0 完了</span><div class="bar" aria-hidden="true"><span id="rm-bar"></span></div></div>
+    <p class="note">チェックの状態はこのブラウザに保存されます。<button type="button" id="rm-reset" style="font:inherit;color:var(--accent);background:none;border:1px solid var(--rule);border-radius:6px;padding:2px 10px;cursor:pointer">チェックをすべて外す</button></p>
+
+    <h3>フェーズ1：装備を整える（1〜3か月）</h3>
+    <div class="month">
+      <h3>1か月目</h3>
+      <p class="aim">目標：環境構築の詰まりを特定し、毎日の習慣を始める</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m01-1"><label for="rm-m01-1"><a href="01-mindset.html">01章</a>を読み、自分の現在地を書き出した</label></li>
+        <li><input type="checkbox" id="rm-m01-2"><label for="rm-m01-2"><a href="02-system-map.html">02章</a>を読み、担当システムの構成図を自分で描いた</label></li>
+        <li><input type="checkbox" id="rm-m01-3"><label for="rm-m01-3">環境構築で詰まっている箇所を1行で書き、エラー全文を保存した</label></li>
+        <li><input type="checkbox" id="rm-m01-4"><label for="rm-m01-4">先輩・社内Wikiに確認する項目を洗い出し、質問を送った</label></li>
+        <li><input type="checkbox" id="rm-m01-5"><label for="rm-m01-5">振り返りメモを週3日以上書いた</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>2か月目</h3>
+      <p class="aim">目標：ローカルでビルドと起動ができる</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m02-1"><label for="rm-m02-1">JDKとMavenのバージョンを確認し、社内指定と合わせた</label></li>
+        <li><input type="checkbox" id="rm-m02-2"><label for="rm-m02-2">ローカルでビルド（<code>mvn package</code> など）が成功した</label></li>
+        <li><input type="checkbox" id="rm-m02-3"><label for="rm-m02-3">ローカルでアプリを起動し、ブラウザで画面が表示された</label></li>
+        <li><input type="checkbox" id="rm-m02-4"><label for="rm-m02-4">週次の振り返りを4回行った</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>3か月目</h3>
+      <p class="aim">目標：デバッガで止められる。環境構築の手順書を残す</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m03-1"><label for="rm-m03-1">IDEでブレークポイントを置き、処理を止めて変数を見られた</label></li>
+        <li><input type="checkbox" id="rm-m03-2"><label for="rm-m03-2">打刻登録など1つの画面操作で、どのクラスを通るか確かめた</label></li>
+        <li><input type="checkbox" id="rm-m03-3"><label for="rm-m03-3">自分用の環境構築手順書（詰まった点と解決策つき）を書いた</label></li>
+        <li><input type="checkbox" id="rm-m03-4"><label for="rm-m03-4"><a href="10-ai-learning.html">10章</a>と<a href="11-communication.html">11章</a>を一度読んだ</label></li>
+      </ul>
+    </div>
+
+    <h3>フェーズ2：読めるようになる（4〜6か月）</h3>
+    <div class="month">
+      <h3>4か月目</h3>
+      <p class="aim">目標：Javaのコードを、デバッガと一緒に読める</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m04-1"><label for="rm-m04-1"><a href="03-java.html">03章</a>を読み、クラス・メソッド・例外の読み方を確認した</label></li>
+        <li><input type="checkbox" id="rm-m04-2"><label for="rm-m04-2">ログのスタックトレースから、該当するソースの行を開けた</label></li>
+        <li><input type="checkbox" id="rm-m04-3"><label for="rm-m04-3">社内コードの1つのクラスに、日本語でコメント（自分用）をつけて読んだ</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>5か月目</h3>
+      <p class="aim">目標：Spring Bootが何をしているか説明できる</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m05-1"><label for="rm-m05-1"><a href="04-spring-boot.html">04章</a>を読み、Controller・Service・Repositoryの役割を自分の言葉で書いた</label></li>
+        <li><input type="checkbox" id="rm-m05-2"><label for="rm-m05-2">1つのURLが、どのControllerのどのメソッドにつながるか追えた</label></li>
+        <li><input type="checkbox" id="rm-m05-3"><label for="rm-m05-3">設定ファイル（application.properties等）で、DB接続先がどこに書かれているか確認した</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>6か月目</h3>
+      <p class="aim">目標：簡単なSQLを自分で書ける</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m06-1"><label for="rm-m06-1"><a href="06-sql-postgres.html">06章</a>を読み、SELECT・WHERE・JOIN・GROUP BYを自分で書いた</label></li>
+        <li><input type="checkbox" id="rm-m06-2"><label for="rm-m06-2">業務で使うSQLを、AIに頼む前にまず自分で書いてから比べた（5回以上）</label></li>
+        <li><input type="checkbox" id="rm-m06-3"><label for="rm-m06-3">更新系SQL（UPDATE/DELETE）の前に、同じ条件でSELECTして件数を確かめる習慣をつけた</label></li>
+      </ul>
+    </div>
+
+    <h3>フェーズ3：自分で調べて直す（7〜9か月）</h3>
+    <div class="month">
+      <h3>7か月目</h3>
+      <p class="aim">目標：AIに聞く前に、自分で仮説を立てられる</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m07-1"><label for="rm-m07-1"><a href="07-logs-incident.html">07章</a>を読み、ログの読み方と調査の手順を確認した</label></li>
+        <li><input type="checkbox" id="rm-m07-2"><label for="rm-m07-2">障害調査で、AIに聞く前に仮説を3つ書いた（3回以上）</label></li>
+        <li><input type="checkbox" id="rm-m07-3"><label for="rm-m07-3">障害をローカルで再現できた（1回以上）</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>8か月目</h3>
+      <p class="aim">目標：Web申請の定義とSQLのつながりを説明できる</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m08-1"><label for="rm-m08-1"><a href="08-xml-forms.html">08章</a>を読み、申請1つ分のXML定義とSQLの対応を追った</label></li>
+        <li><input type="checkbox" id="rm-m08-2"><label for="rm-m08-2">通勤費申請や氏名変更届など、1つの申請の流れ（申請→承認→反映）を図にした</label></li>
+        <li><input type="checkbox" id="rm-m08-3"><label for="rm-m08-3">勤怠の業務ルール（締め・有給・36協定など）で曖昧な点を先輩に確認した</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>9か月目</h3>
+      <p class="aim">目標：小さな改修を、再現から検証まで通して行える</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m09-1"><label for="rm-m09-1"><a href="09-change-request.html">09章</a>を読み、要望確認→影響調査→修正→テストの流れを確認した</label></li>
+        <li><input type="checkbox" id="rm-m09-2"><label for="rm-m09-2">小さな改修で、影響範囲を自分で洗い出してから先輩に確認した</label></li>
+        <li><input type="checkbox" id="rm-m09-3"><label for="rm-m09-3">修正後、ローカルまたはテスト環境で「直ったこと」「他を壊していないこと」を確かめた</label></li>
+      </ul>
+    </div>
+
+    <h3>フェーズ4：説明し、任される（10〜12か月）</h3>
+    <div class="month">
+      <h3>10か月目</h3>
+      <p class="aim">目標：報告を型どおりに書ける</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m10-1"><label for="rm-m10-1"><a href="11-communication.html">11章</a>のテンプレートを使って、障害・調査の報告を書いた</label></li>
+        <li><input type="checkbox" id="rm-m10-2"><label for="rm-m10-2">報告で事実と推測を分け、数字・時刻・件数を入れた</label></li>
+        <li><input type="checkbox" id="rm-m10-3"><label for="rm-m10-3">AIに作らせた文章を、送信前チェックリストに通してから送った</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>11か月目</h3>
+      <p class="aim">目標：人に説明し、文書に残す</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m11-1"><label for="rm-m11-1">調査や改修の内容を、先輩や同僚に口頭で説明した</label></li>
+        <li><input type="checkbox" id="rm-m11-2"><label for="rm-m11-2">よくある問い合わせの調査手順を、手順書として1本書いた</label></li>
+        <li><input type="checkbox" id="rm-m11-3"><label for="rm-m11-3">会議で毎回1回は発言した</label></li>
+      </ul>
+    </div>
+    <div class="month">
+      <h3>12か月目</h3>
+      <p class="aim">目標：1年を振り返り、次の1年の計画を立てる</p>
+      <ul class="check">
+        <li><input type="checkbox" id="rm-m12-1"><label for="rm-m12-1">1年分の振り返りメモを読み返し、「わかるようになったこと」を10個書いた</label></li>
+        <li><input type="checkbox" id="rm-m12-2"><label for="rm-m12-2"><a href="01-mindset.html">01章</a>の図1を見直し、「まだのこと」がどれだけ左に移ったか確かめた</label></li>
+        <li><input type="checkbox" id="rm-m12-3"><label for="rm-m12-3">次の1年で伸ばしたいこと（資格・担当範囲・技術）を3つ決めた</label></li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2>資格の位置づけ：目的ではなく道具</h2>
+    <p>資格は、学ぶ範囲を体系的に知るための<strong>地図</strong>として役立ちます。また、試験日という締め切りがあることで、学習のペースを作りやすくなります。一方で、資格を取ること自体が目的になると、業務とつながらない暗記で終わってしまいがちです。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>資格</th><th>どんな内容か</th><th>あなたの業務との関係</th><th>おすすめの時期</th></tr></thead>
+      <tbody>
+        <tr><td>基本情報技術者試験</td><td>IPAが実施する国家試験。コンピュータの基礎、ネットワーク、DB、アルゴリズム、開発の進め方など幅広い</td><td>システム全体の土台。全体像（02章）の理解を広げる</td><td>フェーズ2〜3と並行</td></tr>
+        <tr><td>Java Silver<br><small>（Oracle Certified Java Programmer, Silver）</small></td><td>Oracleの認定資格。Javaの文法と基本的なAPIの理解を問う</td><td>Javaを「読める」力の確認。03章と相性がよい</td><td>フェーズ2以降</td></tr>
+        <tr><td>OSS-DB Silver</td><td>LPI-Japanが実施する、PostgreSQLをベースにしたデータベースの資格</td><td>勤怠のDB（Postgres）の運用・SQLの理解に直結</td><td>フェーズ2〜3（06章の後）</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">※試験の形式・出題範囲・受験料などは変わることがあります。受験前に各実施団体の公式サイトで最新情報を確認してください。</p>
+    <div class="compare">
+      <div class="bad"><b>資格が目的になっている</b>
+        <p>問題集を丸暗記して合格。でも業務のSQLは相変わらずAIに書いてもらうだけで、合格した内容と仕事がつながっていない。</p>
+      </div>
+      <div class="good"><b>資格を道具として使う</b>
+        <p>OSS-DB Silverの範囲でインデックスを学んだら、社内の勤怠テーブルにどんなインデックスがあるか実際に確かめてみる。学んだことを業務で1つずつ確認する。</p>
+      </div>
+    </div>
+    <p>資格を受けるかどうかは、会社の方針（資格手当や推奨資格の有無）も参考にしてください。<strong>最優先はあくまでフェーズ1の環境構築</strong>です。環境がないまま資格の勉強を始めると、また「読むだけ」の学習に戻ってしまいます。</p>
+  </section>
+
+  <section id="s9">
+    <h2>おすすめの学習方法の種類</h2>
+    <p>学習方法にはいくつか種類があり、それぞれ得意なことが違います。「動画を見る」以外の選択肢を持っておくと、目的に合わせて使い分けられます。</p>
+    <div class="cards">
+      <div class="card"><h4>公式ドキュメント</h4><p>Spring Boot、Maven、PostgreSQLなどの公式ドキュメントは、情報が正確で新しい。最初は難しく感じても、「調べたい1項目だけ読む」使い方なら負担は小さい。AIの回答の確認先としても使える。</p></div>
+      <div class="card"><h4>手を動かす</h4><p>ローカル環境で、SQLの条件を1つ変える、ログ出力を1行足す、ブレークポイントで止める。結果が予想と違ったところが、学びのポイント。</p></div>
+      <div class="card"><h4>社内コードを読む</h4><p>自分が担当するシステムのコードは、最高の教材。業務と直結しているので、読んだ分だけすぐ仕事に効く。打刻登録や有給付与など、よく問い合わせが来る機能から読む。</p></div>
+      <div class="card"><h4>写経</h4><p>お手本のコードを、コピーせず自分で打ち込む。打ちながら「この行は何をしているか」を考えるのがポイント。打ち終わったら一部を変えて動かしてみる。</p></div>
+      <div class="card"><h4>人に説明する・書く</h4><p>振り返りメモ、手順書、先輩への報告。説明しようとして詰まった所が、まだ理解していない所。</p></div>
+      <div class="card"><h4>AIに質問する</h4><p>「答えを聞く」より「自分の理解を説明して、間違いを指摘してもらう」使い方が効果的（<a href="10-ai-learning.html">10章</a>）。</p></div>
+    </div>
+    <h3>書籍について</h3>
+    <p>入門書は、体系的に学ぶのに役立ちます。ただ、書籍は版によって内容が古くなることもあるため、このガイドでは特定の書名は挙げません。選ぶときは、<strong>対応するバージョン（Javaのバージョン、Spring Bootのメジャーバージョン）が自分の業務に近いか</strong>、<strong>手を動かすサンプルがあるか</strong>を確認し、可能なら先輩や社内でおすすめを聞いてください。社内で読まれている本があれば、それを読むと話題も共有しやすくなります。</p>
+  </section>
+
+  <section id="s10">
+    <h2>章を読む順番と実践のしかた</h2>
+    <p>このガイドの各章を、どの時期に読み、どう実践するかをまとめました。「読む」だけで終わらせず、右端の「実践」まで1つやってから次に進むのがコツです。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>時期</th><th>章</th><th>実践すること</th></tr></thead>
+      <tbody>
+        <tr><td>1か月目</td><td><a href="01-mindset.html">01 このままでいいのか</a></td><td>現在地の書き出し、振り返りメモを始める</td></tr>
+        <tr><td>1か月目</td><td><a href="02-system-map.html">02 システムの全体像</a></td><td>担当システムの構成図を自分で描く</td></tr>
+        <tr><td>1〜3か月目</td><td><a href="05-build-env.html">05 開発環境をつくる</a></td><td>ビルド・起動・デバッグまで完了させる（最優先）</td></tr>
+        <tr><td>3か月目</td><td><a href="10-ai-learning.html">10 AIと一緒に強くなる</a></td><td>AIの回答を仮説として確かめる習慣をつける</td></tr>
+        <tr><td>3か月目</td><td><a href="11-communication.html">11 伝える技術</a></td><td>テンプレートを保存し、質問・報告で使う</td></tr>
+        <tr><td>4か月目</td><td><a href="03-java.html">03 読めるJava</a></td><td>スタックトレースからソースを開き、デバッガで追う</td></tr>
+        <tr><td>5か月目</td><td><a href="04-spring-boot.html">04 Spring Bootの正体</a></td><td>URL→Controller→Service→Repositoryを追う</td></tr>
+        <tr><td>6か月目</td><td><a href="06-sql-postgres.html">06 自分で書くSQL</a></td><td>AIに頼む前に自分でSQLを書いて比べる</td></tr>
+        <tr><td>7か月目</td><td><a href="07-logs-incident.html">07 ログと障害調査</a></td><td>仮説を3つ書いてから調査する</td></tr>
+        <tr><td>8か月目</td><td><a href="08-xml-forms.html">08 XMLのWeb申請</a></td><td>申請1つの定義とSQLの対応を追う</td></tr>
+        <tr><td>9か月目</td><td><a href="09-change-request.html">09 要望から改修まで</a></td><td>小さな改修を再現から検証まで通す</td></tr>
+        <tr><td>10〜12か月目</td><td><a href="11-communication.html">11 伝える技術</a>（再読）</td><td>報告・手順書・口頭説明の質を上げる</td></tr>
+      </tbody>
+    </table></div>
+    <p>06〜09章は、業務で関係する問い合わせや改修が来たら、時期に関係なく先に開いて構いません。<strong>業務で必要になったときが、一番身につくタイミング</strong>です。ただし05章（環境構築）だけは、業務の都合を待たずに最初に進めてください。</p>
+  </section>
+
+  <section id="s11">
+    <h2>よくあるつまずき</h2>
+    <h3>計画どおりに進まず、やめてしまう</h3>
+    <p>計画は必ずずれます。繁忙期や急な障害対応で何週間も進まないこともあるでしょう。ずれたら、月の目標を1つ後ろにずらすだけです。計画を捨てるのではなく、<strong>書き直す</strong>ものだと考えてください。</p>
+    <h3>環境構築を後回しにしてしまう</h3>
+    <p>環境構築は地味で、詰まるとつらく、つい後回しになります。でも、ここを越えないと他の章の学びが「読むだけ」になります。1人で抱えず、詰まった箇所を1行で書いて先輩に聞いてください。それが一番の近道です。</p>
+    <h3>いろいろな章に手を出しすぎる</h3>
+    <p>興味が広がるのは良いことですが、同時に3つ以上の章を進めると、どれも中途半端になりがちです。<strong>いまのフェーズの章を1つ</strong>に絞り、他は業務で必要になったときに開く、くらいがちょうどいいです。</p>
+    <h3>チェックを埋めることが目的になる</h3>
+    <p>チェックリストは目安です。チェックを入れるときは「これを人に説明できるか？」と自分に問いかけてください。説明できなければ、チェックはまだ入れなくて大丈夫です。</p>
+    <h3>振り返りをせずに先に進む</h3>
+    <p>新しいことを学ぶほうが楽しいので、振り返りは飛ばしがちです。でも、振り返りがないと「わかったつもり」が積み上がるだけになります。週15分の振り返りは、学んだことを定着させるための大事な時間です。</p>
+  </section>
+
+  <section id="s12">
+    <h2>練習問題</h2>
+    <details class="quiz">
+      <summary>問1：なぜこのロードマップでは、Java や Spring Boot の学習より先に開発環境構築を置いているのでしょう？</summary>
+      <div class="ans"><p>ローカルでビルド・起動・デバッグができないと、コードを読んでも「本当にそう動くか」を確かめられないからです。環境があれば、ブレークポイントで止めて変数の中身を見たり、条件を変えて結果を比べたりでき、「再現・検証」を通して理解が深まります。環境がないままだと、学習が「読むだけ」「AIの説明を聞くだけ」になりやすくなります。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問2：今週は障害対応が続き、毎日30分が1日もできませんでした。どうすればよいでしょう？</summary>
+      <div class="ans"><p>自分を責めずに、週次の振り返りだけは行います。障害対応そのものが学びの材料なので、「今週の障害で、わかったこと・まだわからないこと」を書けば十分な振り返りになります。そのうえで、来週の「やる3つ」を小さめに設定し直します。月の目標がずれるなら、ロードマップを書き直せばよいだけです。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問3：OSS-DB Silverの勉強を始めたいと思っています。このロードマップの考え方では、どう進めるのがよいでしょう？</summary>
+      <div class="ans"><p>まずフェーズ1（環境構築）が終わっているかを確認します。終わっていれば、06章（SQL）と並行して進めるのがおすすめです。学んだ内容（インデックス、トランザクション、権限など）を、社内の勤怠DBやローカル環境で実際に確かめながら進めると、資格の勉強が業務の理解に直結します。資格は目的ではなく、体系的に学ぶための道具として使います。</p></div>
+    </details>
+  </section>
+
+  <section id="s13">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>ロードマップ</dt><dd>目標までの道筋と、途中の到達点を示した計画。ずれたら書き直す前提で使う。</dd>
+      <dt>フェーズ</dt><dd>計画を区切った段階。各フェーズにゴール（できるようになること）を置く。</dd>
+      <dt>ローカル環境</dt><dd>自分のPC上でアプリを動かせる環境。ビルド・起動・デバッグができる状態を目指す。</dd>
+      <dt>ブレークポイント</dt><dd>デバッガで処理を一時停止させる場所。止めた時点の変数の中身を確認できる。</dd>
+      <dt>週次の振り返り</dt><dd>週に1回、わかったこと・まだわからないこと・来週やることを整理する時間。</dd>
+      <dt>写経</dt><dd>お手本のコードを、コピーせずに自分で打ち込んで学ぶ方法。</dd>
+      <dt>公式ドキュメント</dt><dd>ソフトウェアの開発元が公開している説明書。もっとも正確な一次情報。</dd>
+    </dl>
+  </section>
+
+  <section id="s14">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="rm-t-1"><label for="rm-t-1">毎日30分の時間帯と場所を決める</label></li>
+      <li><input type="checkbox" id="rm-t-2"><label for="rm-t-2">環境構築で詰まっている箇所を1行で書き、エラー全文を保存する</label></li>
+      <li><input type="checkbox" id="rm-t-3"><label for="rm-t-3">「先輩・社内Wikiに確認する項目」から1つ選び、質問を送る</label></li>
+      <li><input type="checkbox" id="rm-t-4"><label for="rm-t-4">週次の振り返りの曜日と時間を決め、カレンダーに入れる</label></li>
+      <li><input type="checkbox" id="rm-t-5"><label for="rm-t-5">このページの「1か月目」のチェックリストを確認し、最初の1つに取りかかる</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="11-communication.html"><span>← 前の章</span>11 伝える技術</a><a class="next" href="00-index.html"><span>次の章 →</span>目次</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+<script>
+(function(){
+  var KEY = 'se-guide-12-roadmap-checks';
+  var state = {};
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) { state = JSON.parse(raw) || {}; }
+  } catch (e) { state = {}; }
+
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('ul.check input[type="checkbox"][id]'));
+  var monthBoxes = boxes.filter(function(b){ return b.id.indexOf('rm-m') === 0; });
+  var countEl = document.getElementById('rm-count');
+  var barEl = document.getElementById('rm-bar');
+
+  function save(){
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 保存できない環境でもチェックは使える */ }
+  }
+  function render(){
+    var done = monthBoxes.filter(function(b){ return b.checked; }).length;
+    var total = monthBoxes.length;
+    if (countEl) { countEl.textContent = '月ごとのチェック ' + done + ' / ' + total + ' 完了'; }
+    if (barEl) { barEl.style.width = (total ? Math.round(done / total * 100) : 0) + '%'; }
+  }
+
+  boxes.forEach(function(b){
+    if (state[b.id] === true) { b.checked = true; }
+    b.addEventListener('change', function(){
+      if (b.checked) { state[b.id] = true; } else { delete state[b.id]; }
+      save();
+      render();
+    });
+  });
+
+  var reset = document.getElementById('rm-reset');
+  if (reset) {
+    reset.addEventListener('click', function(){
+      boxes.forEach(function(b){ b.checked = false; });
+      state = {};
+      save();
+      render();
+    });
+  }
+  render();
+})();
+</script>
+</body>
+</html>

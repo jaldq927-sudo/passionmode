@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>11 伝える技術</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 11 伝える技術</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">11</div>
+  <div><div class="eyebrow">CHAPTER 11 ・ 伝える力</div><h1>伝える技術</h1></div>
+  <p class="summary">伝えるのが苦手でも大丈夫です。報告・質問・回答には「型」があり、型に当てはめれば誰でも伝わる文章が書けます。障害報告、影響調査の回答、顧客要望への返事、先輩への質問、チャットの進捗報告のテンプレートをそろえました。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>結論→理由→影響→対応→依頼、という伝え方の基本の型</li>
+    <li>事実と推測を分け、数字・時刻・件数で書く方法</li>
+    <li>障害の一次報告、影響調査の回答、要望への回答、先輩への質問、進捗報告のテンプレート</li>
+    <li>AIに作らせた回答を送る前のチェックリスト</li>
+    <li>会話が少ない人でもできる、小さな練習のしかた</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">型で解決できる</a><a href="#s2">たとえ話</a><a href="#s3">基本の型</a><a href="#s4">事実と推測</a><a href="#s5">障害の一次報告</a><a href="#s6">影響調査の回答</a><a href="#s7">要望への回答</a><a href="#s8">先輩への質問</a><a href="#s9">進捗報告</a><a href="#s10">AI回答のチェック</a><a href="#s11">小さな練習</a><a href="#s12">つまずき</a><a href="#s13">練習問題</a><a href="#s14">用語</a><a href="#s15">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>苦手でも、型で解決できる</h2>
+    <p>「話すのが苦手」「文章をまとめるのが下手」と感じている人は多いです。でも、SEの仕事で求められる「伝える」は、雑談の上手さや話術ではありません。<strong>相手が次の行動を決めるのに必要な情報を、迷わず受け取れる順番で渡すこと</strong>です。これは才能ではなく、型と練習で身につきます。</p>
+    <p>実際、伝わらない報告の多くは、文章力の問題ではなく<strong>順番と中身の問題</strong>です。たとえば次のような報告です。</p>
+    <div class="compare">
+      <div class="bad"><b>伝わりにくい</b>
+        <p>ログを確認したところ、9時ごろからエラーが出ていて、調べたらDB接続のところで何か起きているみたいで、AIに聞いたらコネクションプールの問題かもしれないとのことで、今いろいろ見ています。</p>
+      </div>
+      <div class="good"><b>伝わる</b>
+        <p>【結論】9:02以降、打刻登録の一部が失敗しています（10:00時点で37件）。<br>【原因】調査中。DB接続数の上限到達を疑っています（推測）。<br>【対応】10:30までに原因を特定し再報告します。<br>【依頼】失敗した社員への再打刻のご案内をお願いできますか。</p>
+      </div>
+    </div>
+    <p>右の報告は、特別な文章力を使っていません。<strong>結論から書き、事実と推測を分け、数字を入れ、相手に何をしてほしいかを最後に書いた</strong>だけです。この章では、この「だけ」を、場面ごとのテンプレートとして手元に置けるようにします。</p>
+    <div class="callout info"><b>この章の使い方</b>
+      <p>最初から全部覚える必要はありません。報告や質問を書くときにこのページを開き、テンプレートをコピーして穴埋めしてください。10回使えば、型は自然と体に入ります。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：天気予報は結論から始まる</h2>
+    <p>天気予報は「明日は雨です。傘を持って出かけましょう」と結論から始まります。気圧配置の説明から始まる天気予報は、ほとんどありません。聞く人が知りたいのは「傘がいるかどうか」だからです。</p>
+    <div class="analogy">
+      <div><span class="lbl">天気予報</span>「明日は雨（結論）。低気圧が近づくため（理由）。通勤時間帯に強まる（影響）。傘をお持ちください（依頼）」</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">障害報告</span>「打刻が一部失敗（結論）。DB接続の問題を疑う（理由）。朝の出勤打刻37件（影響）。再打刻の案内をお願いします（依頼）」</div>
+    </div>
+    <p>報告を受ける側（先輩、担当者、顧客）は忙しく、最初の1〜2行で「自分が何かすべきか」を判断しようとします。経緯から書くと、その判断が最後まで読まないとできません。<strong>結論を先に、経緯は後ろに</strong>。これだけで、伝わり方は大きく変わります。</p>
+  </section>
+
+  <section id="s3">
+    <h2>基本の型：結論→理由→影響→対応→依頼</h2>
+    <p>業務での報告・回答は、ほとんどがこの5つの要素でできています。</p>
+    <div class="flow">
+      <div class="node"><b>結論</b>何が起きた／何が答えか</div>
+      <div class="arrow"></div>
+      <div class="node"><b>理由</b>なぜそう言えるか（根拠）</div>
+      <div class="arrow"></div>
+      <div class="node"><b>影響</b>誰に・何件・いつから</div>
+      <div class="arrow"></div>
+      <div class="node"><b>対応</b>何をした／何をする（期限）</div>
+      <div class="arrow"></div>
+      <div class="node hot"><b>依頼</b>相手にしてほしいこと</div>
+    </div>
+    <p>全部の要素が毎回必要なわけではありません。ちょっとした質問への回答なら「結論＋理由」で十分です。ただ、<strong>障害や調査の報告では5つすべて</strong>がそろっているかを確認してください。特に「依頼」は書き忘れやすく、書き忘れると相手は「で、私は何をすればいいの？」と止まってしまいます。</p>
+    <h3>PREPと報連相との関係</h3>
+    <p>よく聞く「PREP法」や「報連相」も、同じ考え方を別の言葉で表したものです。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>型</th><th>中身</th><th>向いている場面</th></tr></thead>
+      <tbody>
+        <tr><td>PREP</td><td>Point（結論）→ Reason（理由）→ Example（具体例）→ Point（結論の繰り返し）</td><td>意見や提案を説明するとき。改修方針の説明など</td></tr>
+        <tr><td>報告</td><td>結果・事実を伝える。結論→理由→影響</td><td>調査結果、作業完了、障害発生</td></tr>
+        <tr><td>連絡</td><td>関係者に情報を共有する。いつ・何が・どう変わる</td><td>リリース日程、メンテナンス予定、仕様変更</td></tr>
+        <tr><td>相談</td><td>判断を仰ぐ。状況→選択肢→自分の案→判断してほしい点</td><td>改修方針で迷うとき、期限に間に合わないとき</td></tr>
+      </tbody>
+    </table></div>
+    <p>どの型でも共通するのは「<strong>相手が最初に知りたいことを最初に書く</strong>」ことです。迷ったら「この人は、まず何を知りたいだろう？」と考えてください。</p>
+  </section>
+
+  <section id="s4">
+    <h2>事実と推測を分ける・数字で書く</h2>
+    <p>報告で一番トラブルになりやすいのが、<strong>推測を事実のように書いてしまう</strong>ことです。「原因はコネクションプールです」と断定して、あとで違ったら、相手の判断を誤らせてしまいます。逆に、確かめた事実まで「〜かもしれません」とぼかすと、何が確実なのかわからなくなります。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 300" style="max-width:560px" role="img" aria-label="事実と推測を分けて書く図">
+        <defs><marker id="c-ar1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-accent" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <rect class="box-soft" x="14" y="110" width="140" height="80" rx="8"/>
+        <text x="84" y="144" text-anchor="middle" font-size="14" font-weight="700">調べた結果</text>
+        <text x="84" y="166" text-anchor="middle" font-size="12" class="muted">ログ・SQL・AI回答</text>
+        <path class="line-accent" d="M154,135 L230,70" marker-end="url(#c-ar1)"/>
+        <path class="line-accent" d="M154,165 L230,230" marker-end="url(#c-ar1)"/>
+        <rect class="box-ok" x="236" y="14" width="310" height="116" rx="8"/>
+        <text x="252" y="40" font-size="14" font-weight="700">事実（確認済み）</text>
+        <text x="252" y="64" font-size="13">・9:02からエラーログが出ている</text>
+        <text x="252" y="86" font-size="13">・失敗した打刻は10:00時点で37件</text>
+        <text x="252" y="108" font-size="13">・ログに「接続取得タイムアウト」の行</text>
+        <rect class="box-warn" x="236" y="170" width="310" height="116" rx="8"/>
+        <text x="252" y="196" font-size="14" font-weight="700">推測（未確認）</text>
+        <text x="252" y="220" font-size="13">・DB接続数の上限に達した可能性</text>
+        <text x="252" y="242" font-size="13">・朝の打刻集中が引き金かもしれない</text>
+        <text x="252" y="264" font-size="13" class="muted">→ 確かめる方法と期限を添える</text>
+      </svg>
+      <figcaption>図1：調べた内容を「事実」と「推測」の箱に仕分けてから書く。AIの回答は、確かめるまでは推測の箱に入れる。</figcaption>
+    </figure>
+    <p>書き方のコツは、推測には<strong>「〜と推測しています」「〜を疑っています」と明示し、確かめる方法と期限を添える</strong>ことです。そうすれば、推測を書いても相手を誤らせません。</p>
+    <h3>数字・時刻・件数を入れる</h3>
+    <p>「たくさん」「ちょっと前から」「一部の人」は、受け取る人によって解釈が変わります。数字で書けば、解釈のずれは起きません。</p>
+    <div class="compare">
+      <div class="bad"><b>あいまい</b>
+        <ul>
+          <li>朝からエラーが出ています</li>
+          <li>一部の社員で残業時間がおかしいです</li>
+          <li>もうすぐ終わります</li>
+          <li>結構な件数あります</li>
+        </ul>
+      </div>
+      <div class="good"><b>数字で書く</b>
+        <ul>
+          <li>10/14 9:02からエラーが出ています</li>
+          <li>営業部の社員5名で、10月の残業時間が勤怠画面と連携ファイルで最大2.5時間ずれています</li>
+          <li>15:00までに終わる見込みです</li>
+          <li>対象は128件です（10/14 11:00時点）</li>
+        </ul>
+      </div>
+    </div>
+    <p>件数がまだ確定していないときは、「10:00時点で37件（増加中）」のように<strong>時点を添えて</strong>書きます。わからない数字は無理に書かず、「件数は集計中、11:00までに報告します」と書けば十分です。</p>
+  </section>
+
+  <section id="s5">
+    <h2>テンプレ1：障害の一次報告メール</h2>
+    <p>障害が起きたとき、最初の報告（一次報告）でやるべきことは<strong>完璧な原因説明ではなく、「起きていること」と「次にいつ報告するか」を早く伝えること</strong>です。原因がわかるまで黙っていると、関係者は状況がわからず不安になり、問い合わせが殺到します。</p>
+    <div class="compare">
+      <div class="bad"><b>悪い例</b>
+        <p>件名：エラーについて</p>
+        <p>お疲れさまです。今朝から勤怠のほうでエラーが出ているようで、原因を調べています。わかり次第ご連絡します。</p>
+      </div>
+      <div class="good"><b>良い例</b>
+        <p>件名：【障害・一次報告】勤怠システム 打刻登録の一部失敗（10/14 9:02〜）</p>
+        <p>現象・発生時刻・件数・影響・暫定対応・次回報告時刻が書かれている（下のテンプレート参照）。</p>
+      </div>
+    </div>
+    <p class="code-title">障害の一次報告テンプレート</p>
+<pre><code>件名：【障害・一次報告】<span class="s">{システム名} {現象の一言}</span>（<span class="s">{発生日時}</span>〜）
+
+<span class="s">{宛先}</span> 各位
+
+お疲れさまです。<span class="s">{自分の名前}</span>です。
+勤怠システムで以下の障害が発生しています。第一報としてご連絡します。
+
+<span class="k">■ 現象</span>
+  打刻登録の一部が失敗し、画面に「登録に失敗しました」と表示されます。
+<span class="k">■ 発生日時</span>
+  2026/10/14 9:02 ごろ〜（現在も継続中）
+<span class="k">■ 影響範囲</span>
+  10:00時点で失敗37件（全拠点）。参照・申請画面は正常に動作しています。
+<span class="k">■ 原因</span>
+  調査中です。DB接続の取得でタイムアウトが出ており、
+  接続数の上限到達を疑っています（<span class="hl">推測・未確認</span>）。
+<span class="k">■ 現在の対応</span>
+  ・DB接続数の状況を確認中
+  ・失敗した打刻の一覧を抽出中
+<span class="k">■ お願い</span>
+  失敗した社員には、時間をおいて再打刻するようご案内をお願いします。
+<span class="k">■ 次回報告</span>
+  10:30 までに状況を再報告します（原因が判明しなくても報告します）。</code></pre>
+    <div class="callout warn"><b>「次回報告時刻」は必ず書く</b>
+      <p>「わかり次第連絡します」だと、相手はいつまで待てばいいかわかりません。「原因がわからなくても10:30に一度報告する」と決めて書くことで、相手は安心して自分の作業ができます。そして時刻になったら、進展がなくても「現在も調査中、次は11:00」と報告します。</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>テンプレ2：影響調査の回答（担当者向け）</h2>
+    <p>人事・総務の担当者から「この不具合で、誰の、どのデータに影響がありますか？」と聞かれることがあります。担当者が知りたいのは技術的な原因より、<strong>どの社員に何をすればいいか</strong>です。</p>
+    <div class="compare">
+      <div class="bad"><b>悪い例</b>
+        <p>調査したところ、締め処理のバッチで打刻修正テーブルの更新日時の比較条件に不備があり、締め後に更新されたレコードが連携対象から漏れていました。影響はそれなりにあると思います。</p>
+      </div>
+      <div class="good"><b>良い例</b>
+        <p>【結論】10月分の給与連携で、3名・計4日分の残業時間が反映されていませんでした。<br>【対象】下表のとおり。<br>【原因】締め処理（10/31 18:00）の後に打刻修正された分が、連携の対象から漏れたためです。<br>【対応】11/2中に再連携します。<br>【お願い】給与計算の確定を11/2夕方までお待ちいただけますか。</p>
+      </div>
+    </div>
+    <p class="code-title">影響調査の回答テンプレート</p>
+<pre><code><span class="k">■ 結論</span>
+  <span class="s">{対象期間}</span>の<span class="s">{処理名}</span>で、<span class="s">{人数・件数}</span>に影響がありました／ありませんでした。
+<span class="k">■ 影響の詳細</span>
+  社員番号 / 氏名 / 対象日 / 影響内容（例：残業 +1.5h が未反映）
+  10234   / 山田   / 10/12 / 残業1.5h 未反映
+  ...
+<span class="k">■ 調査方法</span>（どう確認したか。担当者が信頼できるように）
+  締め日時（10/31 18:00）より後に更新された打刻修正を抽出しました。
+<span class="k">■ 原因</span>（1〜2文、専門用語を避けて）
+<span class="k">■ 対応予定</span>
+  <span class="s">{いつ}</span>までに<span class="s">{何を}</span>します。
+<span class="k">■ お願い・ご確認</span>
+  <span class="s">{相手にしてほしいこと}</span>
+<span class="k">■ 補足</span>
+  「影響なし」と判断した範囲：11月分は対象外であることを確認済み。</code></pre>
+    <p>「影響なし」の範囲もはっきり書くと、担当者は安心できます。また、「調査方法」を一言添えることで、担当者は「ちゃんと調べたうえでの回答だ」と判断できます。調査方法を書けないなら、まだ自分が理解していない可能性があります。</p>
+    <div class="callout tip"><b>専門用語の言い換え例</b>
+      <ul>
+        <li>「レコードが連携対象から漏れた」→「給与システムに送るデータに含まれていなかった」</li>
+        <li>「バッチ」→「夜間（または締め時）に自動で動く処理」</li>
+        <li>「NULLだった」→「値が登録されていなかった」</li>
+        <li>「ロールバックした」→「処理を取り消して、元の状態に戻した」</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2>テンプレ3：顧客要望への回答・見積前の確認</h2>
+    <p>「通勤費申請に、定期券の区間を2つ登録できるようにしてほしい」のような要望が来たとき、すぐに「できます」「できません」と答えるのは危険です。要望の背景や条件を確認しないまま見積もると、あとで「そういう意味じゃなかった」となりがちです（要望から改修までの流れは<a href="09-change-request.html">09章</a>で詳しく扱います）。</p>
+    <div class="compare">
+      <div class="bad"><b>悪い例</b>
+        <p>ご要望の件、対応可能です。2週間ほどでできると思います。</p>
+      </div>
+      <div class="good"><b>良い例</b>
+        <p>ご要望ありがとうございます。お見積の前に、内容を正しく理解するため4点確認させてください。（以下、確認事項を番号付きで）回答をいただいた後、3営業日以内に対応可否と概算をお伝えします。</p>
+      </div>
+    </div>
+    <p class="code-title">要望への一次回答（見積前の確認）テンプレート</p>
+<pre><code>件名：Re: 通勤費申請の定期区間追加について（確認のお願い）
+
+<span class="s">{相手}</span> 様
+
+ご要望ありがとうございます。<span class="s">{自分の名前}</span>です。
+お見積の前に、内容を正しく把握するため、以下をご確認いただけますでしょうか。
+
+<span class="k">■ ご要望の理解</span>（ずれていればご指摘ください）
+  通勤費申請で、定期券区間を最大2つまで登録できるようにしたい。
+
+<span class="k">■ 確認したいこと</span>
+  1. 背景：2区間が必要になるのは、どのようなケースでしょうか
+     （例：電車＋バスの乗り継ぎ、複数拠点勤務など）
+  2. 対象：全社員が対象でしょうか、特定の部署のみでしょうか
+  3. 既存データ：すでに申請済みのデータは変更が必要でしょうか
+  4. 時期：いつまでに利用開始したいでしょうか
+
+<span class="k">■ 今後の進め方</span>
+  ご回答をいただいてから3営業日以内に、対応可否と概算工数をお伝えします。
+  なお、承認フローや給与連携への影響を確認する必要があるため、
+  <span class="hl">現時点では対応可否・期間は確定していません</span>。</code></pre>
+    <p>ポイントは「<strong>自分の理解を書いて、ずれていないか確かめる</strong>」ことと「<strong>現時点で確定していないことをはっきり書く</strong>」ことです。確認事項は番号を振ると、相手が「1は〇〇、2は〇〇」と答えやすくなります。</p>
+    <p class="note">※実際の見積の出し方や、顧客に直接回答してよい範囲は会社によって違います。最初のうちは、送信前に先輩に文面を見てもらうのが安全です。</p>
+  </section>
+
+  <section id="s8">
+    <h2>テンプレ4：先輩への質問</h2>
+    <p>先輩に質問するのは、気が引けるかもしれません。でも、良い質問は先輩の時間をあまり取らず、むしろ「ちゃんと考えている」と評価されます。良い質問には、4つの要素が入っています。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 250" style="max-width:560px" role="img" aria-label="良い質問の4要素">
+        <rect class="box" x="10" y="14" width="265" height="100" rx="8"/>
+        <text x="26" y="42" font-size="14" font-weight="700">① 何をした</text>
+        <text x="26" y="66" font-size="12" class="muted">試した手順・コマンド・</text>
+        <text x="26" y="84" font-size="12" class="muted">見たファイル</text>
+        <rect class="box" x="285" y="14" width="265" height="100" rx="8"/>
+        <text x="301" y="42" font-size="14" font-weight="700">② 何が起きた</text>
+        <text x="301" y="66" font-size="12" class="muted">エラーメッセージ全文・</text>
+        <text x="301" y="84" font-size="12" class="muted">画面の表示・ログの行</text>
+        <rect class="box" x="10" y="126" width="265" height="100" rx="8"/>
+        <text x="26" y="154" font-size="14" font-weight="700">③ 何を期待した</text>
+        <text x="26" y="178" font-size="12" class="muted">本来どうなるはずだったか</text>
+        <rect class="box-soft" x="285" y="126" width="265" height="100" rx="8"/>
+        <text x="301" y="154" font-size="14" font-weight="700">④ 自分の仮説</text>
+        <text x="301" y="178" font-size="12" class="muted">「〇〇が原因だと思うが、</text>
+        <text x="301" y="196" font-size="12" class="muted">合っているか」</text>
+        <text x="280" y="244" text-anchor="middle" font-size="12" class="muted">①②は事実、③は期待、④は自分の考え。④があると先輩は「答え合わせ」だけで済む</text>
+      </svg>
+      <figcaption>図2：良い質問の4要素。特に④の仮説があると、回答が速くなり、自分の学びにもなる。</figcaption>
+    </figure>
+    <div class="compare">
+      <div class="bad"><b>悪い例</b>
+        <p>すみません、Mavenのビルドができないんですが、どうすればいいですか？</p>
+      </div>
+      <div class="good"><b>良い例</b>
+        <p>Mavenのビルドで質問させてください（5分ほど）。<br>①<code>mvn clean package</code>を実行しました。<br>②依存ライブラリのダウンロードで「PKIX path building failed」と出て止まります（全文は下に貼ります）。<br>③本来はjarが作られるはずです。<br>④社内のプロキシ証明書がJDKに入っていないのが原因かと思いますが、社内で手順はありますか？</p>
+      </div>
+    </div>
+    <p class="code-title">先輩への質問テンプレート（チャット用）</p>
+<pre><code><span class="s">{内容の一言}</span>について質問させてください（<span class="s">{所要時間の目安}</span>）。
+
+<span class="k">【やったこと】</span>
+<span class="k">【起きたこと】</span>（エラーは全文コピー。スクショより文字で）
+<span class="k">【期待していたこと】</span>
+<span class="k">【自分の仮説】</span>〇〇が原因だと考えています。理由は△△です。
+<span class="k">【聞きたいこと】</span>仮説が合っているか／社内の手順があるか／誰に聞けばよいか
+<span class="k">【急ぎ度】</span>今日中だと助かります／急ぎではありません</code></pre>
+    <div class="callout tip"><b>仮説が思いつかないときは</b>
+      <p>「仮説：まだ立てられていません。AとBを疑って調べましたが、どちらも違いました」と書けば十分です。<strong>何を調べて何が違ったか</strong>も、先輩にとっては大事な情報です。AIに出してもらった仮説を書くなら「AIはAと言っていますが、自分では確かめきれていません」と正直に書きましょう。</p>
+    </div>
+    <p>質問するタイミングの目安は「<strong>15〜30分調べて進まなかったら聞く</strong>」です。何時間も一人で抱え込むより、早めに聞いて、教わった内容を振り返りメモに残すほうが、ずっと速く成長します。</p>
+  </section>
+
+  <section id="s9">
+    <h2>テンプレ5：チャットでの進捗報告</h2>
+    <p>案件の途中で「今どうなってる？」と聞かれる前に、自分から短く報告できると信頼が上がります。進捗報告は、<strong>完了したこと・次にやること・困っていること</strong>の3点で書きます。</p>
+    <div class="compare">
+      <div class="bad"><b>悪い例</b>
+        <p>氏名変更届の件、いま進めています。ちょっと時間かかってますが、がんばります。</p>
+      </div>
+      <div class="good"><b>良い例</b>
+        <p>【氏名変更届 改修】進捗60%、予定どおり11/8完了見込みです。<br>済：XML定義の項目追加、テスト環境での表示確認<br>次：承認後の社員マスタ更新SQLの確認（11/6まで）<br>相談：旧姓併記の表示仕様が未確定です。〇〇さんに確認してよいでしょうか。</p>
+      </div>
+    </div>
+    <p class="code-title">進捗報告テンプレート（チャット用）</p>
+<pre><code><span class="k">【案件名】</span>進捗<span class="s">{%}</span>、<span class="s">{予定どおり / 遅れ見込み}</span>（完了見込み：<span class="s">{日付}</span>）
+<span class="k">済：</span><span class="s">{完了したこと}</span>
+<span class="k">次：</span><span class="s">{次にやること}</span>（<span class="s">{いつまで}</span>）
+<span class="k">相談・リスク：</span><span class="s">{困っていること / なければ「なし」}</span></code></pre>
+    <div class="callout warn"><b>遅れそうなときこそ早く</b>
+      <p>遅れの報告は気が重いものです。でも、期限の前日に「間に合いません」と言うより、3日前に「このままだと1日遅れそうです。理由は〇〇、対策として△△を考えています」と言うほうが、周りは対処できます。<strong>悪い知らせほど早く</strong>、を意識してください。</p>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2>AIに作らせた回答を、送る前のチェックリスト</h2>
+    <p>報告文や回答文の下書きをAIに作らせるのは、良い使い方です。ただし、<strong>送るのはあなたの名前</strong>です。中身に責任を持つのはあなたなので、送る前に必ず次の関門を通してください（AIとの付き合い方全般は<a href="10-ai-learning.html">10章</a>を参照）。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 560 330" style="max-width:560px" role="img" aria-label="AI回答を送る前の3つの関門">
+        <defs><marker id="c-ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-accent" d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="c-ar3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path class="fill-muted" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <rect class="box-soft" x="20" y="10" width="300" height="44" rx="8"/>
+        <text x="170" y="38" text-anchor="middle" font-size="14" font-weight="700">AIが作った下書き</text>
+        <line class="line-accent" x1="170" y1="54" x2="170" y2="72" marker-end="url(#c-ar2)"/>
+        <rect class="box" x="20" y="76" width="300" height="50" rx="8"/>
+        <text x="36" y="99" font-size="13" font-weight="700">関門1：自分で説明できるか</text>
+        <text x="36" y="117" font-size="12" class="muted">画面を閉じて、口頭で同じ説明ができる？</text>
+        <line class="line-accent" x1="170" y1="126" x2="170" y2="144" marker-end="url(#c-ar2)"/>
+        <rect class="box" x="20" y="148" width="300" height="50" rx="8"/>
+        <text x="36" y="171" font-size="13" font-weight="700">関門2：根拠を示せるか</text>
+        <text x="36" y="189" font-size="12" class="muted">ログの行・SQL結果・設定値を指させる？</text>
+        <line class="line-accent" x1="170" y1="198" x2="170" y2="216" marker-end="url(#c-ar2)"/>
+        <rect class="box" x="20" y="220" width="300" height="50" rx="8"/>
+        <text x="36" y="243" font-size="13" font-weight="700">関門3：断定しすぎていないか</text>
+        <text x="36" y="261" font-size="12" class="muted">推測を事実のように書いていない？</text>
+        <line class="line-accent" x1="170" y1="270" x2="170" y2="288" marker-end="url(#c-ar2)"/>
+        <rect class="box-ok" x="20" y="292" width="300" height="34" rx="8"/>
+        <text x="170" y="314" text-anchor="middle" font-size="13" font-weight="700">送信</text>
+        <path class="line" d="M320,101 L346,148" marker-end="url(#c-ar3)"/>
+        <path class="line" d="M320,173 L346,173" marker-end="url(#c-ar3)"/>
+        <path class="line" d="M320,245 L346,198" marker-end="url(#c-ar3)"/>
+        <rect class="box-warn" x="350" y="140" width="200" height="66" rx="8"/>
+        <text x="450" y="166" text-anchor="middle" font-size="13" font-weight="700">NGなら戻って調べる</text>
+        <text x="450" y="188" text-anchor="middle" font-size="12" class="muted">または「推測」と明記</text>
+      </svg>
+      <figcaption>図3：AIの下書きは3つの関門を通してから送る。1つでも通らなければ、調べ直すか、推測であることを明記する。</figcaption>
+    </figure>
+    <p class="code-title">送信前チェックリスト（コピーして使える）</p>
+<pre><code>[ ] 画面を見ずに、内容を自分の言葉で説明できる
+[ ] 原因・結論の根拠になるログの行（またはSQL結果）を示せる
+[ ] 推測の部分に「推測」「〜と考えています」と書いてある
+[ ] 数字・日時・件数が、自分で確認した値と一致している
+[ ] 存在しない設定名・テーブル名・クラス名が混ざっていない
+[ ] 社員の個人情報やパスワードなど、送ってはいけない情報が入っていない
+[ ] 宛先の人が分かる言葉で書いてある（専門用語を言い換えた）
+[ ] 相手にしてほしいこと（依頼）と期限が書いてある
+[ ] AIらしい不自然な敬語・長すぎる前置きを削った</code></pre>
+    <div class="callout ng"><b>特に注意：AIは「それらしい固有名詞」を作る</b>
+      <p>AIは、存在しないテーブル名、設定項目、エラーコードを、もっともらしく書くことがあります。報告に固有名詞が出てきたら、実際のソース・DB・ログで<strong>その名前が本当に存在するか</strong>を確かめてください。また、社内のログや個人情報をAIに入力してよいかは、会社のルールを必ず確認してください。</p>
+    </div>
+  </section>
+
+  <section id="s11">
+    <h2>会話が少ない人向けの、小さな練習</h2>
+    <p>人と話す機会が少ないと、伝える練習の機会も少なくなります。でも、いきなり会議で堂々と話す必要はありません。<strong>失敗しても困らない小さな場面</strong>から練習しましょう。</p>
+    <div class="cards">
+      <div class="card"><h4>話す前にメモ3行</h4><p>電話や相談の前に、「結論」「理由」「お願い」を1行ずつ書いておく。話している途中で頭が真っ白になっても、メモを読めば大丈夫。</p></div>
+      <div class="card"><h4>会議で1回だけ発言</h4><p>内容は「確認ですが、〇〇という理解で合っていますか？」で十分。確認の質問は、場の全員の役に立つ。</p></div>
+      <div class="card"><h4>1日1回、自分から報告</h4><p>聞かれる前に、チャットで3行の進捗報告を送る。テンプレ5を使えば2分で書ける。</p></div>
+      <div class="card"><h4>教わったら一言お礼＋要約</h4><p>「ありがとうございます。〇〇が原因で、△△すればいいということですね」。要約すると、理解のずれもその場で直せる。</p></div>
+      <div class="card"><h4>自分あてに説明を書く</h4><p>今日の調査を、「後輩に教えるつもり」で5行書く。誰にも見せなくてよい。書くことが、話す練習の土台になる。</p></div>
+      <div class="card"><h4>AIを練習相手にする</h4><p>書いた報告文をAIに渡し「人事担当者の立場で、わかりにくい点を3つ挙げて」と頼む。直すのは自分で。</p></div>
+    </div>
+    <p>話すのが苦手な人は、<strong>書くことから始める</strong>のが近道です。書いた文章は読み返して直せますし、型を体に入れる練習になります。書くのに慣れると、話すときも自然と「結論から」の順番で話せるようになります。</p>
+    <div class="callout info"><b>完璧でなくていい</b>
+      <p>敬語が少し変でも、言葉に詰まっても、仕事はちゃんと進みます。相手が気にするのは言い回しより「必要な情報があるか」です。型さえ守っていれば、話し方の上手下手はそれほど問題になりません。</p>
+    </div>
+  </section>
+
+  <section id="s12">
+    <h2>よくあるつまずき</h2>
+    <h3>経緯から話し始めてしまう</h3>
+    <p>自分が調べた順番に書くと、どうしても「まずログを見て、次に…」と経緯から始まります。書き終えたら、<strong>最後の段落（たいてい結論）を一番上に移動</strong>してみてください。それだけで構成が良くなることがよくあります。</p>
+    <h3>長く書けば丁寧だと思ってしまう</h3>
+    <p>丁寧さは長さではありません。前置きやクッション言葉を重ねるほど、結論が埋もれます。挨拶は1行、本文は型どおり、で十分丁寧です。</p>
+    <h3>「たぶん大丈夫です」と言ってしまう</h3>
+    <p>根拠のない「大丈夫」は、外れたときに信頼を大きく失います。「〇〇は確認済みで問題ありません。△△は未確認です」と、確認した範囲を言うほうが誠実です。</p>
+    <h3>わからないことを隠す</h3>
+    <p>「わかりません」は恥ではありません。「〇〇までは確認できました。△△はまだわかっていません。□時までに調べます」と言えれば、それは立派な報告です。</p>
+    <h3>相手によって書き分けない</h3>
+    <p>先輩向けにはログの行やクラス名を書いてよいですが、人事担当者向けには「誰に何の影響があるか」を中心に書きます。同じ内容でも、<strong>読む人が次に何をするか</strong>に合わせて書き分けます。</p>
+  </section>
+
+  <section id="s13">
+    <h2>練習問題</h2>
+    <details class="quiz">
+      <summary>問1：次の報告を、型に沿って書き直してください。「有給の残日数がおかしいという問い合わせがあって、調べたら付与のバッチがうまく動いてなかったみたいです。何人かいると思います。」</summary>
+      <div class="ans"><p>書き直し例：</p>
+      <p>【結論】11/1付の有給付与が一部の社員に反映されていません（確認できた範囲で8名）。<br>【理由】付与処理のログに、11/1 2:00の実行で途中終了したエラーが出ています（事実）。途中終了の原因は調査中です。<br>【影響】対象8名の有給残日数が、付与前の日数のまま表示されています。<br>【対応】本日15:00までに原因を特定し、付与の再実行手順をご相談します。<br>【依頼】対象者から問い合わせがあった場合、「確認中」とご案内いただけますか。</p>
+      <p class="note">※人数・時刻は例です。ポイントは、件数を数字で書き、事実と調査中を分け、依頼を最後に書くことです。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問2：AIが作った報告に「原因はPostgreSQLのmax_connectionsが不足しているためです」と書いてありました。送る前に何を確かめますか？</summary>
+      <div class="ans"><p>(1) 根拠になるログの行（接続取得のタイムアウトや、接続数上限のエラーメッセージ）が実際に出ているか。(2) 実際の設定値と、障害時の接続数を確認できるか（確認方法は先輩やDB担当に聞く）。(3) 確認できない場合は「max_connectionsの不足を疑っています（未確認）」と推測として書き直す。断定で送ると、違っていたときに関係者の判断を誤らせます。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>問3：先輩に「Spring Bootの設定がよくわからないです」と質問しようとしています。4要素を使って良い質問にしてください。</summary>
+      <div class="ans"><p>例：「application.propertiesの設定で質問させてください（5分ほど）。【やったこと】ローカル起動のためDB接続先を書き換えました。【起きたこと】起動時に『Failed to configure a DataSource』と出て止まります（全文下に）。【期待】ローカルのPostgresにつながって起動するはずでした。【仮説】プロファイルが別の設定ファイルを読んでいるのではと考えています。社内ではどのプロファイルを使っていますか？」——このように、範囲を絞り、エラー全文と自分の仮説を入れます。</p></div>
+    </details>
+  </section>
+
+  <section id="s14">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>一次報告（第一報）</dt><dd>障害発生直後の最初の報告。原因が不明でも、現象・影響・次回報告時刻を早く伝える。</dd>
+      <dt>PREP</dt><dd>Point→Reason→Example→Pointの順で説明する型。意見や提案の説明に向く。</dd>
+      <dt>報連相</dt><dd>報告・連絡・相談。報告は結果、連絡は共有、相談は判断を仰ぐこと。</dd>
+      <dt>事実</dt><dd>ログ・データ・実行結果などで確認できたこと。</dd>
+      <dt>推測</dt><dd>まだ確認できていない考え。「推測」「〜を疑っています」と明示して書く。</dd>
+      <dt>影響範囲</dt><dd>不具合や変更によって影響を受ける人・データ・機能・期間。</dd>
+      <dt>暫定対応</dt><dd>根本原因の解決前に、影響を抑えるために行う一時的な対応。</dd>
+      <dt>恒久対応</dt><dd>原因を取り除き、再発しないようにする対応。</dd>
+    </dl>
+  </section>
+
+  <section id="s15">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="c11-1"><label for="c11-1">この章のテンプレートを、自分のメモ帳やスニペットに保存する</label></li>
+      <li><input type="checkbox" id="c11-2"><label for="c11-2">次に書く報告の、最初の1行を「結論」にする</label></li>
+      <li><input type="checkbox" id="c11-3"><label for="c11-3">報告文の中の「推測」に印をつけ、「推測」と明記する</label></li>
+      <li><input type="checkbox" id="c11-4"><label for="c11-4">あいまいな言葉（たくさん、一部、もうすぐ）を数字に置き換える</label></li>
+      <li><input type="checkbox" id="c11-5"><label for="c11-5">先輩への質問を1つ、4要素（やった・起きた・期待・仮説）で書いて送る</label></li>
+      <li><input type="checkbox" id="c11-6"><label for="c11-6">AIに作らせた文章を送る前に、送信前チェックリストを通す</label></li>
+      <li><input type="checkbox" id="c11-7"><label for="c11-7">電話・相談・会議の前に、メモ3行（結論・理由・お願い）を書く</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="10-ai-learning.html"><span>← 前の章</span>10 AIと一緒に強くなる</a><a class="next" href="12-roadmap.html"><span>次の章 →</span>12 12か月ロードマップ</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>
