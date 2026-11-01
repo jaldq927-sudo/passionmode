@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04 Spring Bootの正体</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 04 Spring Bootの正体</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">04</div>
+  <div><div class="eyebrow">CHAPTER 04 ・ 技術の土台</div><h1>Spring Bootの正体</h1></div>
+  <p class="summary">勤怠システムの中で毎日動いている Spring Boot を「何となく使っているもの」から「仕組みを説明できるもの」に変えます。DI、3層構造、アノテーション、設定ファイル、トランザクション、起動の流れを、勤怠の例で順番に見ていきます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>Spring Boot とは何かを一言で言えるようになる（フレームワークとライブラリの違いも）</li>
+    <li>DI（依存性注入）と IoC コンテナが「何をしてくれているのか」</li>
+    <li>Controller → Service → Repository/Mapper → DB の役割分担と、バグが入りやすい場所</li>
+    <li>よく出るアノテーションの意味、application.properties の読み方、DBアクセス方式の見分け方</li>
+    <li>@Transactional とロールバック、アプリの起動の流れ、現場コードを読む手順</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">一言でいうと</a><a href="#s2">DIとIoC</a><a href="#s3">3層構造</a><a href="#s4">アノテーション辞典</a><a href="#s5">設定ファイル</a><a href="#s6">DBアクセス方式</a><a href="#s7">@Transactional</a><a href="#s8">起動の流れ</a><a href="#s9">現場コードを読む</a><a href="#s10">つまずき</a><a href="#s11">練習問題</a><a href="#s12">用語</a><a href="#s13">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>Spring Boot とは何か（一言でいうと）</h2>
+    <p>勤怠システムのソースを開くと、<code>@RestController</code> や <code>@Autowired</code> といった「@ から始まる謎の記号」がたくさん出てきます。ログ調査のたびにAIに聞けば答えは返ってきますが、毎回その場限りで終わってしまう。そう感じているなら、まずは全体の正体をつかむのが近道です。</p>
+    <div class="callout info"><b>一言でいうと</b>
+      <p>Spring Boot は、<strong>Java で業務Webアプリを作るためのフレームワーク（Spring Framework）を、面倒な設定をほとんど書かずにすぐ動かせるようにしたもの</strong>です。</p>
+    </div>
+    <p>もともと Spring Framework という巨大な仕組みがあり、昔は XML の設定ファイルを何百行も書かないと動きませんでした。Spring Boot はそこに「よく使う組み合わせを最初から用意しておく（自動設定）」「Tomcat を中に組み込んで、main メソッドを実行するだけで起動できる」という仕組みを足したものです。つまり Spring Boot は Spring の<em>代わり</em>ではなく、Spring を<em>使いやすくする包み紙</em>です。</p>
+
+    <h3>フレームワークとライブラリの違い：ハリウッドの原則</h3>
+    <p>「フレームワーク」と「ライブラリ」は似た言葉ですが、主導権がどちらにあるかが違います。</p>
+    <div class="compare">
+      <div class="bad"><b>ライブラリ：自分が呼ぶ</b>
+        <p>自分のコードが主役で、必要なときに道具を呼び出します。例：日付計算のために <code>LocalDate.now()</code> を呼ぶ、CSV読み込みライブラリを呼ぶ。流れは自分が決めます。</p>
+      </div>
+      <div class="good"><b>フレームワーク：自分が呼ばれる</b>
+        <p>枠組み（フレームワーク）が主役で、自分のコードは「決められた場所」に書いておくと、必要なときに呼ばれます。例：<code>/api/timecards</code> にリクエストが来たら、Spring が打刻メソッドを呼ぶ。</p>
+      </div>
+    </div>
+    <p>これを<strong>ハリウッドの原則</strong>（Don't call us, we'll call you. ＝ 「こちらから連絡するので、電話してこないでください」）と呼びます。オーディションに来た俳優に向けた言葉が由来です。Spring Boot のコードを読んでいて「このメソッド、どこからも呼ばれていないのに動いている」と感じたら、それは Spring が呼んでいるのです。<code>main</code> から順に追っても処理が見つからないのは、あなたの読み方が悪いのではなく、フレームワークの性質です。</p>
+    <div class="callout tip"><b>読むときのコツ</b>
+      <p>「誰が呼んでいるか」ではなく「どんな条件で呼ばれるか」を探します。URL（<code>@GetMapping("/xxx")</code>）、時刻（<code>@Scheduled</code>）、起動時（<code>@PostConstruct</code>）などが「呼ばれる条件」です。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>DI（依存性注入）と IoC コンテナ</h2>
+    <p>Spring の中心にある考え方が DI（Dependency Injection：依存性注入）です。難しそうな名前ですが、やっていることは単純です。</p>
+    <div class="analogy">
+      <div><span class="lbl">たとえ話</span>新しい部署に配属された日、机の上にはもうPC・電話・文房具が置いてある。自分でPCを組み立てたり、電話回線を引いたりしない。<strong>会社の備品係</strong>が用意して置いてくれる。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">Spring では</span>クラスが必要とする部品（Mapper や他の Service）を自分で <code>new</code> しない。<strong>IoC コンテナ</strong>が起動時に部品を作っておき、コンストラクタ経由で渡してくれる。</div>
+    </div>
+    <p>「依存」とは、あるクラスが仕事をするために必要な別のクラスのことです。残業申請を処理する <code>OvertimeService</code> は、DB を操作する <code>OvertimeMapper</code> に依存しています。それを外から「注入」するので依存性注入です。IoC（Inversion of Control：制御の反転）は、前の節のハリウッドの原則と同じ意味で、「部品の生成や呼び出しの主導権がフレームワーク側にある」ことを指します。部品を管理する入れ物を <strong>IoC コンテナ</strong>（または ApplicationContext）と呼び、管理されている部品を <strong>Bean（ビーン）</strong>と呼びます。</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 640 300" style="max-width:640px" role="img" aria-label="DIなしでは自分でnewする。DIありではIoCコンテナがBeanを作ってServiceに注入する">
+        <defs><marker id="arr41" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <text x="20" y="26" font-size="14" font-weight="700">DIなし：自分で作る</text>
+        <rect class="box" x="20" y="44" width="260" height="62" rx="8"/>
+        <text x="36" y="70" font-size="13" font-weight="700">OvertimeService</text>
+        <text x="36" y="92" font-size="13" class="muted">中で new OvertimeMapper()</text>
+        <line class="line-accent" x1="150" y1="106" x2="150" y2="150" marker-end="url(#arr41)"/>
+        <rect class="box-warn" x="20" y="154" width="260" height="56" rx="8"/>
+        <text x="36" y="178" font-size="13" font-weight="700">OvertimeMapper</text>
+        <text x="36" y="198" font-size="13" class="muted">DB接続の作り方まで自分で知る</text>
+        <text x="20" y="246" font-size="13" class="muted">部品を差し替えにくい</text>
+        <text x="20" y="266" font-size="13" class="muted">テストで偽物に替えられない</text>
+
+        <text x="330" y="26" font-size="14" font-weight="700">DIあり：コンテナが渡す</text>
+        <rect class="box-soft" x="330" y="40" width="300" height="140" rx="10"/>
+        <text x="345" y="62" font-size="13" font-weight="700">IoCコンテナ（備品係）</text>
+        <rect class="box" x="345" y="74" width="132" height="38" rx="6"/>
+        <text x="356" y="98" font-size="13">OvertimeMapper</text>
+        <rect class="box" x="487" y="74" width="130" height="38" rx="6"/>
+        <text x="498" y="98" font-size="13">DataSource</text>
+        <rect class="box" x="345" y="124" width="132" height="38" rx="6"/>
+        <text x="356" y="148" font-size="13">MailSender</text>
+        <rect class="box" x="487" y="124" width="130" height="38" rx="6"/>
+        <text x="498" y="148" font-size="13">…他のBean</text>
+        <line class="line-accent" x1="480" y1="180" x2="480" y2="216" marker-end="url(#arr41)"/>
+        <text x="492" y="204" font-size="13" class="muted">注入</text>
+        <rect class="box-ok" x="370" y="220" width="220" height="60" rx="8"/>
+        <text x="386" y="245" font-size="13" font-weight="700">OvertimeService</text>
+        <text x="386" y="267" font-size="13" class="muted">コンストラクタで受け取るだけ</text>
+      </svg>
+      <figcaption>図1：部品を自分で作る（左）か、コンテナから受け取る（右）か</figcaption>
+    </figure>
+
+    <h3>Bean にするための目印（ステレオタイプ・アノテーション）</h3>
+    <p>クラスに次のアノテーションを付けると、起動時に Spring が見つけて Bean として登録します（これをコンポーネントスキャンと言います）。機能的にはどれも「Bean にして」という意味で、名前は役割を人間に伝えるためのラベルです（一部、例外変換などの小さな違いはあります）。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>アノテーション</th><th>付ける場所</th><th>勤怠での例</th></tr></thead>
+      <tbody>
+        <tr><td><code>@Component</code></td><td>汎用の部品</td><td>日付計算ユーティリティ、CSV出力部品</td></tr>
+        <tr><td><code>@Service</code></td><td>業務ロジック層</td><td><code>TimecardService</code>（打刻）、<code>OvertimeService</code>（残業申請）</td></tr>
+        <tr><td><code>@Repository</code></td><td>DBアクセス層</td><td><code>EmployeeRepository</code>（JPA や JdbcTemplate の場合）</td></tr>
+        <tr><td><code>@Controller</code></td><td>画面（HTML）を返す入口</td><td>勤怠一覧画面（Thymeleaf や JSP を返す）</td></tr>
+        <tr><td><code>@RestController</code></td><td>JSON を返す入口</td><td>打刻API <code>/api/timecards</code></td></tr>
+        <tr><td><code>@Autowired</code></td><td>注入してほしい場所</td><td>フィールドやコンストラクタに付ける</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">MyBatis の Mapper インターフェースには <code>@Repository</code> ではなく <code>@Mapper</code> が付くのが一般的です（後述）。</p>
+
+    <h3>コンストラクタインジェクションが推奨される理由</h3>
+    <p>注入の書き方は主に2種類あります。現場の古いコードではフィールドに <code>@Autowired</code> が付いていることも多いですが、今はコンストラクタで受け取る書き方が推奨されています。</p>
+    <div class="code-title">フィールドインジェクション（古いコードでよく見る）</div>
+<pre><code><span class="k">@Service</span>
+<span class="k">public class</span> OvertimeService {
+    <span class="k">@Autowired</span>
+    <span class="k">private</span> OvertimeMapper overtimeMapper;   <span class="c">// Springが後から差し込む</span>
+}</code></pre>
+    <div class="code-title">コンストラクタインジェクション（推奨）</div>
+<pre><code><span class="k">@Service</span>
+<span class="k">public class</span> OvertimeService {
+    <span class="k">private final</span> OvertimeMapper overtimeMapper;
+    <span class="k">private final</span> MailSender mailSender;
+
+    <span class="c">// コンストラクタが1つだけなら @Autowired は省略できる（Spring 4.3以降）</span>
+    <span class="k">public</span> OvertimeService(OvertimeMapper overtimeMapper, MailSender mailSender) {
+        <span class="k">this</span>.overtimeMapper = overtimeMapper;
+        <span class="k">this</span>.mailSender = mailSender;
+    }
+}</code></pre>
+    <p>コンストラクタ方式だと、<code>final</code> にできる（途中で入れ替わらない）、必要な部品が一目でわかる、テストで偽物（モック）を渡しやすい、という利点があります。Lombok の <code>@RequiredArgsConstructor</code> が付いていたら、「final フィールドを受け取るコンストラクタを自動生成している」という意味です。コンストラクタが見当たらなくても驚かないでください。</p>
+  </section>
+
+  <section id="s3">
+    <h2>3層構造：Controller → Service → Repository/Mapper → DB</h2>
+    <p>Spring Boot の業務アプリは、ほぼ必ず役割ごとに層（レイヤー）が分かれています。役所の窓口にたとえると、<strong>Controller は受付窓口</strong>（用件を聞き、書類の不備をチェック）、<strong>Service は担当課</strong>（ルールに従って判断）、<strong>Mapper/Repository は書庫係</strong>（台帳の出し入れだけをする）です。窓口の人が勝手に台帳を書き換えないのと同じで、層を飛ばさないのが原則です。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 640 410" style="max-width:640px" role="img" aria-label="ブラウザからController、Service、Mapper、DBへ順に処理が流れる3層構造">
+        <defs><marker id="arr42" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect class="box-soft" x="20" y="10" width="190" height="56" rx="8"/>
+        <text x="36" y="34" font-size="13" font-weight="700">ブラウザ／スマホ</text>
+        <text x="36" y="54" font-size="13" class="muted">打刻ボタンを押す</text>
+        <line class="line-accent" x1="115" y1="66" x2="115" y2="88" marker-end="url(#arr42)"/>
+        <rect class="box" x="20" y="92" width="190" height="56" rx="8"/>
+        <text x="36" y="116" font-size="13" font-weight="700">Controller</text>
+        <text x="36" y="136" font-size="13" class="muted">@RestController</text>
+        <line class="line-accent" x1="115" y1="148" x2="115" y2="170" marker-end="url(#arr42)"/>
+        <rect class="box" x="20" y="174" width="190" height="56" rx="8"/>
+        <text x="36" y="198" font-size="13" font-weight="700">Service</text>
+        <text x="36" y="218" font-size="13" class="muted">@Service ／ @Transactional</text>
+        <line class="line-accent" x1="115" y1="230" x2="115" y2="252" marker-end="url(#arr42)"/>
+        <rect class="box" x="20" y="256" width="190" height="56" rx="8"/>
+        <text x="36" y="280" font-size="13" font-weight="700">Mapper／Repository</text>
+        <text x="36" y="300" font-size="13" class="muted">@Mapper ＋ XMLのSQL</text>
+        <line class="line-accent" x1="115" y1="312" x2="115" y2="334" marker-end="url(#arr42)"/>
+        <rect class="box-ok" x="20" y="338" width="190" height="56" rx="8"/>
+        <text x="36" y="362" font-size="13" font-weight="700">PostgreSQL</text>
+        <text x="36" y="382" font-size="13" class="muted">timecard テーブルなど</text>
+
+        <text x="236" y="114" font-size="13">受付：URLと入力を受け取り、形式チェック</text>
+        <text x="236" y="134" font-size="13" class="muted">例：POST /api/timecards を受ける</text>
+        <text x="236" y="196" font-size="13">判断：業務ルール。複数の更新をまとめる</text>
+        <text x="236" y="216" font-size="13" class="muted">例：二重打刻か？締め済みの月か？</text>
+        <text x="236" y="278" font-size="13">書庫：SQLを実行して結果を返すだけ</text>
+        <text x="236" y="298" font-size="13" class="muted">例：INSERT INTO timecard …</text>
+        <text x="236" y="360" font-size="13">保存：データそのもの</text>
+        <text x="236" y="380" font-size="13" class="muted">例：employee_id, punch_at, type</text>
+      </svg>
+      <figcaption>図2：リクエストは上から下へ、結果は下から上へ戻る</figcaption>
+    </figure>
+
+    <h3>勤怠の例1：打刻API</h3>
+<pre><code><span class="c">// Controller：受付。中身の判断はしない</span>
+<span class="k">@RestController</span>
+<span class="k">@RequestMapping</span>(<span class="s">"/api/timecards"</span>)
+<span class="k">public class</span> TimecardController {
+    <span class="k">private final</span> TimecardService timecardService;
+    <span class="k">public</span> TimecardController(TimecardService timecardService) {
+        <span class="k">this</span>.timecardService = timecardService;
+    }
+
+    <span class="k">@PostMapping</span>
+    <span class="k">public</span> PunchResult punch(<span class="k">@RequestBody</span> PunchRequest req) {
+        <span class="k">return</span> timecardService.punch(req.getEmployeeId(), req.getType());
+    }
+}
+
+<span class="c">// Service：判断。業務ルールはここに集まる</span>
+<span class="k">@Service</span>
+<span class="k">public class</span> TimecardService {
+    <span class="k">private final</span> TimecardMapper timecardMapper;
+    <span class="k">public</span> TimecardService(TimecardMapper timecardMapper) {
+        <span class="k">this</span>.timecardMapper = timecardMapper;
+    }
+
+    <span class="k">@Transactional</span>
+    <span class="k">public</span> PunchResult punch(<span class="k">long</span> employeeId, String type) {
+        <span class="k">if</span> (timecardMapper.countToday(employeeId, type) &gt; <span class="s">0</span>) {
+            <span class="k">throw new</span> BusinessException(<span class="s">"本日はすでに打刻済みです"</span>);
+        }
+        timecardMapper.insert(employeeId, type, LocalDateTime.now());
+        <span class="k">return</span> PunchResult.ok();
+    }
+}</code></pre>
+
+    <h3>勤怠の例2：残業申請の承認</h3>
+    <p>上長が「承認」ボタンを押すと、<code>POST /api/overtime/{id}/approve</code> が呼ばれ、Controller → <code>OvertimeService.approve(id)</code> → Mapper の流れで「申請ステータスを承認済みに更新」「承認履歴を追加」「申請者に通知」が行われる、という形が一般的です。2つ以上の更新をまとめて行うので、Service に <code>@Transactional</code> が付きます（<a href="#s7">後述</a>）。</p>
+
+    <h3>各層の責務と、バグが入りやすい場所</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>層</th><th>責務</th><th>入りやすいバグ</th></tr></thead>
+      <tbody>
+        <tr><td>Controller</td><td>URLの受付、入力の形式チェック、結果の返却</td><td>パラメータ名の不一致で値が null、入力チェック漏れ、HTTPメソッドの間違い（GET/POST）</td></tr>
+        <tr><td>Service</td><td>業務ルール、複数処理のまとめ、トランザクション</td><td>条件分岐の漏れ（深夜をまたぐ打刻、締め後の修正）、<code>@Transactional</code> の付け忘れ、例外の握りつぶし</td></tr>
+        <tr><td>Mapper/Repository</td><td>SQLの実行のみ</td><td>WHERE 条件の誤り、NULL の扱い、日付の境界（<code>&lt;</code> と <code>&lt;=</code>）、タイムゾーン</td></tr>
+        <tr><td>DB</td><td>データの保存、制約</td><td>一意制約違反、型の桁あふれ、インデックス不足による遅延</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout warn"><b>改修検討のときの目安</b>
+      <p>「計算結果がおかしい」なら Service か SQL、「画面で値が送られていない」なら Controller、「遅い」なら SQL とDB。ログのスタックトレースに出てくるクラス名の末尾（<code>…Controller</code>、<code>…Service</code>、<code>…Mapper</code>）を見るだけで、どの層で起きたかの見当がつきます。詳しくは <a href="07-logs-incident.html">07 ログと障害調査</a> で扱います。</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2>主要アノテーション辞典</h2>
+    <p>アノテーションは「このクラス／メソッドをこう扱ってね」と Spring に伝える付箋です。全部覚える必要はありません。下の表を、コードを読むときの辞書として使ってください。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>アノテーション</th><th>意味</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td><code>@SpringBootApplication</code></td><td>起動クラスの目印。自動設定・コンポーネントスキャン・設定クラスの3つをまとめたもの。このクラスのパッケージ以下がスキャン対象</td><td><code>KintaiApplication</code></td></tr>
+        <tr><td><code>@RequestMapping</code></td><td>URLとメソッドを結びつける。クラスに付けると共通の前半部分</td><td><code>@RequestMapping("/api/overtime")</code></td></tr>
+        <tr><td><code>@GetMapping</code></td><td>GET リクエスト（取得）を受ける</td><td><code>@GetMapping("/{id}")</code></td></tr>
+        <tr><td><code>@PostMapping</code></td><td>POST リクエスト（登録・操作）を受ける。<code>@PutMapping</code>、<code>@DeleteMapping</code> も同様</td><td><code>@PostMapping("/{id}/approve")</code></td></tr>
+        <tr><td><code>@PathVariable</code></td><td>URLの一部 <code>{id}</code> を引数で受け取る</td><td><code>/api/overtime/123</code> の 123</td></tr>
+        <tr><td><code>@RequestParam</code></td><td>クエリ文字列やフォームの値を受け取る</td><td><code>?month=2026-10</code> の month</td></tr>
+        <tr><td><code>@RequestBody</code></td><td>リクエスト本文の JSON をオブジェクトに変換して受け取る</td><td>打刻APIの <code>PunchRequest</code></td></tr>
+        <tr><td><code>@Transactional</code></td><td>メソッド内のDB更新をひとまとめにし、例外時にロールバック</td><td>残業承認、月次締め</td></tr>
+        <tr><td><code>@Value</code></td><td>設定ファイルの値をフィールドに入れる</td><td><code>@Value("${kintai.closing-day}")</code></td></tr>
+        <tr><td><code>@Configuration</code></td><td>Bean の作り方を書く設定クラスの目印</td><td><code>MailConfig</code></td></tr>
+        <tr><td><code>@Bean</code></td><td><code>@Configuration</code> 内のメソッドに付け、戻り値を Bean として登録</td><td>外部ライブラリの部品を Bean にする</td></tr>
+        <tr><td><code>@Scheduled</code></td><td>決まった時刻・間隔で自動実行（<code>@EnableScheduling</code> が必要）</td><td><code>@Scheduled(cron = "0 0 2 * * *")</code> 毎日2時の締めバッチ</td></tr>
+        <tr><td><code>@Mapper</code></td><td>MyBatis の Mapper インターフェースの目印</td><td><code>TimecardMapper</code></td></tr>
+        <tr><td><code>@Entity</code></td><td>JPA でテーブルと対応するクラスの目印</td><td><code>Employee</code></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note"><code>@Scheduled</code> の cron は Spring 独自の6項目（秒 分 時 日 月 曜日）です。Linux の crontab（5項目）と項目数が違うので注意してください。</p>
+<pre><code><span class="k">@RestController</span>
+<span class="k">@RequestMapping</span>(<span class="s">"/api/overtime"</span>)
+<span class="k">public class</span> OvertimeController {
+    <span class="c">// GET /api/overtime?month=2026-10  → 月の申請一覧</span>
+    <span class="k">@GetMapping</span>
+    <span class="k">public</span> List&lt;OvertimeDto&gt; list(<span class="k">@RequestParam</span> String month) { ... }
+
+    <span class="c">// POST /api/overtime/123/approve → 申請123を承認</span>
+    <span class="k">@PostMapping</span>(<span class="s">"/{id}/approve"</span>)
+    <span class="k">public void</span> approve(<span class="k">@PathVariable</span> <span class="k">long</span> id) { ... }
+}</code></pre>
+  </section>
+
+  <section id="s5">
+    <h2>application.properties / application.yml</h2>
+    <p>DB の接続先やログの細かさなど、環境によって変わる値はコードではなく設定ファイルに書きます。場所は通常 <code>src/main/resources/</code> です。<code>.properties</code> と <code>.yml</code> は書き方が違うだけで、中身は同じです。</p>
+    <div class="code-title">application.properties（一般的な例）</div>
+<pre><code><span class="c"># DB接続（値はダミー）</span>
+spring.datasource.url=<span class="s">jdbc:postgresql://localhost:5432/kintai</span>
+spring.datasource.username=<span class="s">kintai_app</span>
+spring.datasource.password=<span class="s">********</span>
+
+<span class="c"># 使うプロファイル（環境の切り替え）</span>
+spring.profiles.active=<span class="s">local</span>
+
+<span class="c"># ログ設定</span>
+logging.level.root=<span class="s">INFO</span>
+logging.level.com.example.kintai=<span class="s">DEBUG</span>
+logging.file.name=<span class="s">logs/kintai.log</span>
+
+<span class="c"># 組み込みTomcatのポート</span>
+server.port=<span class="s">8080</span></code></pre>
+    <div class="code-title">application.yml（同じ内容を YAML で）</div>
+<pre><code><span class="k">spring:</span>
+  <span class="k">datasource:</span>
+    <span class="k">url:</span> <span class="s">jdbc:postgresql://localhost:5432/kintai</span>
+    <span class="k">username:</span> <span class="s">kintai_app</span>
+  <span class="k">profiles:</span>
+    <span class="k">active:</span> <span class="s">local</span>
+<span class="k">logging:</span>
+  <span class="k">level:</span>
+    <span class="k">com.example.kintai:</span> <span class="s">DEBUG</span></code></pre>
+    <p>YAML はインデント（字下げ）で階層を表します。スペースの数がずれると読み込めないので、タブではなくスペースを使います。</p>
+    <h3>プロファイル：環境ごとの切り替え</h3>
+    <p><code>spring.profiles.active=local</code> のとき、Spring は <code>application.properties</code> に加えて <code>application-local.properties</code> を読み、同じキーは後者で上書きします。本番は <code>application-prod.properties</code>、検証は <code>application-staging.properties</code> のように分けるのが一般的です。プロファイルは起動時の引数 <code>--spring.profiles.active=prod</code> や環境変数 <code>SPRING_PROFILES_ACTIVE</code> でも指定できます。</p>
+    <div class="callout warn"><b>「ローカルでは動くのに本番で動かない」の典型</b>
+      <p>プロファイルごとに設定ファイルが違うため、DB 接続先やタイムアウト値が環境で異なります。障害調査では「本番はどのプロファイルで起動しているか」「その設定ファイルはどこにあるか（WAR の中か、サーバー上の外部ファイルか）」を最初に確かめます。</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>DBアクセス方式：JPA / MyBatis / JdbcTemplate</h2>
+    <p>Java から DB を操作する方法は複数あり、現場によって使っているものが違います。どれを使っているかで「SQLがどこに書いてあるか」が変わるので、最初に見分けておくと調査が速くなります。</p>
+    <div class="cards">
+      <div class="card"><h4>JPA / Hibernate</h4><p><code>@Entity</code> を付けたクラスとテーブルを対応させ、SQL を書かずに <code>repository.save(emp)</code> のように操作する。SQL は Hibernate が自動生成するので、ログで確認する。</p></div>
+      <div class="card"><h4>MyBatis</h4><p>SQL を自分で書き、Mapper XML（例：<code>TimecardMapper.xml</code>）に置く。Java 側は <code>@Mapper</code> 付きのインターフェースだけ。業務システムで非常に多い。</p></div>
+      <div class="card"><h4>JdbcTemplate</h4><p>Java のコードの中に SQL 文字列を直接書き、<code>jdbcTemplate.query(...)</code> で実行する。小さな処理や古いコードで見かける。</p></div>
+    </div>
+    <div class="code-title">MyBatis：Mapper インターフェースと XML の対応</div>
+<pre><code><span class="c">// TimecardMapper.java</span>
+<span class="k">@Mapper</span>
+<span class="k">public interface</span> TimecardMapper {
+    <span class="k">int</span> countToday(<span class="k">@Param</span>(<span class="s">"employeeId"</span>) <span class="k">long</span> employeeId, <span class="k">@Param</span>(<span class="s">"type"</span>) String type);
+}
+
+<span class="c">&lt;!-- resources/mapper/TimecardMapper.xml --&gt;</span>
+&lt;<span class="k">mapper</span> namespace=<span class="s">"com.example.kintai.mapper.TimecardMapper"</span>&gt;
+  &lt;<span class="k">select</span> id=<span class="s">"countToday"</span> resultType=<span class="s">"int"</span>&gt;
+    SELECT COUNT(*) FROM timecard
+     WHERE employee_id = #{employeeId}
+       AND type = #{type}
+       AND punch_at &gt;= CURRENT_DATE
+  &lt;/<span class="k">select</span>&gt;
+&lt;/<span class="k">mapper</span>&gt;</code></pre>
+    <p>XML の <code>namespace</code> がインターフェースの完全な名前、<code>id</code> がメソッド名と一致することで結びつきます。<code>#{employeeId}</code> は値を安全に埋め込む書き方です（<code>${...}</code> は文字列をそのまま埋め込むので SQL インジェクションの危険があります）。</p>
+    <h3>自分の現場はどれ？ 見分け方</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>確認する場所</th><th>JPA</th><th>MyBatis</th><th>JdbcTemplate</th></tr></thead>
+      <tbody>
+        <tr><td>pom.xml の依存</td><td><code>spring-boot-starter-data-jpa</code></td><td><code>mybatis-spring-boot-starter</code></td><td><code>spring-boot-starter-jdbc</code></td></tr>
+        <tr><td>Java のアノテーション</td><td><code>@Entity</code>、<code>JpaRepository</code> を継承</td><td><code>@Mapper</code></td><td><code>JdbcTemplate</code> のフィールド</td></tr>
+        <tr><td>SQL の場所</td><td>基本なし（<code>@Query</code> に書くこともある）</td><td><code>resources</code> 配下の <code>*.xml</code></td><td>Java コードの文字列</td></tr>
+      </tbody>
+    </table></div>
+    <p>1つのシステムで複数が混ざっていることもあります。IDE で <code>@Mapper</code> や <code>@Entity</code> を全文検索すれば数分で確認できます。SQL の書き方そのものは <a href="06-sql-postgres.html">06 自分で書くSQL</a> で練習します。</p>
+  </section>
+
+  <section id="s7">
+    <h2>@Transactional とロールバック</h2>
+    <p>残業申請の承認では「申請ステータスを承認済みにする」「承認履歴を追加する」の2つの更新があります。1つ目だけ成功して2つ目で失敗したら、「承認済みなのに履歴がない」という中途半端なデータが残ります。これを防ぐのがトランザクションで、<code>@Transactional</code> を付けたメソッドの中の更新は<strong>全部成功するか、全部なかったことになるか</strong>のどちらかになります。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 640 270" style="max-width:640px" role="img" aria-label="トランザクション開始後、2つの更新を行い、正常ならCOMMIT、例外ならROLLBACKで両方取り消される">
+        <defs><marker id="arr43" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect class="box-soft" x="10" y="50" width="100" height="50" rx="8"/>
+        <text x="24" y="72" font-size="13" font-weight="700">開始</text>
+        <text x="24" y="90" font-size="13" class="muted">BEGIN</text>
+        <line class="line-accent" x1="110" y1="75" x2="136" y2="75" marker-end="url(#arr43)"/>
+        <rect class="box" x="140" y="50" width="140" height="50" rx="8"/>
+        <text x="152" y="72" font-size="13" font-weight="700">① UPDATE</text>
+        <text x="152" y="90" font-size="13" class="muted">申請→承認済み</text>
+        <line class="line-accent" x1="280" y1="75" x2="306" y2="75" marker-end="url(#arr43)"/>
+        <rect class="box" x="310" y="50" width="140" height="50" rx="8"/>
+        <text x="322" y="72" font-size="13" font-weight="700">② INSERT</text>
+        <text x="322" y="90" font-size="13" class="muted">承認履歴を追加</text>
+        <path class="line-accent" d="M450,65 L476,30 L486,30" marker-end="url(#arr43)"/>
+        <path class="line-accent" d="M450,85 L476,130 L486,130" marker-end="url(#arr43)"/>
+        <rect class="box-ok" x="490" y="8" width="140" height="50" rx="8"/>
+        <text x="502" y="30" font-size="13" font-weight="700">COMMIT</text>
+        <text x="502" y="48" font-size="13" class="muted">①②とも確定</text>
+        <rect class="box-ng" x="490" y="106" width="140" height="50" rx="8"/>
+        <text x="502" y="128" font-size="13" font-weight="700">ROLLBACK</text>
+        <text x="502" y="146" font-size="13" class="muted">①②とも取り消し</text>
+        <text x="410" y="22" font-size="12" class="muted">正常終了</text>
+        <text x="380" y="140" font-size="12" class="muted">例外発生</text>
+        <rect class="box-warn" x="10" y="186" width="620" height="70" rx="8"/>
+        <text x="26" y="212" font-size="13">@Transactional なしだと、②で例外が出ても①は確定済み。</text>
+        <text x="26" y="236" font-size="13" class="muted">→「承認済みなのに履歴がない」中途半端なデータが残る</text>
+      </svg>
+      <figcaption>図3：トランザクションは「全部か、ゼロか」</figcaption>
+    </figure>
+<pre><code><span class="k">@Service</span>
+<span class="k">public class</span> OvertimeService {
+    <span class="k">@Transactional</span>
+    <span class="k">public void</span> approve(<span class="k">long</span> requestId, <span class="k">long</span> approverId) {
+        overtimeMapper.updateStatus(requestId, <span class="s">"APPROVED"</span>);   <span class="c">// ①</span>
+        approvalHistoryMapper.insert(requestId, approverId);    <span class="c">// ②ここで例外 → ①も取り消し</span>
+    }
+}</code></pre>
+    <h3>知っておくべき3つの落とし穴</h3>
+    <ul>
+      <li><strong>チェック例外ではロールバックしない</strong>：標準では <code>RuntimeException</code> とその子（と <code>Error</code>）のときだけロールバックします。<code>IOException</code> などのチェック例外でも戻したいときは <code>@Transactional(rollbackFor = Exception.class)</code> と書きます。</li>
+      <li><strong>例外を catch して握りつぶすとロールバックされない</strong>：メソッドの中で <code>try { ... } catch (Exception e) { log.error(...); }</code> として外に投げないと、Spring は「正常終了」と判断してコミットします。</li>
+      <li><strong>同じクラス内からの呼び出しでは効かない</strong>：Spring は Bean を包む「代理（プロキシ）」を通してトランザクションを開始します。同じクラスの中で <code>this.approve()</code> のように直接呼ぶとプロキシを通らず、<code>@Transactional</code> が無視されます。</li>
+    </ul>
+  </section>
+
+  <section id="s8">
+    <h2>起動の流れ</h2>
+    <p>Spring Boot アプリが起動するとき、内部では次の順番で処理が進みます。起動ログを読むときの地図になります。</p>
+    <div class="flow" role="img" aria-label="mainメソッドからTomcat起動までの流れ">
+      <div class="node"><b>① main メソッド</b><code>@SpringBootApplication</code> の付いたクラス</div>
+      <div class="arrow"></div>
+      <div class="node"><b>② SpringApplication.run</b>設定ファイルとプロファイルを読む</div>
+      <div class="arrow"></div>
+      <div class="node"><b>③ Bean 生成</b>スキャン → 自動設定 → 依存を注入</div>
+      <div class="arrow"></div>
+      <div class="node"><b>④ Tomcat 起動</b>ポート 8080 で待ち受け開始</div>
+    </div>
+<pre><code><span class="k">@SpringBootApplication</span>
+<span class="k">public class</span> KintaiApplication {
+    <span class="k">public static void</span> main(String[] args) {
+        SpringApplication.run(KintaiApplication.<span class="k">class</span>, args);
+    }
+}</code></pre>
+    <div class="code-title">起動ログの例（抜粋・一般的な形）</div>
+<pre><code>:: Spring Boot ::                (v3.x.x)
+INFO  c.e.kintai.KintaiApplication : The following 1 profile is active: "local"
+INFO  o.s.b.w.e.tomcat.TomcatWebServer : Tomcat initialized with port 8080 (http)
+INFO  o.s.b.w.e.tomcat.TomcatWebServer : Tomcat started on port 8080 (http) with context path '/'
+INFO  c.e.kintai.KintaiApplication : Started KintaiApplication in 6.2 seconds</code></pre>
+    <p>③の途中で失敗すると、<code>UnsatisfiedDependencyException</code>（注入したい Bean が見つからない）や、DB に接続できないエラーで起動が止まります。エラーメッセージは長いですが、一番下の <code>Caused by:</code> が本当の原因であることが多いです。</p>
+    <h3>WAR として外部の Tomcat にデプロイする場合</h3>
+    <p>勤怠システムのように Apache ＋ Tomcat の構成では、組み込み Tomcat を使わず、アプリを <strong>WAR ファイル</strong>にして、サーバーにインストールされた Tomcat の <code>webapps</code> に配置することがあります。この場合、起動クラスは <code>SpringBootServletInitializer</code> を継承し、pom.xml の <code>&lt;packaging&gt;</code> が <code>war</code> になっています。main メソッドではなく Tomcat がアプリを呼び出して起動します（ここでもハリウッドの原則です）。</p>
+    <div class="compare">
+      <div class="good"><b>JAR（組み込みTomcat）</b><p><code>java -jar kintai.jar</code> で起動。Tomcat はアプリの中に入っている。ログはアプリの設定どおり。</p></div>
+      <div class="good"><b>WAR（外部Tomcat）</b><p>Tomcat の <code>webapps</code> に置く。Tomcat 側の <code>catalina.out</code> などにもログが出る。Tomcat のバージョンも確認が必要。</p></div>
+    </div>
+    <p>自分の現場がどちらかは、pom.xml の <code>&lt;packaging&gt;</code> と、本番サーバーに Tomcat が別途インストールされているかで判断できます。全体の構成は <a href="02-system-map.html">02 システムの全体像</a> も参照してください。</p>
+  </section>
+
+  <section id="s9">
+    <h2>現場コードを読む手順</h2>
+    <p>いきなり全部を読もうとすると挫折します。1つの機能（たとえば「残業申請の承認」）を選び、入口から出口まで1本の線をたどります。</p>
+    <ol class="steps">
+      <li><b>pom.xml を見る</b>Spring Boot のバージョン、<code>&lt;packaging&gt;</code>（jar/war）、DBアクセス方式（JPA/MyBatis）を確認する。</li>
+      <li><b>起動クラスを探す</b><code>@SpringBootApplication</code> で全文検索。そのパッケージ構成（controller / service / mapper など）を眺める。</li>
+      <li><b>設定ファイルを読む</b><code>application*.properties</code> / <code>*.yml</code> のプロファイルと DB 接続先を確認する。</li>
+      <li><b>入口の URL を探す</b>画面の操作で呼ばれる URL をブラウザの開発者ツール（Network タブ）で確認し、その文字列でコントローラーを検索する。</li>
+      <li><b>Service へ進む</b>Controller が呼んでいる Service のメソッドへジャンプ（IDE で Ctrl+クリック／F3）。業務ルールと <code>@Transactional</code> を確認する。</li>
+      <li><b>SQL にたどり着く</b>Mapper のメソッド名で XML を検索し、実際の SQL を読む。</li>
+      <li><b>紙かメモに1枚で書く</b>URL → クラス名.メソッド名 → SQL のテーブル名、を矢印でつなぐ。この1枚が自分の理解の証拠になります。</li>
+    </ol>
+    <div class="callout tip"><b>AIの使い方を変える</b>
+      <p>「このエラーを直して」と丸投げする前に、上の手順で自分の仮説（どの層で何が起きているか）を書いてからAIに聞くと、答えの正しさを自分で判断できるようになります。詳しくは <a href="10-ai-learning.html">10 AIと一緒に強くなる</a> へ。</p>
+    </div>
+    <h3>先輩・社内Wikiに確認する項目</h3>
+    <p>会社ごとに違う部分は、推測せずに聞いて構いません。聞くときは「自分でここまで調べた」を添えると答えてもらいやすくなります。</p>
+    <ul>
+      <li>Spring Boot と Java のバージョンは何か。バージョンアップの予定はあるか</li>
+      <li>本番は JAR（組み込みTomcat）か WAR（外部Tomcat）か。Tomcat のバージョンは</li>
+      <li>本番・検証・ローカルで使っているプロファイル名と、設定ファイルの置き場所</li>
+      <li>DB アクセスは MyBatis / JPA / JdbcTemplate のどれか（混在しているか）</li>
+      <li>パッケージ構成のルール（controller / service / mapper の命名規約）</li>
+      <li><code>@Scheduled</code> のバッチ（締め処理など）はどれがあり、いつ動くか</li>
+      <li>トランザクションの方針（どの層に <code>@Transactional</code> を付けるか、例外の扱い）</li>
+      <li>共通部品（例外ハンドラー、ログ出力、認証）がどこにあるか</li>
+    </ul>
+  </section>
+
+  <section id="s10">
+    <h2>よくあるつまずき</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>症状</th><th>よくある原因</th><th>確認すること</th></tr></thead>
+      <tbody>
+        <tr><td>注入したフィールドが <code>null</code> で NullPointerException</td><td>自分で <code>new</code> したインスタンスを使っている（コンテナ管理外）</td><td>そのクラスを <code>new</code> している箇所がないか</td></tr>
+        <tr><td>起動時に <code>No qualifying bean of type ...</code></td><td>クラスに <code>@Service</code> などが付いていない、または起動クラスより外のパッケージにある</td><td>アノテーションとパッケージの位置</td></tr>
+        <tr><td>URL を叩くと 404</td><td><code>@RequestMapping</code> のパス違い、コンテキストパス（WAR名）の付け忘れ</td><td>起動ログの context path、WAR のファイル名</td></tr>
+        <tr><td>405 Method Not Allowed</td><td>GET で POST 用のURLを呼んでいる</td><td><code>@GetMapping</code> / <code>@PostMapping</code> の種類</td></tr>
+        <tr><td>エラーなのにデータが一部更新されている</td><td><code>@Transactional</code> がない、例外を握りつぶしている、同一クラス内呼び出し</td><td><a href="#s7">落とし穴3つ</a></td></tr>
+        <tr><td>設定を変えたのに反映されない</td><td>別プロファイルの設定ファイルで上書きされている</td><td>起動ログの「profile is active」の行</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section id="s11">
+    <h2>練習問題</h2>
+    <details class="quiz"><summary>Q1. Spring Boot の Controller のメソッドを、自分のコードのどこからも呼んでいないのに動くのはなぜですか？</summary>
+      <div class="ans"><p>フレームワークである Spring が、URL とメソッドの対応（<code>@GetMapping</code> など）を起動時に覚えておき、リクエストが来たときに呼び出すからです。「呼ぶのではなく呼ばれる」ハリウッドの原則です。</p></div>
+    </details>
+    <details class="quiz"><summary>Q2. <code>OvertimeService</code> の中で <code>OvertimeMapper mapper = new OvertimeMapperImpl();</code> と書くのは何が問題ですか？</summary>
+      <div class="ans"><p>コンテナが管理する Bean ではなくなるため、DB 接続などの設定が注入されず動かない（または null になる）可能性があります。また差し替えやテストが難しくなります。コンストラクタで受け取る（DI）形にします。</p></div>
+    </details>
+    <details class="quiz"><summary>Q3. 月次締め処理で「勤怠を確定済みに更新」「締め履歴を追加」の2つを行います。履歴追加で <code>SQLException</code> 系のエラー（Spring では <code>DataAccessException</code> という RuntimeException に変換される）が起きたとき、<code>@Transactional</code> が付いていれば1つ目の更新はどうなりますか？</summary>
+      <div class="ans"><p>ロールバックされ、1つ目の更新も取り消されます。ただし、メソッド内で例外を catch して外に投げなかった場合はコミットされてしまう点に注意します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q4. 自分の現場が MyBatis かどうかを、5分で確かめる方法を2つ挙げてください。</summary>
+      <div class="ans"><p>例：pom.xml に <code>mybatis-spring-boot-starter</code> があるか見る／ソース全体で <code>@Mapper</code> を検索する／<code>resources</code> 配下に <code>&lt;mapper namespace=</code> を含む XML があるか探す。</p></div>
+    </details>
+  </section>
+
+  <section id="s12">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>Spring Framework</dt><dd>Java で業務アプリを作るためのフレームワーク。DI が中心。</dd>
+      <dt>Spring Boot</dt><dd>Spring を自動設定と組み込みサーバーで、すぐ動かせるようにしたもの。</dd>
+      <dt>フレームワーク</dt><dd>処理の枠組み。自分のコードは決まった場所に書き、フレームワークから呼ばれる。</dd>
+      <dt>DI（依存性注入）</dt><dd>クラスが必要とする部品を、外から（コンテナから）渡してもらう仕組み。</dd>
+      <dt>IoC（制御の反転）</dt><dd>部品の生成や呼び出しの主導権がフレームワーク側にあること。</dd>
+      <dt>IoC コンテナ</dt><dd>Bean を作り、保持し、注入する入れ物。ApplicationContext とも。</dd>
+      <dt>Bean</dt><dd>コンテナが管理しているオブジェクト。</dd>
+      <dt>アノテーション</dt><dd><code>@</code> で始まる付箋。クラスやメソッドの扱い方を Spring に伝える。</dd>
+      <dt>プロファイル</dt><dd>local / prod など環境ごとの設定の切り替え単位。</dd>
+      <dt>トランザクション</dt><dd>複数のDB更新を「全部成功か、全部取り消しか」にまとめる単位。</dd>
+      <dt>ロールバック</dt><dd>トランザクション内の更新を取り消すこと。逆はコミット。</dd>
+      <dt>Mapper</dt><dd>MyBatis で SQL とメソッドを結びつけるインターフェース（＋XML）。</dd>
+      <dt>WAR / JAR</dt><dd>アプリをまとめたファイル形式。WAR は外部Tomcat用、JAR は <code>java -jar</code> で単独起動。</dd>
+    </dl>
+  </section>
+
+  <section id="s13">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="c04-1"><label for="c04-1">勤怠システムの pom.xml を開き、Spring Boot のバージョン・packaging・DBアクセス方式をメモする</label></li>
+      <li><input type="checkbox" id="c04-2"><label for="c04-2"><code>@SpringBootApplication</code> を検索し、起動クラスとパッケージ構成を確認する</label></li>
+      <li><input type="checkbox" id="c04-3"><label for="c04-3">application.properties（または yml）を読み、プロファイル名と DB 接続先を書き出す</label></li>
+      <li><input type="checkbox" id="c04-4"><label for="c04-4">打刻か残業承認のどちらかを選び、URL → Controller → Service → Mapper → SQL を1枚の図に書く</label></li>
+      <li><input type="checkbox" id="c04-5"><label for="c04-5"><code>@Transactional</code> が付いているメソッドを3つ探し、何をまとめているか説明してみる</label></li>
+      <li><input type="checkbox" id="c04-6"><label for="c04-6">「先輩に確認する項目」から1つ選んで、実際に聞いてみる</label></li>
+    </ul>
+    <p class="note">チェック状態はこのブラウザに保存されます。</p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="03-java.html"><span>← 前の章</span>03 読めるJava</a><a class="next" href="05-build-env.html"><span>次の章 →</span>05 開発環境をつくる</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+<script>
+(function(){
+  var KEY = 'se-guide-04-check';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  var boxes = document.querySelectorAll('.check input[type="checkbox"]');
+  Array.prototype.forEach.call(boxes, function(cb){
+    if (state[cb.id]) cb.checked = true;
+    cb.addEventListener('change', function(){
+      state[cb.id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    });
+  });
+})();
+</script>
+</body>
+</html>

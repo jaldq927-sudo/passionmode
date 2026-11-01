@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05 開発環境をつくる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .errmsg{display:block;font-family:var(--f-mono);font-size:.8rem;color:var(--ng);overflow-wrap:anywhere;margin-bottom:4px}
+  .tbl.err table{min-width:640px}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 05 開発環境をつくる</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">05</div>
+  <div><div class="eyebrow">CHAPTER 05 ・ 手を動かす土台</div><h1>開発環境をつくる</h1></div>
+  <p class="summary">JDK・Maven・IDE・Git・ローカルDB・Tomcat がそれぞれ何をしているかを理解し、「設定ファイルにURLを登録する」の意味をはっきりさせます。エラーを1つずつ切り分けて、mvn clean package が通り、ローカルでアプリを起動してデバッグできるところまでを目指します。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>開発環境を構成する道具の役割と、どれがどれに頼っているか</li>
+    <li>Maven が部品（ライブラリ）をどこから、どうやって取ってくるか</li>
+    <li>~/.m2/settings.xml の mirrors / servers / proxies の書き方と、pom.xml の repositories との違い</li>
+    <li>JAVA_HOME と PATH の設定、社内プロキシと証明書エラー（PKIX）の直し方</li>
+    <li>エラーメッセージから原因を切り分ける手順と、先輩への質問の仕方</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">なぜつまずくのか</a><a href="#s2">全体像</a><a href="#s3">環境変数</a><a href="#s4">Mavenの仕組み</a><a href="#s5">settings.xml</a><a href="#s6">プロキシと証明書</a><a href="#s7">エラー対処表</a><a href="#s8">切り分け手順</a><a href="#s9">ゴールまで</a><a href="#s10">確認リスト</a><a href="#s11">練習問題</a><a href="#s12">用語</a><a href="#s13">チェックリスト</a>
+  </nav>
+
+  <section id="s1">
+    <h2>なぜ環境構築でつまずくのか</h2>
+    <p>Maven の環境構築が何か月もできていないと、「自分には向いていないのでは」と感じるかもしれません。でも、社内ネットワークでの環境構築は、ベテランでも半日〜数日かかることがよくある作業です。つまずく理由ははっきりしています。</p>
+    <ul>
+      <li><strong>道具が多く、どれが失敗しているか分からない</strong>：JDK、Maven、IDE、プロキシ、社内リポジトリが絡み合い、1つのエラーメッセージに複数の原因が隠れています。</li>
+      <li><strong>会社固有の値が必要</strong>：社内リポジトリのURL、認証情報、プロキシのホスト名は、ネットで検索しても出てきません。<em>知らないのが当たり前</em>で、聞くしかない情報です。</li>
+      <li><strong>手順書が「分かっている人」向け</strong>：「settings.xml にURLを登録してください」の一文に、実は5つくらいの前提知識が詰まっています。</li>
+    </ul>
+    <p>この章では、その前提知識を1つずつほどいていきます。大事なのは「全部いっぺんに直そうとしない」ことです。下から順に、1段ずつ確認すれば必ずどこで止まっているかが分かります。</p>
+    <div class="callout info"><b>この章のゴール（3段階）</b>
+      <p>① <code>mvn clean package</code> が BUILD SUCCESS になる → ② ローカルでアプリが起動する → ③ IDE でブレークポイントを置いてデバッグできる。①までできれば、残りはぐっと楽になります。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2>全体像：道具とその役割</h2>
+    <p>まず登場人物を整理します。Java の業務アプリ開発を「お店（Webアプリ）を開く」ことにたとえると、次のようになります。</p>
+    <div class="cards">
+      <div class="card"><h4>JDK（javac / java）</h4><p>翻訳機と実行機。<code>javac</code> が Java のソースを機械が読める形（.class）に翻訳し、<code>java</code> がそれを動かす。Maven も Java で動くので、JDK が全ての土台。</p></div>
+      <div class="card"><h4>Maven</h4><p>ビルド係 兼 部品の取り寄せ係。pom.xml（注文書）を読み、必要なライブラリを倉庫から取り寄せ、コンパイル・テスト・WAR/JAR作成までを一括で行う。</p></div>
+      <div class="card"><h4>IDE（Eclipse / IntelliJ / VS Code）</h4><p>作業机。編集・検索・実行・デバッグを1か所でできる。中では JDK と Maven を呼んでいるだけなので、IDE がどの JDK・どの設定を使っているかが重要。</p></div>
+      <div class="card"><h4>Git</h4><p>セーブポイント付きの書類保管庫。ソースの履歴を管理し、社内の Git サーバーからプロジェクトを取ってくる（clone）。</p></div>
+      <div class="card"><h4>ローカルDB（PostgreSQL）</h4><p>練習用の台帳。自分のPCに本番と同じ形のDBを作り、壊しても誰にも迷惑がかからない場所でアプリを動かす。</p></div>
+      <div class="card"><h4>Tomcat</h4><p>お店の建物。Web アプリを載せて、ブラウザからのリクエストを受け付ける。Spring Boot なら JAR の中に組み込まれていることも（<a href="04-spring-boot.html#s8">04 起動の流れ</a>）。</p></div>
+    </div>
+    <figure class="figure">
+      <svg viewBox="0 0 640 330" style="max-width:640px" role="img" aria-label="あなたのPCの中でIDEがJDK、Git、Mavenを使い、Mavenは社内プロキシを通ってリモートリポジトリから部品を取得する">
+        <defs><marker id="arr51" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect class="box-soft" x="10" y="10" width="440" height="310" rx="12"/>
+        <text x="26" y="34" font-size="14" font-weight="700">あなたのPC</text>
+        <rect class="box" x="30" y="46" width="400" height="54" rx="8"/>
+        <text x="46" y="70" font-size="13" font-weight="700">IDE（Eclipse / IntelliJ / VS Code）</text>
+        <text x="46" y="90" font-size="13" class="muted">作業机：編集・実行・デバッグ</text>
+        <line class="line-accent" x1="92" y1="100" x2="92" y2="118" marker-end="url(#arr51)"/>
+        <line class="line-accent" x1="230" y1="100" x2="230" y2="118" marker-end="url(#arr51)"/>
+        <line class="line-accent" x1="368" y1="100" x2="368" y2="118" marker-end="url(#arr51)"/>
+        <rect class="box" x="30" y="122" width="124" height="72" rx="8"/>
+        <text x="42" y="146" font-size="13" font-weight="700">JDK</text>
+        <text x="42" y="166" font-size="13" class="muted">javac / java</text>
+        <text x="42" y="184" font-size="13" class="muted">翻訳と実行</text>
+        <rect class="box" x="168" y="122" width="124" height="72" rx="8"/>
+        <text x="180" y="146" font-size="13" font-weight="700">Git</text>
+        <text x="180" y="166" font-size="13" class="muted">ソースの履歴</text>
+        <text x="180" y="184" font-size="13" class="muted">clone / pull</text>
+        <rect class="box" x="306" y="122" width="124" height="72" rx="8"/>
+        <text x="318" y="146" font-size="13" font-weight="700">Maven</text>
+        <text x="318" y="166" font-size="13" class="muted">ビルド係</text>
+        <text x="318" y="184" font-size="13" class="muted">部品の取り寄せ</text>
+        <rect class="box" x="30" y="218" width="190" height="80" rx="8"/>
+        <text x="42" y="242" font-size="13" font-weight="700">PostgreSQL</text>
+        <text x="42" y="262" font-size="13" class="muted">ローカルDB</text>
+        <text x="42" y="282" font-size="13" class="muted">練習用の台帳</text>
+        <rect class="box" x="240" y="218" width="190" height="80" rx="8"/>
+        <text x="252" y="242" font-size="13" font-weight="700">Tomcat</text>
+        <text x="252" y="262" font-size="13" class="muted">アプリを載せる建物</text>
+        <text x="252" y="282" font-size="13" class="muted">（JARなら組み込み）</text>
+        <line class="line" x1="462" y1="20" x2="462" y2="320" stroke-dasharray="6 5"/>
+        <line class="line-accent" x1="430" y1="150" x2="486" y2="150" marker-end="url(#arr51)"/>
+        <rect class="box-ok" x="490" y="112" width="140" height="76" rx="8"/>
+        <text x="502" y="136" font-size="13" font-weight="700">リモート</text>
+        <text x="502" y="156" font-size="13" class="muted">社内Nexus</text>
+        <text x="502" y="176" font-size="13" class="muted">Maven Central</text>
+        <text x="474" y="222" font-size="13" font-weight="700">点線＝社内の壁</text>
+        <text x="474" y="242" font-size="13" class="muted">プロキシという</text>
+        <text x="474" y="262" font-size="13" class="muted">門を通って外へ</text>
+      </svg>
+      <figcaption>図1：開発環境の地図。Maven だけが「壁の外」と通信する</figcaption>
+    </figure>
+    <p>この図で大事なのは、<strong>ネットワークの壁を越えるのは主に Maven（と Git）だけ</strong>ということです。「Maven がビルドできない」問題の多くは、Java のコードではなく、この壁の越え方（URL・認証・プロキシ・証明書）の問題です。</p>
+  </section>
+
+  <section id="s3">
+    <h2>環境変数：JAVA_HOME と PATH</h2>
+    <p>環境変数は、PC 全体で共有される「メモ書き」です。コマンドを打ったとき、OS は <code>PATH</code> に書かれたフォルダを順番に探してプログラムを見つけます。Maven は <code>JAVA_HOME</code> を見て、どの JDK を使うか決めます。</p>
+    <div class="analogy">
+      <div><span class="lbl">たとえ話</span>受付で「山田さんを呼んで」と言うと、受付係は館内の座席表（<strong>PATH</strong>）を上から順に見て探す。座席表に載っていなければ「そんな人はいません」と言われる。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">実際には</span><code>mvn</code> と打つと、OS は PATH のフォルダを順に探す。Maven の <code>bin</code> が PATH に無ければ「'mvn' は認識されていません」になる。</div>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>変数</th><th>中身（例）</th><th>ポイント</th></tr></thead>
+      <tbody>
+        <tr><td><code>JAVA_HOME</code></td><td><code>C:\Program Files\Java\jdk-17</code></td><td>JDK の<strong>フォルダそのもの</strong>。末尾に <code>\bin</code> を付けない。JRE ではなく JDK を指す</td></tr>
+        <tr><td><code>MAVEN_HOME</code> / <code>M2_HOME</code></td><td><code>C:\tools\apache-maven-3.9.x</code></td><td>Maven を展開したフォルダ。今の Maven（3.5以降）は必須ではないが、手順書で求められたら設定する</td></tr>
+        <tr><td><code>PATH</code></td><td><code>%JAVA_HOME%\bin</code> と <code>%MAVEN_HOME%\bin</code> を追加</td><td>ここには <code>bin</code> まで書く。古い Java が先に書かれていると、そちらが使われる</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>Windows での設定手順</h3>
+    <ol class="steps">
+      <li><b>JDK と Maven を用意する</b>JDK は社内指定のバージョン（例：17）をインストール。Maven は公式サイトの <code>apache-maven-3.9.x-bin.zip</code> を展開し、スペースを含まないフォルダ（例：<code>C:\tools\</code>）に置く。バージョンは社内の指定に合わせます。</li>
+      <li><b>環境変数の画面を開く</b>スタートメニューで「環境変数」と検索 →「システム環境変数の編集」（または「アカウントの環境変数を編集」）→「環境変数」ボタン。</li>
+      <li><b>JAVA_HOME を新規作成</b>「新規」で変数名 <code>JAVA_HOME</code>、値に JDK のフォルダを入力（エクスプローラーでフォルダを開き、アドレスバーからコピーすると確実）。</li>
+      <li><b>MAVEN_HOME を新規作成（任意）</b>変数名 <code>MAVEN_HOME</code>、値に Maven のフォルダ。</li>
+      <li><b>PATH を編集</b><code>Path</code> を選んで「編集」→「新規」で <code>%JAVA_HOME%\bin</code> と <code>%MAVEN_HOME%\bin</code> を追加。古い Java のパスがあれば、「上へ」で新しい方を上にする。</li>
+      <li><b>コマンドプロンプトを開き直す</b>環境変数は、開いていたウィンドウには反映されません。IDE も再起動します。</li>
+    </ol>
+    <div class="callout warn"><b>setx コマンドに注意</b>
+      <p>ネットの記事にある <code>setx PATH "%PATH%;..."</code> は、長い PATH を1024文字で切り捨ててしまうことがあります。PATH は画面から編集する方が安全です。</p>
+    </div>
+    <h3>Mac / Linux の場合</h3>
+    <div class="code-title">~/.zshrc（Mac）または ~/.bashrc（Linux）に追記する例</div>
+<pre><code><span class="c"># Mac：インストール済みの JDK 17 の場所を自動で取得</span>
+<span class="k">export</span> JAVA_HOME=$(/usr/libexec/java_home -v 17)
+<span class="c"># Linux：実際のインストール先に合わせる（例）</span>
+<span class="c"># export JAVA_HOME=/usr/lib/jvm/java-17-openjdk</span>
+<span class="k">export</span> MAVEN_HOME=$HOME/tools/apache-maven-3.9.x
+<span class="k">export</span> PATH=$JAVA_HOME/bin:$MAVEN_HOME/bin:$PATH</code></pre>
+    <p>保存したら <code>source ~/.zshrc</code> を実行するか、ターミナルを開き直します。</p>
+    <h3>確認コマンド</h3>
+<pre><code><span class="c">&gt; java -version</span>
+openjdk version "17.0.x" ...
+<span class="c">&gt; javac -version</span>
+javac 17.0.x
+<span class="c">&gt; mvn -v</span>
+Apache Maven 3.9.x
+Maven home: C:\tools\apache-maven-3.9.x
+Java version: 17.0.x, vendor: ..., runtime: C:\Program Files\Java\jdk-17
+<span class="c">&gt; echo %JAVA_HOME%        （PowerShell なら  $env:JAVA_HOME ／ Mac なら echo $JAVA_HOME）</span>
+<span class="c">&gt; where java              （Mac / Linux なら which java）</span></code></pre>
+    <p><code>mvn -v</code> の「Java version」と「runtime」の行が、使いたい JDK になっているかを必ず見ます。<code>java -version</code> は 17 なのに Maven は 8 を使っている、ということがよくあります。<code>javac -version</code> が動かない場合は、JDK ではなく JRE を指している可能性があります。</p>
+  </section>
+
+  <section id="s4">
+    <h2>Maven の仕組み：部品はどこから来るのか</h2>
+    <p>pom.xml には「Spring Boot の Web 部品を使う」「PostgreSQL のドライバを使う」といった注文（依存関係）が書かれています。Maven はこれを読み、部品（JAR ファイル）を次の順番で探します。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 640 350" style="max-width:640px" role="img" aria-label="pom.xmlをmvnが読み、ローカルリポジトリを探し、無ければsettings.xmlの設定に従ってプロキシ経由でリモートリポジトリから取得する">
+        <defs><marker id="arr52" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect class="box" x="10" y="20" width="160" height="64" rx="8"/>
+        <text x="24" y="46" font-size="13" font-weight="700">pom.xml</text>
+        <text x="24" y="68" font-size="13" class="muted">部品の注文書</text>
+        <line class="line-accent" x1="170" y1="52" x2="206" y2="52" marker-end="url(#arr52)"/>
+        <rect class="box" x="210" y="20" width="160" height="64" rx="8"/>
+        <text x="224" y="46" font-size="13" font-weight="700">mvn コマンド</text>
+        <text x="224" y="68" font-size="13" class="muted">注文を処理する</text>
+        <line class="line-accent" x1="370" y1="52" x2="406" y2="52" marker-end="url(#arr52)"/>
+        <rect class="box-soft" x="410" y="20" width="220" height="64" rx="8"/>
+        <text x="424" y="46" font-size="13" font-weight="700">① ローカルリポジトリ</text>
+        <text x="424" y="68" font-size="13" class="muted">~/.m2/repository（手元の倉庫）</text>
+        <line class="line-accent" x1="520" y1="84" x2="520" y2="222" marker-end="url(#arr52)"/>
+        <text x="530" y="150" font-size="13" class="muted">無ければ</text>
+        <rect class="box-warn" x="410" y="226" width="220" height="64" rx="8"/>
+        <text x="424" y="252" font-size="13" font-weight="700">② settings.xml</text>
+        <text x="424" y="274" font-size="13" class="muted">行き先・認証・プロキシ</text>
+        <line class="line-accent" x1="410" y1="258" x2="374" y2="258" marker-end="url(#arr52)"/>
+        <rect class="box-warn" x="210" y="226" width="160" height="64" rx="8"/>
+        <text x="224" y="252" font-size="13" font-weight="700">③ 社内プロキシ</text>
+        <text x="224" y="274" font-size="13" class="muted">外への門（407）</text>
+        <line class="line-accent" x1="210" y1="258" x2="174" y2="258" marker-end="url(#arr52)"/>
+        <rect class="box-ok" x="10" y="226" width="160" height="64" rx="8"/>
+        <text x="24" y="252" font-size="13" font-weight="700">④ リモート</text>
+        <text x="24" y="274" font-size="13" class="muted">Nexus（401/403）</text>
+        <path class="line" d="M90,226 L90,140 L400,140" stroke-dasharray="6 5" marker-end="url(#arr52)"/>
+        <text x="100" y="130" font-size="13" class="muted">取得した部品は①に保存（次回から再利用）</text>
+        <text x="10" y="320" font-size="13" class="muted">括弧内の数字は、その場所で失敗したときに出やすい HTTP ステータス</text>
+      </svg>
+      <figcaption>図2：Maven が部品を探す順番。エラーの番号から「どこで止まったか」が分かる</figcaption>
+    </figure>
+    <h3>3種類のリポジトリ</h3>
+    <dl class="terms">
+      <dt>ローカルリポジトリ</dt><dd>自分のPCの <code>~/.m2/repository</code>（Windows なら <code>C:\Users\ユーザー名\.m2\repository</code>）。一度取得した部品がここに貯まる。中は <code>org/springframework/boot/…</code> のようにフォルダ分けされている。</dd>
+      <dt>Maven Central</dt><dd>世界中のオープンソース部品が置かれた公式の倉庫（<code>https://repo.maven.apache.org/maven2/</code>）。何も設定しなければ Maven はここに行く。</dd>
+      <dt>社内リポジトリ</dt><dd>Nexus や Artifactory という製品で会社が立てた倉庫。Central の中継（キャッシュ）と、社内で作った部品（共通ライブラリなど）の置き場を兼ねることが多い。認証が必要なことが多い。</dd>
+    </dl>
+    <p>社内ネットワークでは、PC から Central へ直接は出られず、社内リポジトリを経由するよう決められていることがよくあります。これが「社内リポジトリのURLを設定ファイルに登録してください」と言われる理由です。</p>
+  </section>
+
+  <section id="s5">
+    <h2>「URLを設定ファイルに登録する」とは：settings.xml</h2>
+    <p>「設定ファイル」とは、ほとんどの場合 <strong>Maven のユーザー設定ファイル <code>settings.xml</code></strong> のことです。置き場所は次のとおりです。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>OS</th><th>場所</th></tr></thead>
+      <tbody>
+        <tr><td>Windows</td><td><code>C:\Users\ユーザー名\.m2\settings.xml</code></td></tr>
+        <tr><td>Mac / Linux</td><td><code>~/.m2/settings.xml</code>（<code>/Users/ユーザー名/.m2/</code> や <code>/home/ユーザー名/.m2/</code>）</td></tr>
+      </tbody>
+    </table></div>
+    <p>最初は存在しないので、自分で作ります。<code>.m2</code> フォルダが無ければ一度 <code>mvn -v</code> 以外の Maven コマンドを実行するか、手で作成します（Windows のエクスプローラーで「.m2」というフォルダ名は作れない場合があるので、コマンドプロンプトで <code>mkdir %USERPROFILE%\.m2</code> とします）。Maven 本体の <code>conf\settings.xml</code> にもひな形がありますが、自分用の設定はユーザー側に書くのが基本です。</p>
+
+    <h3>settings.xml の実例</h3>
+    <div class="callout warn"><b>注意：以下の URL・ホスト名・ID はすべてダミーです</b>
+      <p><code>nexus.example.co.jp</code> や <code>proxy.example.co.jp</code> は説明用の架空の値です。実際の値は社内Wikiや先輩に確認してください。</p>
+    </div>
+    <div class="code-title">~/.m2/settings.xml（一般的な例）</div>
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;<span class="k">settings</span> xmlns=<span class="s">"http://maven.apache.org/SETTINGS/1.0.0"</span>
+          xmlns:xsi=<span class="s">"http://www.w3.org/2001/XMLSchema-instance"</span>
+          xsi:schemaLocation=<span class="s">"http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd"</span>&gt;
+
+  <span class="c">&lt;!-- (1) mirrors：本来の行き先（Central など）の代わりに、社内Nexusへ向ける --&gt;</span>
+  &lt;<span class="k">mirrors</span>&gt;
+    &lt;<span class="k">mirror</span>&gt;
+<span class="hl">      &lt;<span class="k">id</span>&gt;company-nexus&lt;/<span class="k">id</span>&gt;</span>
+      &lt;<span class="k">name</span>&gt;社内Nexus（ダミー）&lt;/<span class="k">name</span>&gt;
+      &lt;<span class="k">url</span>&gt;https://nexus.example.co.jp/repository/maven-public/&lt;/<span class="k">url</span>&gt;
+      &lt;<span class="k">mirrorOf</span>&gt;*&lt;/<span class="k">mirrorOf</span>&gt;   <span class="c">&lt;!-- * = すべてのリポジトリへの要求をここに回す --&gt;</span>
+    &lt;/<span class="k">mirror</span>&gt;
+  &lt;/<span class="k">mirrors</span>&gt;
+
+  <span class="c">&lt;!-- (2) servers：その行き先に入るための ID とパスワード --&gt;</span>
+  &lt;<span class="k">servers</span>&gt;
+    &lt;<span class="k">server</span>&gt;
+<span class="hl">      &lt;<span class="k">id</span>&gt;company-nexus&lt;/<span class="k">id</span>&gt;          <span class="c">&lt;!-- mirror の id と完全に同じにする --&gt;</span></span>
+      &lt;<span class="k">username</span>&gt;yamada.taro&lt;/<span class="k">username</span>&gt;
+      &lt;<span class="k">password</span>&gt;ここにパスワード&lt;/<span class="k">password</span>&gt;
+    &lt;/<span class="k">server</span>&gt;
+  &lt;/<span class="k">servers</span>&gt;
+
+  <span class="c">&lt;!-- (3) proxies：社内から外に出るための門 --&gt;</span>
+  &lt;<span class="k">proxies</span>&gt;
+    &lt;<span class="k">proxy</span>&gt;
+      &lt;<span class="k">id</span>&gt;corp-proxy&lt;/<span class="k">id</span>&gt;
+      &lt;<span class="k">active</span>&gt;true&lt;/<span class="k">active</span>&gt;
+      &lt;<span class="k">protocol</span>&gt;http&lt;/<span class="k">protocol</span>&gt;
+      &lt;<span class="k">host</span>&gt;proxy.example.co.jp&lt;/<span class="k">host</span>&gt;
+      &lt;<span class="k">port</span>&gt;8080&lt;/<span class="k">port</span>&gt;
+      &lt;<span class="k">username</span>&gt;yamada.taro&lt;/<span class="k">username</span>&gt;     <span class="c">&lt;!-- 認証付きプロキシの場合のみ --&gt;</span>
+      &lt;<span class="k">password</span>&gt;ここにパスワード&lt;/<span class="k">password</span>&gt;
+      &lt;<span class="k">nonProxyHosts</span>&gt;localhost|*.example.co.jp&lt;/<span class="k">nonProxyHosts</span>&gt;
+    &lt;/<span class="k">proxy</span>&gt;
+  &lt;/<span class="k">proxies</span>&gt;
+&lt;/<span class="k">settings</span>&gt;</code></pre>
+    <h3>3つの要素を言葉で説明すると</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>要素</th><th>役割</th><th>たとえ</th></tr></thead>
+      <tbody>
+        <tr><td><code>&lt;mirrors&gt;</code></td><td>「Central（や pom に書かれた倉庫）に行く代わりに、この URL に行って」という振り替え。<code>&lt;mirrorOf&gt;*&lt;/mirrorOf&gt;</code> で全部を、<code>central</code> なら Central 宛てだけを振り替える</td><td>「本店ではなく、社内の取次窓口に注文して」</td></tr>
+        <tr><td><code>&lt;servers&gt;</code></td><td>リポジトリに入るための認証情報。<code>&lt;id&gt;</code> で、mirror や repository の <code>&lt;id&gt;</code> と結びつく</td><td>取次窓口の入館証</td></tr>
+        <tr><td><code>&lt;proxies&gt;</code></td><td>社内ネットワークから外へ出るための中継サーバー。<code>&lt;nonProxyHosts&gt;</code> は「門を通らず直接行く宛先」を <code>|</code> 区切りで書く</td><td>会社の正門。守衛さんに名乗って出る</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout ng"><b>一番多いミス：id の不一致</b>
+      <p><code>&lt;server&gt;</code> の <code>&lt;id&gt;</code> と <code>&lt;mirror&gt;</code> の <code>&lt;id&gt;</code> が1文字でも違うと、Maven は認証情報を送らず、<strong>401 Unauthorized</strong> になります。大文字・小文字、ハイフンとアンダースコアの違いも区別されます。</p>
+    </div>
+    <ul>
+      <li>社内Nexusがプロキシの内側（社内）にあるなら、<code>&lt;nonProxyHosts&gt;</code> に社内のホストを入れないと、わざわざ外の門を通ろうとして失敗することがあります。</li>
+      <li>プロキシの <code>&lt;protocol&gt;</code> の扱いで、https の通信に効かないケースがあります。社内手順で <code>&lt;protocol&gt;https&lt;/protocol&gt;</code> の proxy をもう1つ追加するよう指示されていれば、それに従います。</li>
+      <li>パスワードを平文で置きたくない場合、Maven にはパスワード暗号化の仕組み（<code>mvn --encrypt-password</code> と <code>settings-security.xml</code>）があります。社内ルールを確認してください。</li>
+      <li>XML なので、1つでもタグが閉じていないと全体が読めません。<code>mvn help:effective-settings</code> を実行すると、Maven が実際に読み込んだ設定が表示されるので（パスワードは伏せ字）、読めているかの確認に使えます。</li>
+    </ul>
+
+    <h3>pom.xml の repositories との違い</h3>
+    <p>pom.xml にも <code>&lt;repositories&gt;</code> という似た設定があり、混乱のもとになります。</p>
+    <div class="compare">
+      <div class="bad"><b>pom.xml の &lt;repositories&gt;</b>
+        <p>プロジェクトの設定。Git で全員に共有される。「この部品は Central ではなく、この倉庫にあるよ」とプロジェクトとして宣言する。<strong>パスワードは書かない</strong>（全員に見えてしまう）。</p>
+      </div>
+      <div class="good"><b>settings.xml</b>
+        <p>あなたのPCだけの設定。共有しない。<strong>認証情報・プロキシ・mirror</strong> のように、人や場所によって違う値を書く。<code>mirrorOf</code> が <code>*</code> なら、pom の repositories への要求も mirror に振り替えられる。</p>
+      </div>
+    </div>
+    <div class="code-title">pom.xml 側の例（社内の共通部品を置く倉庫を宣言）</div>
+<pre><code>&lt;<span class="k">repositories</span>&gt;
+  &lt;<span class="k">repository</span>&gt;
+    &lt;<span class="k">id</span>&gt;company-releases&lt;/<span class="k">id</span>&gt;   <span class="c">&lt;!-- 認証が要るなら settings.xml の server id をこれに合わせる --&gt;</span>
+    &lt;<span class="k">url</span>&gt;https://nexus.example.co.jp/repository/maven-releases/&lt;/<span class="k">url</span>&gt;
+  &lt;/<span class="k">repository</span>&gt;
+&lt;/<span class="k">repositories</span>&gt;</code></pre>
+    <h3>IDE にも settings.xml の場所を教える</h3>
+    <p>IDE は独自に Maven を内蔵していることがあり、コマンドでは成功するのに IDE では失敗する、ということが起こります。</p>
+    <ul>
+      <li><strong>Eclipse</strong>：ウィンドウ ＞ 設定 ＞ Maven ＞ ユーザー設定（User Settings）で settings.xml を指定。プロキシは 一般 ＞ ネットワーク接続。</li>
+      <li><strong>IntelliJ IDEA</strong>：Settings ＞ Build, Execution, Deployment ＞ Build Tools ＞ Maven の「User settings file」と「Maven home path」。プロキシは Appearance &amp; Behavior ＞ System Settings ＞ HTTP Proxy。</li>
+      <li><strong>VS Code</strong>：Java 拡張の設定 <code>java.configuration.maven.userSettings</code> で指定。</li>
+    </ul>
+    <p class="note">メニュー名は IDE のバージョンや日本語化の有無で少し異なります。</p>
+    <div class="callout tip"><b>mvnw があるプロジェクト</b>
+      <p>プロジェクト直下に <code>mvnw</code> / <code>mvnw.cmd</code>（Maven Wrapper）があれば、<code>mvnw.cmd clean package</code> のように使うと、プロジェクト指定の Maven が自動でダウンロードされます。ただし、そのダウンロードにも settings.xml のプロキシ・mirror 設定や、場合によっては <code>.mvn/wrapper/maven-wrapper.properties</code> の URL 変更が必要になることがあります。</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2>社内プロキシと証明書エラー（PKIX）</h2>
+    <h3>プロキシは道具ごとに設定する</h3>
+    <p>プロキシ設定は「PCに1回」ではなく、<strong>道具ごとに別々</strong>です。Maven が通っても Git が通らない、ということがよくあります。</p>
+<pre><code><span class="c"># Maven：settings.xml の &lt;proxies&gt;（前の節）</span>
+
+<span class="c"># Git：グローバル設定に登録（値はダミー）</span>
+git config --global http.proxy http://proxy.example.co.jp:8080
+git config --global https.proxy http://proxy.example.co.jp:8080
+<span class="c"># 確認と解除</span>
+git config --global --get http.proxy
+git config --global --unset http.proxy
+
+<span class="c"># IDE：それぞれのプロキシ設定画面（前の節）</span></code></pre>
+    <p>認証付きプロキシで URL に <code>ユーザー名:パスワード@</code> を埋め込む方法もありますが、記号を含むパスワードは URL エンコードが必要で、設定ファイルに平文で残ります。社内の推奨方法を確認しましょう。</p>
+
+    <h3>PKIX path building failed とは</h3>
+    <p>HTTPS では、接続先が「本物か」を証明書で確認します。Java は、JDK の中にある <code>cacerts</code> という<strong>信頼する発行元の一覧</strong>と照らし合わせます。社内プロキシが通信の中身を検査するために、社内の認証局（社内CA）で証明書を発行し直していると、Java の一覧にはその社内CAが載っていないため「信頼できる経路が作れない」と判断して接続を拒否します。これが PKIX エラーです。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 640 230" style="max-width:640px" role="img" aria-label="社内プロキシが社内CAで署名し直した証明書を、JDKのcacertsで照合し、社内CAが無いとPKIXエラーになる">
+        <defs><marker id="arr53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect class="box-ok" x="460" y="20" width="170" height="64" rx="8"/>
+        <text x="474" y="46" font-size="13" font-weight="700">Maven Central</text>
+        <text x="474" y="68" font-size="13" class="muted">本物の証明書</text>
+        <line class="line-accent" x1="460" y1="52" x2="410" y2="52" marker-end="url(#arr53)"/>
+        <rect class="box-warn" x="235" y="20" width="170" height="64" rx="8"/>
+        <text x="249" y="46" font-size="13" font-weight="700">社内プロキシ</text>
+        <text x="249" y="68" font-size="13" class="muted">社内CAで署名し直す</text>
+        <line class="line-accent" x1="235" y1="52" x2="185" y2="52" marker-end="url(#arr53)"/>
+        <rect class="box" x="10" y="20" width="170" height="64" rx="8"/>
+        <text x="24" y="46" font-size="13" font-weight="700">Maven（Java）</text>
+        <text x="24" y="68" font-size="13" class="muted">証明書を検査</text>
+        <line class="line" x1="95" y1="84" x2="95" y2="136" stroke-dasharray="5 4"/>
+        <text x="104" y="116" font-size="13" class="muted">照合</text>
+        <rect class="box-soft" x="10" y="140" width="170" height="64" rx="8"/>
+        <text x="24" y="166" font-size="13" font-weight="700">cacerts</text>
+        <text x="24" y="188" font-size="13" class="muted">信頼する発行元の一覧</text>
+        <text x="204" y="160" font-size="13">社内CAが一覧に無い → PKIX path building failed</text>
+        <text x="204" y="186" font-size="13" class="muted">対処：社内CA証明書を keytool で cacerts に登録</text>
+      </svg>
+      <figcaption>図3：証明書エラーは「Java が社内の発行元を知らない」ことが原因</figcaption>
+    </figure>
+    <p>社内Nexus 自体が社内CAの証明書を使っている場合も、同じエラーになります。</p>
+    <h3>対処：社内CA証明書を cacerts に登録する</h3>
+    <ol class="steps">
+      <li><b>社内CA証明書のファイルをもらう</b>情報システム部門や社内Wikiで配布されていることが多いです（例：<code>corp-root-ca.cer</code>）。自分でブラウザから書き出す方法もありますが、どれが正しいルート証明書かは社内に確認するのが確実です。</li>
+      <li><b>管理者権限でコマンドプロンプトを開く</b><code>C:\Program Files</code> の下の JDK を書き換えるため、管理者として実行が必要です。</li>
+      <li><b>keytool で登録する</b>下のコマンドを実行します。<code>cacerts</code> の初期パスワードは一般に <code>changeit</code> です。</li>
+      <li><b>登録を確認し、ビルドをやり直す</b><code>-list</code> で別名（alias）が表示されれば成功です。</li>
+    </ol>
+<pre><code><span class="c"># JDK 9 以降（-cacerts で JDK 付属の cacerts を指定できる）</span>
+keytool -importcert -cacerts -alias corp-root-ca -file C:\certs\corp-root-ca.cer -storepass changeit
+
+<span class="c"># ファイルの場所を直接指定する書き方（JDK 9 以降は lib\security\cacerts）</span>
+keytool -importcert -alias corp-root-ca -file C:\certs\corp-root-ca.cer ^
+  -keystore "%JAVA_HOME%\lib\security\cacerts" -storepass changeit
+<span class="c"># JDK 8 の場合は "%JAVA_HOME%\jre\lib\security\cacerts"</span>
+
+<span class="c"># 確認</span>
+keytool -list -cacerts -alias corp-root-ca -storepass changeit</code></pre>
+    <div class="callout warn"><b>JDK が複数あると、別の JDK に登録してしまう</b>
+      <p>cacerts は JDK ごとに別ファイルです。<code>mvn -v</code> の runtime に表示された JDK に登録します。IDE が内蔵の JDK で Maven を動かしている場合は、IDE の JDK にも登録するか、IDE の設定で使う JDK を揃えます。JDK を入れ替えたら登録し直しが必要です。</p>
+    </div>
+    <p>Git でも証明書エラー（<code>SSL certificate problem: unable to get local issuer certificate</code>）が出ることがあります。Windows の Git なら <code>git config --global http.sslBackend schannel</code> で Windows の証明書ストアを使う方法が一般的です。社内の推奨設定を確認してください。</p>
+  </section>
+
+  <section id="s7">
+    <h2>よくあるエラーと対処</h2>
+    <p>エラーメッセージは「どこで止まったか」を教えてくれる手がかりです。全文をよく読み、下の表から近いものを探してください（表記は Maven や OS のバージョンで少し違います）。</p>
+    <div class="tbl err"><table>
+      <thead><tr><th>エラー（意味）</th><th>主な原因</th><th>確認方法・対処</th></tr></thead>
+      <tbody>
+        <tr><td><span class="errmsg">'mvn' は、内部コマンドまたは外部コマンド、操作可能なプログラムまたはバッチ ファイルとして認識されていません。</span>OS が mvn を見つけられない</td><td>PATH に Maven の <code>bin</code> が無い／コマンドプロンプトを開き直していない</td><td><code>where mvn</code> で確認。PATH に <code>%MAVEN_HOME%\bin</code> を追加し、ウィンドウを開き直す</td></tr>
+        <tr><td><span class="errmsg">The JAVA_HOME environment variable is not defined correctly</span>Maven が使う JDK が見つからない</td><td>JAVA_HOME 未設定、末尾に <code>\bin</code> が付いている、JRE を指している、存在しないフォルダ</td><td><code>echo %JAVA_HOME%</code> の結果をエクスプローラーで開けるか、その下に <code>bin\javac.exe</code> があるか確認</td></tr>
+        <tr><td><span class="errmsg">Could not resolve dependencies for project com.example:kintai:war:1.0.0</span>必要な部品が揃わなかった</td><td>この下に本当の理由（401、PKIX、timeout など）が続くことが多い。または指定した部品がリポジトリに存在しない</td><td>メッセージの続きと <code>Caused by</code> を読む。社内専用部品ならリポジトリの URL と権限を確認</td></tr>
+        <tr><td><span class="errmsg">Could not transfer artifact … status code: 401, reason phrase: Unauthorized (401)</span>リポジトリに認証で拒否された</td><td>servers の ID/パスワード誤り、server id と mirror id の不一致、パスワード期限切れ</td><td>id の一致を確認。ブラウザで Nexus にログインできるか確認</td></tr>
+        <tr><td><span class="errmsg">… 403, reason phrase: Forbidden (403)</span>認証はできたが権限がない</td><td>アカウントにそのリポジトリの閲覧権限がない、URL が別のリポジトリを指している</td><td>URL を確認し、管理者に権限付与を依頼</td></tr>
+        <tr><td><span class="errmsg">… 407, reason phrase: Proxy Authentication Required (407)</span>プロキシに認証で拒否された</td><td>proxies に username/password が無い・誤り</td><td>settings.xml の proxy 認証を確認。IDE・Git 側も同様に</td></tr>
+        <tr><td><span class="errmsg">PKIX path building failed: … unable to find valid certification path to requested target</span>接続先の証明書を信頼できない</td><td>社内CA証明書が、Maven を動かしている JDK の cacerts に無い</td><td><a href="#s6">前の節</a>の keytool で登録。<code>mvn -v</code> の JDK に入れたか確認</td></tr>
+        <tr><td><span class="errmsg">Fatal error compiling: invalid target release: 11</span>指定された Java バージョンでコンパイルできない</td><td>pom.xml は Java 11 以上を要求しているのに、Maven が JDK 8 で動いている（17 なら <code>release version 17 not supported</code> などと出る）</td><td><code>mvn -v</code> の Java version を確認し、JAVA_HOME を正しい JDK に変更</td></tr>
+        <tr><td><span class="errmsg">Connect to repo.maven.apache.org:443 … failed: Connection timed out</span>相手に届かない</td><td>プロキシ未設定で直接外へ出ようとしている、mirror 未設定で Central に行っている、VPN 未接続</td><td>エラーに出ているホスト名を見る。Central なら mirror 設定を、社内ホストなら nonProxyHosts を確認</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout info"><b>エラーの「行き先」を必ず見る</b>
+      <p>多くのエラーには、どの URL に接続しようとしたかが書かれています。<code>repo.maven.apache.org</code> が出ていれば「mirror が効いておらず Central に直接行っている」、<code>nexus.example.co.jp</code> のような社内ホストなら「mirror は効いているが、その先で失敗している」と分かります。</p>
+    </div>
+  </section>
+
+  <section id="s8">
+    <h2>トラブルシュートの手順</h2>
+    <p>あれこれ同時に変えると、何が効いたのか分からなくなります。<strong>1回に1か所だけ変えて、毎回同じコマンドで確かめる</strong>のが鉄則です。変えたことはメモに残します。</p>
+    <ol class="steps">
+      <li><b>土台を確認する</b><code>java -version</code>、<code>javac -version</code>、<code>mvn -v</code>。Maven が使う JDK が想定どおりかを見る。ここが通らなければ先に進まない。</li>
+      <li><b>設定が読まれているか確認する</b><code>mvn help:effective-settings</code> で mirror・server・proxy が表示されるか。表示されなければ、ファイルの場所か XML の書き方が間違っている。</li>
+      <li><b>依存関係だけを取得してみる</b><code>mvn dependency:resolve</code>。コンパイルと切り離して「部品の取り寄せ」だけを試せる。</li>
+      <li><b>詳細ログを出す</b><code>mvn -X clean package &gt; build.log 2&gt;&amp;1</code> でデバッグログをファイルに保存。「Using mirror」「proxy」「Downloading from」の行で、実際の接続先とプロキシ使用の有無が分かる。</li>
+      <li><b>失敗の記録を消して再試行する</b>一度失敗すると Maven はそれを覚えて、しばらく再試行しません（<code>was cached in the local repository, resolution will not be reattempted until the update interval … has elapsed or updates are forced</code>）。<code>mvn -U clean package</code> の <code>-U</code> で強制的に再確認させる。</li>
+      <li><b>壊れたファイルを削除する</b>ローカルリポジトリに残った <code>*.lastUpdated</code> ファイルや、途中までしかダウンロードされていない JAR を消す。該当フォルダ（例：<code>~/.m2/repository/org/springframework/boot/</code>）ごと消しても、次回のビルドで取り直されるので問題ありません。</li>
+      <li><b>それでもだめなら質問する</b>ここまでの結果を持って、<a href="#s10">質問テンプレ</a>で先輩に聞く。</li>
+    </ol>
+<pre><code><span class="c"># よく使うコマンドまとめ</span>
+mvn -v                              <span class="c"># Maven と JDK のバージョン</span>
+mvn help:effective-settings         <span class="c"># 実際に効いている settings.xml</span>
+mvn dependency:resolve              <span class="c"># 依存関係の取得だけ</span>
+mvn -U clean package                <span class="c"># 失敗キャッシュを無視して再取得</span>
+mvn -X clean package &gt; build.log 2&gt;&amp;1   <span class="c"># デバッグログを保存</span>
+mvn clean package -DskipTests       <span class="c"># テストを飛ばして固める（原因切り分け用）</span></code></pre>
+    <p class="note"><code>-DskipTests</code> はテストの失敗とビルド環境の問題を切り分けるためのものです。常用せず、テストが落ちる理由はチームに確認しましょう。</p>
+    <div class="code-title">-X ログで見るべき行（一般的な形）</div>
+<pre><code>[DEBUG] Reading user settings from C:\Users\yamada\.m2\settings.xml
+[DEBUG] Using mirror company-nexus (https://nexus.example.co.jp/repository/maven-public/) for central (https://repo.maven.apache.org/maven2).
+[DEBUG] Using transporter ... with priority ... for https://nexus.example.co.jp/...
+[INFO] Downloading from company-nexus: https://nexus.example.co.jp/repository/maven-public/org/...</code></pre>
+    <p>1行目で「どの settings.xml を読んだか」、2行目で「mirror が効いているか」が確認できます。1行目のパスが想定と違えば、別の場所のファイルを編集していたということです。</p>
+  </section>
+
+  <section id="s9">
+    <h2>ゴールまでの3段階</h2>
+    <div class="flow" role="img" aria-label="mvn clean packageが通る、ローカルで起動する、IDEでデバッグするの3段階">
+      <div class="node"><b>① ビルドが通る</b><code>mvn clean package</code> で BUILD SUCCESS。<code>target/</code> に WAR か JAR ができる</div>
+      <div class="arrow"></div>
+      <div class="node"><b>② ローカルで起動</b>ローカルDBにつながり、ブラウザで画面が開く</div>
+      <div class="arrow"></div>
+      <div class="node"><b>③ デバッグできる</b>IDEでブレークポイントを置き、変数の中身を見られる</div>
+    </div>
+    <h3>① mvn clean package</h3>
+    <p><code>clean</code> は前回の成果物（<code>target</code> フォルダ）を消し、<code>package</code> はコンパイル → テスト → WAR/JAR 作成までを行います。最後に <code>[INFO] BUILD SUCCESS</code> と出れば成功です。</p>
+    <h3>② ローカルDBを用意して起動する</h3>
+    <p>PostgreSQL をインストールし、アプリ用の DB とユーザーを作ります。テーブル作成用の SQL（DDL）や初期データがリポジトリ内にあるか、どう作るのかは現場ごとに違うので確認が必要です。</p>
+<pre><code><span class="c"># 一般的な例（DB名・ユーザー名はダミー）</span>
+psql -U postgres
+postgres=# CREATE USER kintai_app WITH PASSWORD 'devpass';
+postgres=# CREATE DATABASE kintai OWNER kintai_app;
+postgres=# \q
+psql -U kintai_app -d kintai -f db/ddl/create_tables.sql</code></pre>
+    <p>接続先はアプリの <code>application-local.properties</code> などに書きます（<a href="04-spring-boot.html#s5">04 設定ファイル</a>）。起動方法は構成によって違います。</p>
+    <ul>
+      <li><strong>JAR（組み込みTomcat）</strong>：IDE で <code>@SpringBootApplication</code> の付いたクラスを右クリックして実行、または <code>mvn spring-boot:run</code>。</li>
+      <li><strong>WAR（外部Tomcat）</strong>：ローカルに Tomcat を入れ、Eclipse の「サーバー」ビューや IntelliJ（Ultimate）の Tomcat 実行構成で WAR を載せて起動。または <code>target/*.war</code> を Tomcat の <code>webapps</code> にコピー。</li>
+    </ul>
+    <h3>③ ブレークポイントでデバッグ</h3>
+    <p>IDE の「デバッグ」で起動し、Controller のメソッドの行番号の左をクリックして赤い丸（ブレークポイント）を置きます。ブラウザで打刻ボタンを押すとそこで処理が止まり、変数の中身を見ながら1行ずつ進められます（ステップオーバー：Eclipse は F6、IntelliJ は F8）。外部Tomcat の場合は、Tomcat を <code>catalina.bat jpda start</code> で起動し（既定ではポート 8000 で待ち受け）、IDE の「リモート Java アプリケーション」（IntelliJ は Remote JVM Debug）で接続する方法もあります。</p>
+    <div class="callout tip"><b>デバッグができると世界が変わる</b>
+      <p>ログを読んで推測するしかなかった処理が、目の前で1行ずつ動くのを見られます。AIの回答が正しいかも、自分で確かめられるようになります。ここまで来たら、<a href="07-logs-incident.html">07 ログと障害調査</a> の内容が一気に身近になります。</p>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2>先輩・社内Wikiに確認するリスト</h2>
+    <p>次の項目は会社ごとに違い、ネットで調べても分かりません。1つずつ埋めていけば、手順書の空白が見えてきます。Wikiにあれば読み、無ければまとめて聞きましょう。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>項目</th><th>聞き方の例</th></tr></thead>
+      <tbody>
+        <tr><td>社内リポジトリの URL</td><td>「Maven の mirror に設定する Nexus（Artifactory）の URL はどれですか」</td></tr>
+        <tr><td>認証情報の取得方法</td><td>「Nexus のアカウントは申請が必要ですか。パスワードは社内ADと同じですか」</td></tr>
+        <tr><td>プロキシ設定値</td><td>「プロキシのホスト・ポートと、認証の有無、除外するホスト（nonProxyHosts）を教えてください」</td></tr>
+        <tr><td>社内CA証明書</td><td>「Java の cacerts に入れる社内CA証明書の配布場所はどこですか」</td></tr>
+        <tr><td>JDK・Maven のバージョン</td><td>「開発で使う JDK のバージョンとディストリビューション、Maven のバージョンは指定がありますか」</td></tr>
+        <tr><td>ビルドコマンド</td><td>「普段のビルドは <code>mvn clean package</code> ですか。プロファイル指定（<code>-P</code>）や mvnw を使いますか」</td></tr>
+        <tr><td>IDE 設定の共有ファイル</td><td>「チームで共有している settings.xml のひな形や、IDE のフォーマッタ設定はありますか」</td></tr>
+        <tr><td>ローカルDBの作り方</td><td>「ローカルの PostgreSQL のバージョンと、DDL・テストデータの場所を教えてください」</td></tr>
+        <tr><td>起動方法</td><td>「ローカルでは組み込みTomcatで動かしますか、それとも外部Tomcatに WAR を載せますか」</td></tr>
+      </tbody>
+    </table></div>
+    <h3>質問メールのテンプレート</h3>
+    <p>「動きません」だけでは、聞かれた側も答えようがありません。<strong>やりたいこと・エラー全文・試したこと・環境</strong>の4点をそろえると、相手は数分で答えられます。人に話しかけるのが苦手でも、この形で書けば十分に伝わります（伝え方は <a href="11-communication.html">11 伝える技術</a> でも扱います）。</p>
+<pre><code>件名：【質問】勤怠システムのローカルビルドで 401 エラーが出ます
+
+○○さん
+
+お疲れさまです。△△です。
+勤怠システムのローカル環境構築で詰まっており、ご相談させてください。
+
+■やりたいこと
+  勤怠システムを mvn clean package でビルドしたい
+
+■発生していること（エラー全文は添付 build.log）
+  [ERROR] Failed to execute goal on project kintai: Could not resolve dependencies ...
+  Could not transfer artifact ... status code: 401, reason phrase: Unauthorized (401)
+
+■試したこと
+  1. mvn -v で JDK 17 / Maven 3.9.x が使われていることを確認
+  2. settings.xml の mirror に Wiki 記載の URL を設定（help:effective-settings で反映を確認）
+  3. server の id を mirror の id と同じ "company-nexus" に設定
+  4. ブラウザで Nexus にログイン → 成功
+  5. mvn -U clean package で再実行 → 同じエラー
+
+■環境
+  Windows 11 / JDK 17.0.x / Maven 3.9.x / Eclipse 2024-xx
+
+■お聞きしたいこと
+  Nexus のアカウントに、この リポジトリの閲覧権限が付与されているか
+  確認する方法を教えていただけますか。
+
+お手数ですが、よろしくお願いいたします。</code></pre>
+    <div class="callout warn"><b>送る前に</b>
+      <p>ログや settings.xml を添付するときは、<strong>パスワードを必ず伏せ字</strong>にします。<code>mvn -X</code> のログにも認証関連の情報が含まれることがあるので、送る前に「password」で検索して確認しましょう。</p>
+    </div>
+  </section>
+
+  <section id="s11">
+    <h2>練習問題</h2>
+    <details class="quiz"><summary>Q1. JAVA_HOME に <code>C:\Program Files\Java\jdk-17\bin</code> と設定しました。何が問題ですか？</summary>
+      <div class="ans"><p>JAVA_HOME は JDK のフォルダそのもの（<code>C:\Program Files\Java\jdk-17</code>）を指します。<code>\bin</code> まで書くのは PATH の方です。Maven は <code>%JAVA_HOME%\bin\java</code> を探すので、<code>bin\bin\java</code> を探すことになり失敗します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q2. エラーに <code>https://repo.maven.apache.org/maven2</code> への接続タイムアウトが出ています。社内では Nexus 経由のルールです。まず何を疑いますか？</summary>
+      <div class="ans"><p>mirror が効いていない（settings.xml が読まれていない、場所が違う、<code>mirrorOf</code> の指定が違う）ことを疑います。<code>mvn help:effective-settings</code> や <code>mvn -X</code> の「Reading user settings from」「Using mirror」の行で確認します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q3. 401 と 407 の違いを説明してください。</summary>
+      <div class="ans"><p>401 は接続先（社内Nexus など）での認証失敗で、settings.xml の <code>&lt;servers&gt;</code> を確認します。407 は途中のプロキシでの認証失敗で、<code>&lt;proxies&gt;</code> の username/password を確認します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q4. keytool で社内CA証明書を登録したのに PKIX エラーが消えません。考えられる原因は？</summary>
+      <div class="ans"><p>Maven（または IDE）が、登録したのとは別の JDK で動いている可能性が高いです。<code>mvn -v</code> の runtime を確認し、その JDK の cacerts に登録します。IDE 内蔵の JDK や、JDK の入れ替えにも注意します。</p></div>
+    </details>
+  </section>
+
+  <section id="s12">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>JDK</dt><dd>Java 開発キット。コンパイラ <code>javac</code> と実行環境 <code>java</code> を含む。JRE は実行だけ。</dd>
+      <dt>環境変数</dt><dd>OS 全体で共有される設定値。JAVA_HOME、PATH など。</dd>
+      <dt>PATH</dt><dd>コマンド名からプログラムを探すフォルダの一覧。上から順に探す。</dd>
+      <dt>Maven</dt><dd>Java のビルドツール。pom.xml を元に依存関係の取得とビルドを行う。</dd>
+      <dt>pom.xml</dt><dd>プロジェクトの設計図兼注文書。依存関係、Java バージョン、packaging などを書く。</dd>
+      <dt>依存関係（dependency）</dt><dd>プロジェクトが使う外部ライブラリ。groupId・artifactId・version で特定する。</dd>
+      <dt>ローカルリポジトリ</dt><dd>取得した部品を貯める手元の倉庫。<code>~/.m2/repository</code>。</dd>
+      <dt>リモートリポジトリ</dt><dd>部品を取りに行く外部の倉庫。Maven Central や社内 Nexus / Artifactory。</dd>
+      <dt>settings.xml</dt><dd>Maven の個人設定。mirrors・servers・proxies などを書く。</dd>
+      <dt>mirror</dt><dd>本来の倉庫への要求を別の倉庫に振り替える設定。</dd>
+      <dt>プロキシ</dt><dd>社内から外部への通信を中継するサーバー。</dd>
+      <dt>cacerts</dt><dd>JDK が信頼する認証局（CA）の証明書一覧。keytool で管理する。</dd>
+      <dt>PKIX</dt><dd>証明書の信頼の連鎖を検証する仕組み。失敗すると PKIX path building failed。</dd>
+      <dt>ブレークポイント</dt><dd>デバッグ時に処理を一時停止させる場所。</dd>
+    </dl>
+  </section>
+
+  <section id="s13">
+    <h2>環境構築チェックリスト</h2>
+    <p>上から順に1つずつ確認しましょう。チェック状態はこのブラウザに保存されるので、数日かけて進めても大丈夫です。</p>
+    <ul class="check">
+      <li><input type="checkbox" id="c05-01"><label for="c05-01">社内の指定 JDK・Maven のバージョンを確認した</label></li>
+      <li><input type="checkbox" id="c05-02"><label for="c05-02">JAVA_HOME を設定し、<code>java -version</code> と <code>javac -version</code> が指定バージョンになった</label></li>
+      <li><input type="checkbox" id="c05-03"><label for="c05-03">PATH に Maven の bin を追加し、<code>mvn -v</code> の Java version が正しい JDK になった</label></li>
+      <li><input type="checkbox" id="c05-04"><label for="c05-04">社内リポジトリの URL・認証情報・プロキシ設定値を入手した</label></li>
+      <li><input type="checkbox" id="c05-05"><label for="c05-05"><code>~/.m2/settings.xml</code> を作り、mirror と server の id を一致させた</label></li>
+      <li><input type="checkbox" id="c05-06"><label for="c05-06"><code>mvn help:effective-settings</code> で設定が読まれていることを確認した</label></li>
+      <li><input type="checkbox" id="c05-07"><label for="c05-07">（必要なら）社内CA証明書を、Maven が使う JDK の cacerts に登録した</label></li>
+      <li><input type="checkbox" id="c05-08"><label for="c05-08">Git のプロキシを設定し、プロジェクトを clone できた</label></li>
+      <li><input type="checkbox" id="c05-09"><label for="c05-09"><code>mvn dependency:resolve</code> が成功した</label></li>
+      <li><input type="checkbox" id="c05-10"><label for="c05-10"><code>mvn clean package</code> で BUILD SUCCESS が出た</label></li>
+      <li><input type="checkbox" id="c05-11"><label for="c05-11">IDE に settings.xml と JDK を設定し、IDE 上でもエラーが消えた</label></li>
+      <li><input type="checkbox" id="c05-12"><label for="c05-12">ローカルの PostgreSQL に DB とテーブルを作った</label></li>
+      <li><input type="checkbox" id="c05-13"><label for="c05-13">ローカルでアプリが起動し、ブラウザで画面が開いた</label></li>
+      <li><input type="checkbox" id="c05-14"><label for="c05-14">Controller にブレークポイントを置き、デバッグで処理を止められた</label></li>
+      <li><input type="checkbox" id="c05-15"><label for="c05-15">つまずいた点と解決方法を、次の人のためにメモ（またはWiki）に残した</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="04-spring-boot.html"><span>← 前の章</span>04 Spring Bootの正体</a><a class="next" href="06-sql-postgres.html"><span>次の章 →</span>06 自分で書くSQL</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+<script>
+(function(){
+  var KEY = 'se-guide-05-check';
+  var state = {};
+  try { state = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { state = {}; }
+  var boxes = document.querySelectorAll('.check input[type="checkbox"]');
+  Array.prototype.forEach.call(boxes, function(cb){
+    if (state[cb.id]) cb.checked = true;
+    cb.addEventListener('change', function(){
+      state[cb.id] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    });
+  });
+})();
+</script>
+</body>
+</html>
