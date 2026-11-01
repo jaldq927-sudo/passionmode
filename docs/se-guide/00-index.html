@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SE成長ガイド</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+.hero{background:var(--sheet);border-bottom:1px solid var(--rule)}
+.hero .wrap{padding-block:48px 36px}
+.hero .eyebrow{font-size:.78rem;letter-spacing:.14em;font-weight:700;color:var(--muted)}
+.hero h1{font-family:var(--f-display);font-weight:800;font-size:clamp(2.2rem,7vw,3.6rem);margin:.15em 0 .3em;line-height:1.15}
+.hero h1 span{color:var(--accent)}
+.hero p{max-width:40em;font-size:1.05rem}
+.prompt{font-family:var(--f-mono);font-size:.85rem;background:var(--code-bg);color:var(--code-fg);border-radius:8px;padding:12px 16px;margin-top:20px;overflow-x:auto;white-space:nowrap}
+.prompt .c{color:var(--code-com)} .prompt .k{color:var(--code-key)}
+
+.worry{display:grid;grid-template-columns:1fr auto 1fr;gap:10px 14px;align-items:center;margin:20px 0}
+.worry .q{background:var(--ng-soft);border-radius:8px;padding:10px 14px;font-size:.92rem;min-width:0}
+.worry .to{color:var(--muted);font-weight:800}
+.worry .a{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:10px 14px;font-size:.92rem;text-decoration:none;color:var(--ink);display:flex;gap:10px;align-items:center;min-width:0}
+.worry .a:hover{border-color:var(--accent)}
+.worry .a b{font-family:var(--f-display);color:var(--accent);font-size:1.2rem;flex:none}
+@media (max-width:640px){.worry{grid-template-columns:1fr}.worry .to{display:none}.worry .a{margin-bottom:12px}}
+
+.part{margin-top:34px}
+.part-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--ink);padding-bottom:6px;margin-bottom:14px}
+.part-h h3{margin:0;font-family:var(--f-display);font-weight:800;font-size:1.2rem}
+.chs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.ch{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;text-decoration:none;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;min-width:0}
+.ch:hover{border-color:var(--accent)}
+.ch .n{font-family:var(--f-display);font-weight:800;font-size:2rem;line-height:1;color:var(--accent);grid-row:span 2}
+.ch .t{font-weight:700}
+.ch .d{font-size:.85rem;color:var(--muted)}
+.ch.first{border:2px solid var(--warn)}
+.badge{display:inline-block;font-size:.7rem;font-weight:700;padding:1px 8px;border-radius:999px;background:var(--warn-soft);color:var(--warn);margin-left:6px;vertical-align:2px}
+</style>
+</head>
+<body>
+
+<header class="hero"><div class="wrap">
+  <div class="eyebrow">勤怠システム / Web申請 担当SEのための学習ノート</div>
+  <h1>SE成長<span>ガイド</span></h1>
+  <p>AIに頼れば問題は解決できる。でも、自分では何が起きているのか説明できない。11か月目のその不安を、ひとつずつ「わかる」に変えていくための12章です。全部を一度に読む必要はありません。今いちばん困っていることから開いてください。</p>
+  <div class="prompt"><span class="c"># このガイドのゴール</span><br><span class="k">$</span> AIの答えを「自分で説明・確認・修正できる」SEになる</div>
+</div></header>
+
+<main class="wrap">
+
+<section id="worries">
+  <h2>あなたの悩み → 読む章</h2>
+  <p>相談してくれた内容を、そのまま章に対応させました。</p>
+  <div class="worry">
+    <div class="q">このままでいいのか不安。考えずに動画を見ているだけの自分</div><div class="to">→</div>
+    <a class="a" href="01-mindset.html"><b>01</b>このままでいいのか</a>
+    <div class="q">Apache・Tomcat・Spring Boot・Postgres がどうつながっているかわからない</div><div class="to">→</div>
+    <a class="a" href="02-system-map.html"><b>02</b>システムの全体像</a>
+    <div class="q">クラスやソースをAIに読ませているだけで、自分では読めない</div><div class="to">→</div>
+    <a class="a" href="03-java.html"><b>03</b>読めるJava</a>
+    <div class="q">Spring Bootが何なのか、いまだにわからない</div><div class="to">→</div>
+    <a class="a" href="04-spring-boot.html"><b>04</b>Spring Bootの正体</a>
+    <div class="q">Mavenのインストールや設定ファイルのURL登録ができず、4か月コンパイルできていない</div><div class="to">→</div>
+    <a class="a" href="05-build-env.html"><b>05</b>開発環境をつくる</a>
+    <div class="q">SQLはAIに作らせて実行するだけで身についていない</div><div class="to">→</div>
+    <a class="a" href="06-sql-postgres.html"><b>06</b>自分で書くSQL</a>
+    <div class="q">システム停止のTomcatログ調査をAIに丸投げしている</div><div class="to">→</div>
+    <a class="a" href="07-logs-incident.html"><b>07</b>ログと障害調査</a>
+    <div class="q">Web申請のXML（シートやSQLが入っている）がよくわからない</div><div class="to">→</div>
+    <a class="a" href="08-xml-forms.html"><b>08</b>XMLのWeb申請</a>
+    <div class="q">顧客要望をどう改修すればいいか、全部AIにやらせている</div><div class="to">→</div>
+    <a class="a" href="09-change-request.html"><b>09</b>要望から改修まで</a>
+    <div class="q">AIを使うほど自分の理解が育たない</div><div class="to">→</div>
+    <a class="a" href="10-ai-learning.html"><b>10</b>AIと一緒に強くなる</a>
+    <div class="q">人とほとんど話さないので、伝えるのが下手</div><div class="to">→</div>
+    <a class="a" href="11-communication.html"><b>11</b>伝える技術</a>
+    <div class="q">プロフェッショナルになりたい。でも何から、どの順で？</div><div class="to">→</div>
+    <a class="a" href="12-roadmap.html"><b>12</b>12か月ロードマップ</a>
+  </div>
+</section>
+
+<section id="map">
+  <h2>12章の地図</h2>
+  <p>下から順に積み上がる構造です。土台の「技術の地図」がわかると、上の「現場の仕事」をAIに任せきりにせず、自分で判断できるようになります。</p>
+  <figure class="figure">
+    <svg viewBox="0 0 760 360" style="max-width:760px" role="img" aria-label="学習の積み上げ図。土台が心構え、その上に技術の土台、現場の仕事、伝える力、最上段がプロのSE">
+      <rect class="box-ok" x="200" y="20" width="360" height="54" rx="8"/>
+      <text x="380" y="53" text-anchor="middle" font-size="17" font-weight="700">プロのSE：説明できる・確かめられる・任せられる</text>
+      <rect class="box-soft" x="40" y="96" width="330" height="70" rx="8"/>
+      <text x="205" y="124" text-anchor="middle" font-size="15" font-weight="700">現場の仕事</text>
+      <text x="205" y="148" text-anchor="middle" font-size="13" class="muted">07 障害調査 ・ 08 XML申請 ・ 09 改修</text>
+      <rect class="box-soft" x="390" y="96" width="330" height="70" rx="8"/>
+      <text x="555" y="124" text-anchor="middle" font-size="15" font-weight="700">力を伸ばす</text>
+      <text x="555" y="148" text-anchor="middle" font-size="13" class="muted">10 AIと学ぶ ・ 11 伝える ・ 12 ロードマップ</text>
+      <rect class="box" x="40" y="188" width="680" height="84" rx="8"/>
+      <text x="380" y="216" text-anchor="middle" font-size="15" font-weight="700">技術の土台</text>
+      <text x="380" y="242" text-anchor="middle" font-size="13" class="muted">02 全体像 ・ 03 Java ・ 04 Spring Boot ・ 05 開発環境 ・ 06 SQL</text>
+      <text x="380" y="262" text-anchor="middle" font-size="12" class="muted">05 の開発環境が動くと、他の章をすべて「手を動かして」確かめられる</text>
+      <rect class="box-warn" x="40" y="294" width="680" height="50" rx="8"/>
+      <text x="380" y="325" text-anchor="middle" font-size="15" font-weight="700">01 心構え：AIに使われる側から、AIを使いこなす側へ</text>
+    </svg>
+    <figcaption>下の段ほど、ほかの全部を支える土台になります。</figcaption>
+  </figure>
+</section>
+
+<section id="order">
+  <h2>おすすめの読み方</h2>
+  <ol class="steps">
+    <li><b>01 を読む（20分）</b>不安の正体を整理して、何を目指すかを決めます。</li>
+    <li><b>05 に取りかかる（最優先）</b>4か月止まっている開発環境を、まず動かします。ここが動けば、残りの章を自分のPCで試せます。わからない箇所は、05章の「先輩に確認するリスト」をそのまま使って質問してください。</li>
+    <li><b>02 → 03 → 04 → 06 で土台をつくる</b>毎日30分、実際のソースとDBを見ながら読みます。</li>
+    <li><b>07・08・09 は仕事が来たときに開く</b>障害調査、申請XML、改修依頼が来たら、その章の手順に沿って自分で進めてから、AIに確認させます。</li>
+    <li><b>10・11 は毎日少しずつ</b>AIの使い方と伝え方は、毎日の仕事で練習できます。</li>
+    <li><b>12 で進み具合を確認する</b>月に1回、チェックリストで自分の成長を確認します。</li>
+  </ol>
+</section>
+
+<section id="chapters">
+  <h2>全章</h2>
+
+  <div class="part">
+    <div class="part-h"><h3>第1部　心構え</h3><span class="note">まず、ここから</span></div>
+    <div class="chs">
+      <a class="ch" href="01-mindset.html"><span class="n">01</span><span class="t">このままでいいのか</span><span class="d">11か月目の現在地と、AI時代にプロになるということ</span></a>
+    </div>
+  </div>
+
+  <div class="part">
+    <div class="part-h"><h3>第2部　技術の土台</h3><span class="note">システムの中身がわかるようになる</span></div>
+    <div class="chs">
+      <a class="ch" href="02-system-map.html"><span class="n">02</span><span class="t">システムの全体像</span><span class="d">打刻ボタンから DB までの旅。Apache と Tomcat の役割</span></a>
+      <a class="ch" href="03-java.html"><span class="n">03</span><span class="t">読めるJava</span><span class="d">書く前に読む。クラス・メソッド・例外・型の最低限</span></a>
+      <a class="ch" href="04-spring-boot.html"><span class="n">04</span><span class="t">Spring Bootの正体</span><span class="d">DI・アノテーション・Controller/Service/Repository</span></a>
+      <a class="ch first" href="05-build-env.html"><span class="n">05</span><span class="t">開発環境をつくる<span class="badge">最優先</span></span><span class="d">JDK・Maven・settings.xml・社内リポジトリ・プロキシ</span></a>
+      <a class="ch" href="06-sql-postgres.html"><span class="n">06</span><span class="t">自分で書くSQL</span><span class="d">JOIN・集計・日付・安全な更新・EXPLAIN</span></a>
+    </div>
+  </div>
+
+  <div class="part">
+    <div class="part-h"><h3>第3部　現場の仕事</h3><span class="note">AIに丸投げしていた仕事を、自分で進める</span></div>
+    <div class="chs">
+      <a class="ch" href="07-logs-incident.html"><span class="n">07</span><span class="t">ログと障害調査</span><span class="d">Tomcatログとスタックトレースの読み方、調査の手順</span></a>
+      <a class="ch" href="08-xml-forms.html"><span class="n">08</span><span class="t">XMLのWeb申請</span><span class="d">申請定義XMLの構造と、埋め込まれたSQLの読み方</span></a>
+      <a class="ch" href="09-change-request.html"><span class="n">09</span><span class="t">要望から改修まで</span><span class="d">影響調査・方式比較・テスト観点</span></a>
+    </div>
+  </div>
+
+  <div class="part">
+    <div class="part-h"><h3>第4部　力を伸ばす</h3><span class="note">毎日の習慣にする</span></div>
+    <div class="chs">
+      <a class="ch" href="10-ai-learning.html"><span class="n">10</span><span class="t">AIと一緒に強くなる</span><span class="d">答えをもらうだけで終わらせない使い方</span></a>
+      <a class="ch" href="11-communication.html"><span class="n">11</span><span class="t">伝える技術</span><span class="d">報告・質問・障害報告をテンプレートで</span></a>
+      <a class="ch" href="12-roadmap.html"><span class="n">12</span><span class="t">12か月ロードマップ</span><span class="d">毎日30分の習慣と、月ごとのチェックリスト</span></a>
+    </div>
+  </div>
+</section>
+
+<section id="note">
+  <div class="callout info"><b>このガイドについて</b><p>会社ごとに違う部分（社内リポジトリのURL、申請XMLのタグ名、サーバ構成など）は「一般的な例」として書いています。各章の「先輩・社内Wikiに確認する項目」を使って、自分の現場の答えに置き換えてください。それ自体が、システムを理解する一番の近道です。</p></div>
+</section>
+
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>
