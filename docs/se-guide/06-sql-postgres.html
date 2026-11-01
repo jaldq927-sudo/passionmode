@@ -50,7 +50,7 @@
       <path class="line" d="M425 160 C450 160 450 260 475 260"/>
       <text x="190" y="152" font-size="14" class="t-muted">1</text>
       <text x="216" y="152" font-size="14" class="t-muted">多</text>
-      <text x="430" y="180" font-size="14" class="t-accent">1</text>
+      <text x="428" y="188" font-size="14" class="t-accent">1</text>
       <text x="455" y="52" font-size="14" class="t-accent">多</text>
       <text x="455" y="152" font-size="14" class="t-muted">多</text>
       <text x="456" y="284" font-size="14" class="t-muted">多</text>
@@ -367,7 +367,7 @@ Execution Time: 0.090 ms</code></pre>
       <div><span class="num">3</span>全体にかかった時間</div>
     </div>
     <p class="say">Seq Scan＝悪ではない。半分以上読むなら全部めくる方が速い。</p>
-    <p class="say">EXPLAIN ANALYZE は本当に実行する。UPDATEに付けるならBEGIN〜ROLLBACKで。</p>
+    <p class="say">ANALYZE 付きは本当に実行される。UPDATEは BEGIN〜ROLLBACK で。</p>
   </section>
 
   <!-- ===== SCENE 9：ロック待ち ===== -->

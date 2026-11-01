@@ -125,22 +125,23 @@
     at o.s.jdbc.core.JdbcTemplate.update(...)
 <span class="hl">    at c.e.kintai.repo.ClockRepository.insert(ClockRepository.java:58)<span class="tag">②</span></span>
     at c.e.kintai.service.ClockService.clockIn(ClockService.java:31)
-    ... 23 more<span class="tag">③</span>
-<span class="hl"><span class="k">Caused by: o.postgresql.util.PSQLException</span>:<span class="tag">④</span></span>
+<span class="hl"><span class="k">Caused by: o.postgresql.util.PSQLException</span>:<span class="tag">③</span></span>
 <span class="hl">  ERROR: duplicate key value violates unique constraint "attendance_emp_date_key"</span>
-  Detail: Key (employee_id, work_date)=(1234, 2026-03-12) already exists.</code></pre>
+  Detail: Key (employee_id, work_date)=(1234, 2026-03-12) already exists.
+    at o.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(...)
+    ... 23 more<span class="tag">④</span></code></pre>
     <div class="anno">
       <div><span class="num">1</span>一番上：外側の包み（結果）</div>
       <div><span class="num">2</span>自社パッケージの最初の行＝現場（ファイル:行）</div>
-      <div><span class="num">3</span>上と同じ行なので省略。消えてはいない</div>
-      <div><span class="num">4</span>一番下の Caused by＝根本原因に一番近い</div>
+      <div><span class="num">3</span>一番下の Caused by＝根本原因に一番近い</div>
+      <div><span class="num">4</span>上と同じ行なので省略。消えてはいない</div>
     </div>
     <div class="pipe">
-      <div class="n on"><svg class="ic"><use href="#i-target"/></svg><b>④ 最初に読む</b>一番下のCaused by</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-target"/></svg><b>③ 最初に読む</b>一番下のCaused by</div><div class="to"></div>
       <div class="n"><svg class="ic"><use href="#i-code"/></svg><b>② 次に</b>自社コードの行</div><div class="to"></div>
       <div class="n"><svg class="ic"><use href="#i-layers"/></svg><b>① 最後に</b>一番上</div>
     </div>
-    <p class="say">この例：同じ社員・同じ日の打刻が二重登録された。o.s.・c.e.は説明用の省略。</p>
+    <p class="say">例：同じ社員・同じ日の打刻を二重登録。o.s.・c.e.は省略形。</p>
   </section>
 
   <!-- ===== SCENE 5：典型障害パターン ===== -->
