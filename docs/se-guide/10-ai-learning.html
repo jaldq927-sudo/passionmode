@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>10 AIと一緒に強くなる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 10 AIと一緒に強くなる</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">10</div>
+  <div><div class="eyebrow">CHAPTER 10 ・ 学び方</div><h1>AIと一緒に強くなる</h1></div>
+  <p class="summary">AIで問題は解決できているのに、自分の力になっている気がしない。その不安を、AIの使い方を少し変えることで「学び」に変える章です。プロンプト例、習慣の仕組み、間違いの見抜き方、情報の扱い方をまとめます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>「丸投げ」と「学びになる使い方」の違い</li>
+    <li>そのまま使える、学びに変えるプロンプト例</li>
+    <li>回答を受け取ったあとの「3回ルール」</li>
+    <li>AIの間違いに気づく方法</li>
+    <li>機密情報・個人情報を守る使い方</li>
+    <li>学習ノートの付け方と、「自分で説明できるか」チェック</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">不安の正体</a><a href="#s2">たとえ話</a><a href="#s3">丸投げと学び</a><a href="#s4">プロンプト例</a><a href="#s5">3回ルール</a><a href="#s6">間違いに気づく</a><a href="#s7">情報の扱い</a><a href="#s8">学習ノート</a><a href="#s9">つまずき</a><a href="#s10">練習問題</a><a href="#s11">用語</a><a href="#s12">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>「解決できているのに不安」の正体</h2>
+    <p>ログの調査も、SQLも、改修の検討も、AIに聞けば答えが出る。それで仕事は回っている。でも、先輩に「なんでそうなるの？」と聞かれると答えられない。同じようなエラーが来ると、また最初からAIに聞いている。</p>
+    <p>この不安は、とても健全な感覚です。なぜなら、それは<b>「答えは手に入ったが、理解は手に入っていない」</b>という事実を正しく感じ取っているからです。</p>
+    <p>理解が身につかない理由はシンプルで、頭を使う部分をまるごとAIに任せているからです。人は「思い出そうとする」「説明しようとする」「間違えて直す」ときに一番よく覚えます。AIの回答をコピーして貼るだけだと、そのどれも起きません。</p>
+    <p>だからといって、AIを使うのをやめる必要はありません。むしろAIは、24時間いつでも何度でも質問に付き合ってくれる、ものすごく我慢強い先生にもなれます。違いを生むのは<b>使い方</b>です。この章では、同じAIを「答えの自販機」から「自分専用の家庭教師」に変える方法を扱います。</p>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：カーナビと地図</h2>
+    <div class="analogy">
+      <div><span class="lbl">カーナビだけで運転</span>毎日同じ道を走っても、ナビの指示どおりに曲がるだけなので道を覚えない。ナビが止まると、どこにいるかも分からない。</div>
+      <div class="eq">≠</div>
+      <div><span class="lbl">地図を見ながらナビも使う</span>「今どの辺で、なぜこの道か」を意識しながら走る。数回で道を覚え、ナビが間違えたときにも気づける。</div>
+    </div>
+    <p>AIはカーナビのようなものです。便利で速く、ほとんどの場合は正しい。でも、ナビの指示に従うだけでは道は覚えられません。ナビが工事中の道を案内してきたとき、地図を知っている人だけが「この道は今通れない」と気づけます。</p>
+    <p>このガイドの他の章（<a href="02-system-map.html">システムの全体像</a>、<a href="04-spring-boot.html">Spring Boot</a>、<a href="06-sql-postgres.html">SQL</a>など）は「地図」です。この章は、カーナビ（AI）を見ながら地図を育てる方法です。</p>
+  </section>
+
+  <section id="s3">
+    <h2>丸投げと、学びになる使い方の違い</h2>
+    <div class="compare">
+      <div class="bad"><b>丸投げ（答えをもらって送るだけ）</b>
+        <ul>
+          <li>エラーログを貼って「直して」</li>
+          <li>出てきたSQLをそのまま実行</li>
+          <li>動いたら次の仕事へ</li>
+          <li>同じ種類の問題で、また最初から聞く</li>
+          <li>先輩に聞かれると「AIがそう言っていたので」</li>
+        </ul>
+        <p><b>残るもの：</b>解決した事実だけ</p>
+      </div>
+      <div class="good"><b>学びになる使い方</b>
+        <ul>
+          <li>まず自分で仮説を立ててから聞く</li>
+          <li>答えの前に「考え方」を聞く</li>
+          <li>1行ずつ意味を説明してもらう</li>
+          <li>自分の言葉で要約し、AIに採点してもらう</li>
+          <li>テスト環境で動かして確かめる</li>
+          <li>ノートに3行残す</li>
+        </ul>
+        <p><b>残るもの：</b>解決＋理解＋次に使える知識</p>
+      </div>
+    </div>
+    <p>学びになる使い方は、丸投げより時間がかかります。目安として、1つの問題に<b>プラス10〜15分</b>。毎回は無理でも、1日1件だけでもこのやり方をすると、1か月で20件以上の「自分で説明できること」が増えます。</p>
+    <div class="figure">
+      <svg viewBox="0 0 660 300" style="max-width:660px" role="img" aria-label="丸投げと学びの使い方で、理解がどう積み上がるかの比較">
+        <line x1="60" y1="250" x2="630" y2="250" class="line"/>
+        <line x1="60" y1="250" x2="60" y2="30" class="line"/>
+        <text x="20" y="40" font-size="12" class="muted">理解</text>
+        <text x="560" y="275" font-size="12" class="muted">時間（月）</text>
+        <path d="M60,240 L150,236 L240,234 L330,232 L420,231 L510,230 L600,229" class="line" stroke-dasharray="6 5"/>
+        <text x="440" y="220" font-size="13">丸投げ：ほぼ横ばい</text>
+        <path d="M60,240 L150,222 L240,196 L330,162 L420,124 L510,88 L600,54" class="line-accent"/>
+        <text x="300" y="120" font-size="13">学びになる使い方：</text>
+        <text x="300" y="138" font-size="13">知識がつながって加速する</text>
+        <text x="80" y="275" font-size="12" class="muted">今</text>
+        <text x="320" y="275" font-size="12" class="muted">3か月</text>
+      </svg>
+      <p class="cap">図1 イメージ図：解決の数は同じでも、理解の積み上がり方が違う（実測ではなく概念図）</p>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2>学びに変えるプロンプト例</h2>
+    <p>そのままコピーして使える形にしました。自分の状況に合わせて言葉を変えてください。共通するコツは、<b>AIに「答え」ではなく「自分が理解するための手伝い」を頼む</b>ことです。</p>
+
+    <h3>1. 答えの前に考え方を聞く</h3>
+<pre><code>このエラーの直し方を、すぐに答えないでください。
+まず、原因を探すときにどういう順番で考えればよいかを説明してください。
+そのあと、私が自分で原因を予想するので、ヒントを1つずつください。</code></pre>
+
+    <h3>2. 1行ずつの意味を聞く</h3>
+<pre><code>次のSQLを1行ずつ、何をしているか説明してください。
+特に JOIN と GROUP BY の部分は、どんな表がどう変わるかを
+小さな例（社員3人・3日分の打刻）で見せてください。
+
+SELECT e.dept_cd, SUM(a.overtime_min)
+  FROM t_attendance a
+  JOIN m_employee e ON e.emp_no = a.emp_no
+ WHERE a.work_date BETWEEN '2026-10-01' AND '2026-10-31'
+ GROUP BY e.dept_cd;</code></pre>
+
+    <h3>3. 初心者向けにたとえで</h3>
+<pre><code>Spring Boot の DI（依存性の注入）を、
+勤怠システムの開発をしている新人向けに、身近なたとえで説明してください。
+たとえのあとに、そのたとえが当てはまらない点も1つ教えてください。</code></pre>
+    <p class="note">「たとえが当てはまらない点」まで聞くと、たとえを本物と勘違いするのを防げます。</p>
+
+    <h3>4. 私の理解をチェックして（自分で説明 → AIが採点）</h3>
+<pre><code>Tomcat と Apache の役割の違いを、私の理解で説明します。
+間違い・足りない点・あいまいな点を指摘して、100点満点で採点してください。
+正解をすぐ全部書かず、まず指摘だけしてください。
+
+私の説明：
+Apache は外からのリクエストを最初に受けて、静的ファイルを返したり
+Tomcat に転送したりする。Tomcat は Java のアプリを動かす場所で……</code></pre>
+    <p>これがいちばん効果の高い使い方です。説明しようとすると、「分かったつもり」だった部分がはっきりします。</p>
+
+    <h3>5. わざと間違いを含めて出題して</h3>
+<pre><code>PostgreSQL の UPDATE 文を5つ出題してください。
+そのうち2つには、本番で事故になる間違い（WHERE 漏れなど）を
+わざと含めてください。どれが間違いか、私が当てます。
+答え合わせは私が回答してからにしてください。</code></pre>
+
+    <h3>6. なぜ他の方法ではないのか</h3>
+<pre><code>あなたが提案した「サブクエリで最新の打刻を取る方法」について、
+なぜ window 関数や GROUP BY ではなくその方法なのか、
+それぞれの長所と短所を比べてください。</code></pre>
+
+    <h3>7. その他の便利な型</h3>
+    <div class="cards">
+      <div class="card"><h4>前提を出させる</h4><p>「この回答で、あなたが仮定していることを全部挙げて」</p></div>
+      <div class="card"><h4>確かめ方を聞く</h4><p>「この回答が正しいか、私がテスト環境で確かめる方法を教えて」</p></div>
+      <div class="card"><h4>公式情報への道案内</h4><p>「この設定について、公式ドキュメントのどの章を読めばいい？」（URLは自分で開いて確認）</p></div>
+      <div class="card"><h4>理解度に合わせる</h4><p>「私はJavaのクラスとメソッドは分かるが、アノテーションは分からない。その前提で説明して」</p></div>
+      <div class="card"><h4>復習クイズ</h4><p>「今日の会話の内容から、明日の朝に解く復習問題を3問作って」</p></div>
+      <div class="card"><h4>先輩への質問づくり</h4><p>「この件で、社内の先輩に確認すべきことを3つに絞って」</p></div>
+    </div>
+    <h3>質問する前に、自分で3つ書いておく</h3>
+    <p>どのプロンプトを使う場合でも、送信する前に次の3つをメモ帳に書いてから聞くと、学びの量が大きく変わります。</p>
+    <ol>
+      <li><b>自分の予想</b>：「たぶんDBの接続設定が原因」など、外れてもいいので一言。</li>
+      <li><b>分かっていること・分からないこと</b>：「エラーは朝9時だけ出る。原因の場所は分からない」。</li>
+      <li><b>知りたいことのレベル</b>：「直し方だけ」ではなく「なぜ起きたかも理解したい」。</li>
+    </ol>
+    <p>予想を先に書くと、AIの答えを読んだときに「当たった」「ここが違った」という比較が生まれます。この比較こそが記憶に残る部分です。先輩に相談するときにもそのまま使える形なので、<a href="11-communication.html">11 伝える技術</a>の練習にもなります。</p>
+  </section>
+
+  <section id="s5">
+    <h2>3回ルール：受け取る → 要約する → 動かす</h2>
+    <p>プロンプトを工夫しても、受け取ったあとに何もしなければ学びは残りません。そこで、AIの回答を使うときは必ず次の3回、頭を通すことにします。</p>
+    <div class="figure">
+      <svg viewBox="0 0 660 330" style="max-width:660px" role="img" aria-label="3回ルールの循環図">
+        <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect x="30" y="40" width="180" height="90" rx="10" class="box-soft"/>
+        <text x="46" y="70" font-size="14" font-weight="700">1回目：受け取る</text>
+        <text x="46" y="94" font-size="12" class="muted">回答を最後まで読む</text>
+        <text x="46" y="114" font-size="12" class="muted">分からない語に印をつける</text>
+        <rect x="240" y="40" width="180" height="90" rx="10" class="box-warn"/>
+        <text x="256" y="70" font-size="14" font-weight="700">2回目：要約する</text>
+        <text x="256" y="94" font-size="12" class="muted">自分の言葉で3行に</text>
+        <text x="256" y="114" font-size="12" class="muted">AIに採点してもらう</text>
+        <rect x="450" y="40" width="180" height="90" rx="10" class="box-ok"/>
+        <text x="466" y="70" font-size="14" font-weight="700">3回目：動かす</text>
+        <text x="466" y="94" font-size="12" class="muted">テスト環境で実行</text>
+        <text x="466" y="114" font-size="12" class="muted">予想と結果を比べる</text>
+        <path d="M210,85 L238,85" class="line-accent" marker-end="url(#c1)"/>
+        <path d="M420,85 L448,85" class="line-accent" marker-end="url(#c1)"/>
+        <rect x="240" y="200" width="180" height="80" rx="10" class="box"/>
+        <text x="256" y="230" font-size="14" font-weight="700">ノートに残す</text>
+        <text x="256" y="254" font-size="12" class="muted">今日わかったこと3行</text>
+        <path d="M540,130 L540,240 L422,240" class="line-accent" marker-end="url(#c1)"/>
+        <path d="M240,240 L120,240 L120,132" class="line" stroke-dasharray="5 4"/>
+        <text x="40" y="270" font-size="12" class="muted">次に似た問題が来たら、</text>
+        <text x="40" y="288" font-size="12" class="muted">まずノートを見て自分で考える</text>
+        <text x="460" y="180" font-size="12" class="muted">予想と違ったら</text>
+        <text x="460" y="198" font-size="12" class="muted">そこが学びのポイント</text>
+      </svg>
+      <p class="cap">図2 3回ルール：AIの回答を3回、自分の頭に通してからノートに残す</p>
+    </div>
+    <h3>習慣にするための仕組み</h3>
+    <ul>
+      <li><b>きっかけを決める</b>：「AIの回答をコピーする前に」と決めておく。コピーのたびに「要約したか？」と自分に聞く。</li>
+      <li><b>小さく始める</b>：最初は1日1件。うまくいったら増やす。</li>
+      <li><b>見える化する</b>：ノートの日付が並んでいくと、続けている実感が持てます。</li>
+      <li><b>完璧を求めない</b>：忙しい日は3回目（動かす）だけでもOK。ゼロの日を減らすことが大事です。</li>
+    </ul>
+    <div class="callout tip"><b>「予想してから動かす」がポイント</b><p>SQLを実行する前に「たぶん3件返ってくる」と予想を一言書いてから実行します。当たれば理解の確認になり、外れれば「なぜ違ったか」が最高の教材になります。動画を見るだけの学習と違い、自分の頭と手で予想→確認をするので記憶に残ります。</p></div>
+  </section>
+
+  <section id="s6">
+    <h2>AIの間違いに気づく方法</h2>
+    <p>AIはもっともらしい文章を作るのが得意ですが、事実を保証してはいません。特に次のような間違いはよくあります。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>間違いの種類</th><th>例</th><th>気づき方</th></tr></thead>
+      <tbody>
+        <tr><td>存在しないメソッド・設定</td><td>Spring Bootの設定キーをそれらしく作る、ライブラリにないメソッドを使う</td><td>公式ドキュメントで検索。IDEで補完に出てくるか、コンパイルが通るか</td></tr>
+        <tr><td>バージョン違い</td><td>古いSpring BootやJavaの書き方、PostgreSQLの別バージョンの関数</td><td>自社のバージョンを伝える。<code>pom.xml</code> や <code>SELECT version();</code> で確認</td></tr>
+        <tr><td>自社の構造を勝手に想像</td><td>テーブル名・カラム名・クラス名を推測で書く</td><td>grepやDBのテーブル一覧で実在を確認</td></tr>
+        <tr><td>業務ルールの誤解</td><td>端数処理、締めの扱い、深夜の定義を一般論で書く</td><td>就業規則・仕様書・先輩に確認</td></tr>
+        <tr><td>危険な操作</td><td>WHERE のない UPDATE、本番で <code>DROP</code></td><td>実行前にSELECTで件数確認。テスト環境で試す</td></tr>
+        <tr><td>自信満々の言い切り</td><td>「必ず〜です」「これで解決します」</td><td>「確実ですか？根拠は？」と聞き返す。実行で確かめる</td></tr>
+      </tbody>
+    </table></div>
+    <div class="figure">
+      <svg viewBox="0 0 660 230" style="max-width:660px" role="img" aria-label="AIの回答を確かめる3つの方法">
+        <defs><marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect x="250" y="20" width="160" height="56" rx="8" class="box-warn"/>
+        <text x="272" y="54" font-size="14" font-weight="700">AIの回答</text>
+        <rect x="20" y="140" width="190" height="70" rx="8" class="box-ok"/>
+        <text x="34" y="168" font-size="13" font-weight="700">実行して確かめる</text>
+        <text x="34" y="190" font-size="12" class="muted">テスト環境・予想と比較</text>
+        <rect x="235" y="140" width="190" height="70" rx="8" class="box-ok"/>
+        <text x="249" y="168" font-size="13" font-weight="700">公式ドキュメント</text>
+        <text x="249" y="190" font-size="12" class="muted">バージョンも合わせる</text>
+        <rect x="450" y="140" width="190" height="70" rx="8" class="box-ok"/>
+        <text x="464" y="168" font-size="13" font-weight="700">自社の実物</text>
+        <text x="464" y="190" font-size="12" class="muted">grep・DB・仕様書・先輩</text>
+        <path d="M300,76 L115,138" class="line-accent" marker-end="url(#c2)"/>
+        <path d="M330,76 L330,138" class="line-accent" marker-end="url(#c2)"/>
+        <path d="M360,76 L545,138" class="line-accent" marker-end="url(#c2)"/>
+        <text x="420" y="106" font-size="12" class="muted">1つ以上で裏を取る</text>
+      </svg>
+      <p class="cap">図3 AIの回答は「実行」「公式」「自社の実物」のどれかで裏を取ってから使う</p>
+    </div>
+    <h3>実例：AIのSQLを確かめる流れ</h3>
+    <p>たとえばAIに「10月の部署別残業時間を出すSQL」を作ってもらったとします。そのまま実行する前に、次の順番で確かめます。</p>
+    <ul>
+      <li><b>テーブル名・カラム名の実在</b>：<code>\d t_attendance</code>（psql）やDBツールのテーブル定義で、<code>overtime_min</code> のような列が本当にあるか確認します。</li>
+      <li><b>件数の予想</b>：部署が12あるなら、結果は12行前後のはず。0行や1000行なら条件かJOINがおかしいと分かります。</li>
+      <li><b>小さく手計算</b>：社員1人・1日分だけに絞って実行し、画面に表示される残業時間と一致するか比べます。</li>
+      <li><b>境界の確認</b>：<code>BETWEEN '2026-10-01' AND '2026-10-31'</code> で、日付型か日時型かによって31日分が漏れないかを確かめます。</li>
+    </ul>
+    <p>この4つを習慣にすると、AIのSQLを「信じる」のではなく「検証して使う」状態になります。最初は面倒でも、2〜3回やると数分でできるようになります。</p>
+    <p>ログ調査でAIを使うときも同じです。AIが「原因はこれです」と言っても、<a href="07-logs-incident.html">07 ログと障害調査</a>の手順で、ログの該当行・時刻・再現で裏を取ってから報告しましょう。</p>
+  </section>
+
+  <section id="s7">
+    <h2>機密情報・個人情報の扱い</h2>
+    <p>勤怠・申請システムは、社員の氏名、社員番号、勤務時間、住所（通勤経路）、家族情報（結婚・扶養）など、<b>個人情報のかたまり</b>です。AIに貼り付ける前に、必ず次を確認してください。</p>
+    <div class="callout ng"><b>AIに出してはいけないもの（原則）</b>
+      <ul>
+        <li>顧客名・取引先名・プロジェクトの非公開情報</li>
+        <li>社員番号・氏名・住所・メールアドレス・電話番号</li>
+        <li>実データ（打刻データ、申請内容、給与額）</li>
+        <li>パスワード、APIキー、接続文字列、サーバーのIPアドレスや内部URL</li>
+      </ul>
+    </div>
+    <h3>使う前に確認すること</h3>
+    <ol class="steps">
+      <li><b>社内ルールを確認する</b>使ってよいAIサービス、入力してよい情報の範囲は会社・顧客との契約で決まっています。分からなければ上司に確認します。この章の内容より社内ルールが優先です。</li>
+      <li><b>マスキングする</b>貼る前に、固有の情報をダミーに置き換えます。</li>
+      <li><b>最小限にする</b>ファイル全体ではなく、質問に必要な部分だけを貼ります。</li>
+      <li><b>貼った後に見直す</b>ログの途中に氏名やメールアドレスが混ざっていないか、送信前にもう一度見ます。</li>
+    </ol>
+    <p class="code-title">マスキングの例（ログ）</p>
+<pre><code><span class="c"># 変更前（そのまま貼ってはいけない）</span>
+2026-10-15 09:02:11 ERROR [CommuteService] update failed: emp_no=<span class="hl">A102938</span> name=<span class="hl">山田太郎</span>
+  customer=<span class="hl">株式会社○○商事</span> url=jdbc:postgresql://<span class="hl">10.0.12.5</span>:5432/kintai
+
+<span class="c"># 変更後（ダミーに置き換え）</span>
+2026-10-15 09:02:11 ERROR [CommuteService] update failed: emp_no=<span class="s">EMP001</span> name=<span class="s">社員A</span>
+  customer=<span class="s">顧客X</span> url=jdbc:postgresql://<span class="s">DBHOST</span>:5432/kintai</code></pre>
+    <div class="callout warn"><b>テーブル名・クラス名は？</b><p>テーブル名や業務ロジックそのものも、顧客によっては機密扱いのことがあります。「どこまでならOKか」は人によって判断がぶれやすいので、自己判断せず社内ルールを確認してください。</p></div>
+  </section>
+
+  <section id="s8">
+    <h2>学習ノートの付け方</h2>
+    <p>ノートは、未来の自分のための「地図」です。きれいに書く必要はありません。続けられる形が一番です。テキストファイル、OneNote、社内で許可されたツールなど、すぐ開ける場所に置きます（個人情報や顧客情報は書かない）。</p>
+    <h3>3つのページを作る</h3>
+    <div class="cards">
+      <div class="card"><h4>今日わかったこと（3行）</h4><p>毎日、終業前に3行だけ。「何があったか」「何がわかったか」「次に試すこと」。</p></div>
+      <div class="card"><h4>用語集</h4><p>知らない言葉が出たら1行で追加。「Bean：Springが管理するオブジェクト」。自分の言葉で書き直すのがコツ。</p></div>
+      <div class="card"><h4>エラー集</h4><p>出会ったエラーメッセージ、原因、直し方、確かめ方。2回目に同じエラーが出たとき、AIより先にここを見る。</p></div>
+    </div>
+    <p class="code-title">ノートの例（テキストファイル）</p>
+<pre><code>## 2026-11-02
+[今日わかったこと]
+- 通勤費申請XMLの #{transport} は画面項目 id="transport" の値が入る
+- CDATA の中なら SQL の &lt; をそのまま書ける。外だと XML エラー
+- 次：確定SQL が 0 件更新のとき、ログに何が出るか見る
+
+[用語]
+- バインド変数：SQL の値の差し込み口。#{} や ? で書く
+
+[エラー集]
+- エラー：parser error : StartTag: invalid element name
+  原因：CDATA の外で &lt; を使った
+  直し方：CDATA で囲む or &amp;lt; に置換
+  確かめ方：xmllint --noout ファイル名</code></pre>
+
+    <h3>「AIに作らせたものを自分で説明できるか」チェック</h3>
+    <p>AIに作ってもらったSQL、コード、調査結果を提出・実行する前に、次のチェックをします。全部に答えられなくても大丈夫です。答えられなかった項目が、次に学ぶポイントです。</p>
+    <ul class="check">
+      <li><input type="checkbox" id="e10-1"><label for="e10-1">これが「何をするものか」を1文で言える</label></li>
+      <li><input type="checkbox" id="e10-2"><label for="e10-2">各行（各ブロック）の役割を説明できる</label></li>
+      <li><input type="checkbox" id="e10-3"><label for="e10-3">なぜこの方法なのか、他の方法と比べて説明できる</label></li>
+      <li><input type="checkbox" id="e10-4"><label for="e10-4">失敗したら何が起きるか（最悪のケース）を言える</label></li>
+      <li><input type="checkbox" id="e10-5"><label for="e10-5">正しく動いたことをどう確かめたか言える</label></li>
+      <li><input type="checkbox" id="e10-6"><label for="e10-6">先輩に「これ何？」と聞かれて、AIの名前を出さずに答えられる</label></li>
+    </ul>
+  </section>
+
+  <section id="s9">
+    <h2>よくあるつまずき</h2>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>「学びになる使い方」を全部やろうとして疲れ、3日でやめてしまった。</p></div>
+      <div class="good"><b>対策</b><p>1日1件、3行ノートだけから始める。忙しい日は「動かして確かめる」だけでも合格にする。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>AIの説明を読んで「分かった気」になったが、翌日には説明できない。</p></div>
+      <div class="good"><b>対策</b><p>読んだ直後に自分の言葉で要約し、AIに採点してもらう。翌朝に復習クイズを解く。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>AIの答えが自社の環境で動かず、何度も聞き直してぐるぐる回る。</p></div>
+      <div class="good"><b>対策</b><p>バージョン・構成・実際のエラー全文（マスキング済み）を伝える。3往復で解決しなければ、先輩に相談する（そのときAIとのやり取りの要点を整理しておくと話が早い）。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>動画やAIの解説を眺める時間ばかり増え、手を動かしていない。</p></div>
+      <div class="good"><b>対策</b><p>見る時間と同じだけ、テスト環境で実行する時間をとる。「予想→実行→比較」を1回やってから次の動画へ。</p></div>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2>練習問題</h2>
+    <details class="quiz"><summary>Q1. 次のプロンプトを「学びになる使い方」に書き換えてください。「このエラー直して（ログを貼る）」</summary>
+      <div class="ans"><p>例：「このエラーの原因を探す考え方を、答えを言う前に順番に説明してください。私の予想は、DB接続の設定ミスです。その予想が合っているか、確かめる方法も教えてください。（ログは社員番号・ホスト名をマスキング済み）」。考え方を先に聞く、自分の仮説を添える、確かめ方を聞く、マスキングする、の4点が入っていれば良いです。</p></div>
+    </details>
+    <details class="quiz"><summary>Q2. AIが「application.properties に spring.kintai.auto-close=true を追加すれば締めが自動化されます」と回答しました。どう対応しますか？</summary>
+      <div class="ans"><p>この設定キーが存在するかを疑います。<code>spring.</code> で始まるキーはSpring Bootの公式ドキュメントに載っているはずなので、まず公式で検索します。業務固有の「締め」の機能がSpring Boot標準の設定にあるとは考えにくく、AIが作った架空の設定である可能性が高いです。自社のソースをgrepして、そのキーを読んでいるコードがあるかも確認します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q3. ログをAIに貼る前に、マスキングすべき項目を4つ挙げてください。</summary>
+      <div class="ans"><p>社員番号、氏名、顧客名（会社名）、サーバーのIPアドレスや内部ホスト名。ほかにメールアドレス、住所、パスワードや接続情報なども対象です。どこまで必要かは社内ルールを確認します。</p></div>
+    </details>
+  </section>
+
+  <section id="s11">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>プロンプト</dt><dd>AIへの指示や質問の文章。</dd>
+      <dt>丸投げ</dt><dd>問題をそのまま渡し、答えを確かめずに使うこと。</dd>
+      <dt>3回ルール</dt><dd>受け取る→自分の言葉で要約→動かして確認、の3回頭を通す習慣（この章での呼び名）。</dd>
+      <dt>ハルシネーション</dt><dd>AIが事実でない内容を、もっともらしく作ってしまう現象。</dd>
+      <dt>マスキング</dt><dd>個人情報や機密を、ダミーの値に置き換えて隠すこと。</dd>
+      <dt>公式ドキュメント</dt><dd>製品・ライブラリの提供元が出している説明書。一番信頼できる情報源。</dd>
+      <dt>エラー集</dt><dd>出会ったエラーと原因・直し方を自分用にまとめたノート。</dd>
+      <dt>理解度チェック</dt><dd>自分で説明し、AIや先輩に採点してもらうこと。</dd>
+    </dl>
+  </section>
+
+  <section id="s12">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="t10-1"><label for="t10-1">学習ノートのファイルを作り、「今日わかったこと」「用語集」「エラー集」の見出しを書く</label></li>
+      <li><input type="checkbox" id="t10-2"><label for="t10-2">AIに質問するとき、1件だけ「答えの前に考え方を説明して」を付ける</label></li>
+      <li><input type="checkbox" id="t10-3"><label for="t10-3">AIの回答を1つ、自分の言葉で3行に要約し、「採点して」と頼む</label></li>
+      <li><input type="checkbox" id="t10-4"><label for="t10-4">SQLを1本、実行前に結果を予想してから実行する</label></li>
+      <li><input type="checkbox" id="t10-5"><label for="t10-5">AI利用に関する社内ルール（使ってよいサービス、入力してよい情報）を確認する</label></li>
+      <li><input type="checkbox" id="t10-6"><label for="t10-6">終業前に「今日わかったこと」を3行書く</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="09-change-request.html"><span>← 前の章</span>09 要望から改修まで</a><a class="next" href="11-communication.html"><span>次の章 →</span>11 伝える技術</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>

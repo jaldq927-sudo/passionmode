@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>09 要望から改修まで</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 09 要望から改修まで</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">09</div>
+  <div><div class="eyebrow">CHAPTER 09 ・ 仕事の進め方</div><h1>要望から改修まで</h1></div>
+  <p class="summary">「深夜残業を別集計したい」のような顧客要望を、聞き返し・影響調査・方式比較・テストを経て、安全な改修にする流れを身につける章です。AIの改修案を自分で検証する観点もまとめます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>要望を受けてからリリース後の確認までの全体の流れ</li>
+    <li>要望をそのまま作らず、目的・背景・期限を聞き返す方法</li>
+    <li>画面からテーブルまでを追う影響調査のやり方と、漏れを防ぐチェックリスト</li>
+    <li>勤怠ならではの注意点（締め済み月、法令、端数処理、日またぎなど）</li>
+    <li>方式比較表とテスト観点表のテンプレート</li>
+    <li>AIに改修案を作らせたとき、自分で確認すべきポイント</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">なぜ流れが大事か</a><a href="#s2">たとえ話</a><a href="#s3">全体の流れ</a><a href="#s4">要望の聞き返し</a><a href="#s5">影響調査</a><a href="#s6">方式比較と見積</a><a href="#s7">テスト観点</a><a href="#s8">AIの改修案</a><a href="#s9">つまずき</a><a href="#s10">練習問題</a><a href="#s11">用語</a><a href="#s12">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>なぜ「流れ」を知ることが大事なのか</h2>
+    <p>顧客から「通勤費申請に経路の添付を必須にしたい」と言われたとします。XMLの <code>required="false"</code> を <code>true</code> にすれば終わりに見えます。でも実際には、次のような疑問が残ります。</p>
+    <ul>
+      <li>すでに添付なしで出されて、差戻し中の申請はどうなるのか</li>
+      <li>「必須」は新規申請だけか、変更申請も含むか</li>
+      <li>徒歩通勤のように添付が用意できない人は例外にするのか</li>
+      <li>いつから適用するのか。社員への周知は誰がするのか</li>
+    </ul>
+    <p>改修で事故が起きるのは、たいてい<b>コードの書き間違いより「確認しなかったこと」</b>が原因です。逆に言えば、決まった流れに沿って確認していけば、経験が浅くても事故はかなり防げます。</p>
+    <p>いまはAIに聞けば改修案は出てきます。でも、その案が「顧客の本当の目的に合っているか」「他の機能を壊さないか」を判断するのは、あなたの仕事です。この章の流れは、その判断の土台になります。</p>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：改修は「家のリフォーム」</h2>
+    <div class="analogy">
+      <div><span class="lbl">リフォーム</span>「キッチンを広くしたい」と言われたら、まず「料理を家族でしたいのか、収納が足りないのか」を聞く。壁を壊す前に、その壁に柱や配管が通っていないか調べる。複数のプランと見積を出し、工事後に水漏れがないか確かめる。</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">システム改修</span>要望の目的を聞き返し、変更箇所を通る処理（バッチ・帳票・連携）を調べる。方式を比較して見積り、実装後は既存機能が壊れていないか回帰テストで確かめる。</div>
+    </div>
+    <p>リフォーム業者がいきなり壁を壊したら怖いですよね。システムでも同じで、「とりあえず直す」はいちばん危険です。壁の中の配管にあたるのが、<b>同じテーブルを使っている別の処理</b>です。</p>
+  </section>
+
+  <section id="s3">
+    <h2>全体の流れ：要望からリリース後の確認まで</h2>
+    <div class="figure">
+      <svg viewBox="0 0 680 360" style="max-width:680px" role="img" aria-label="要望から改修までの10ステップ">
+        <defs><marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        <marker id="b1m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
+        <text x="20" y="24" font-size="13" font-weight="700" class="muted">考える（ここで品質の大半が決まる）</text>
+        <rect x="20" y="36" width="116" height="62" rx="8" class="box-soft"/><text x="32" y="62" font-size="13" font-weight="700">1 要望確認</text><text x="32" y="82" font-size="12" class="muted">目的・背景・期限</text>
+        <rect x="152" y="36" width="116" height="62" rx="8" class="box-soft"/><text x="164" y="62" font-size="13" font-weight="700">2 現状調査</text><text x="164" y="82" font-size="12" class="muted">今どう動くか</text>
+        <rect x="284" y="36" width="116" height="62" rx="8" class="box-soft"/><text x="296" y="62" font-size="13" font-weight="700">3 影響調査</text><text x="296" y="82" font-size="12" class="muted">どこに波及するか</text>
+        <rect x="416" y="36" width="116" height="62" rx="8" class="box-soft"/><text x="428" y="62" font-size="13" font-weight="700">4 方式検討</text><text x="428" y="82" font-size="12" class="muted">複数案を比較</text>
+        <rect x="548" y="36" width="116" height="62" rx="8" class="box-soft"/><text x="560" y="62" font-size="13" font-weight="700">5 見積</text><text x="560" y="82" font-size="12" class="muted">工数・リスク</text>
+        <path d="M136,67 L150,67" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M268,67 L282,67" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M400,67 L414,67" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M532,67 L546,67" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M606,98 L606,134 L78,134 L78,176" class="line-accent" marker-end="url(#b1)"/>
+        <text x="20" y="166" font-size="13" font-weight="700" class="muted">作る・確かめる</text>
+        <rect x="20" y="178" width="116" height="62" rx="8" class="box"/><text x="32" y="204" font-size="13" font-weight="700">6 設計書</text><text x="32" y="224" font-size="12" class="muted">変更点を文章に</text>
+        <rect x="152" y="178" width="116" height="62" rx="8" class="box"/><text x="164" y="204" font-size="13" font-weight="700">7 実装</text><text x="164" y="224" font-size="12" class="muted">コード・SQL・XML</text>
+        <rect x="284" y="178" width="116" height="62" rx="8" class="box-warn"/><text x="296" y="204" font-size="13" font-weight="700">8 テスト</text><text x="296" y="224" font-size="12" class="muted">単体・結合・回帰</text>
+        <rect x="416" y="178" width="116" height="62" rx="8" class="box"/><text x="428" y="204" font-size="13" font-weight="700">9 リリース</text><text x="428" y="224" font-size="12" class="muted">手順書・戻し方</text>
+        <rect x="548" y="178" width="116" height="62" rx="8" class="box-ok"/><text x="560" y="204" font-size="13" font-weight="700">10 確認</text><text x="560" y="224" font-size="12" class="muted">本番で動作確認</text>
+        <path d="M136,209 L150,209" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M268,209 L282,209" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M400,209 L414,209" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M532,209 L546,209" class="line-accent" marker-end="url(#b1)"/>
+        <path d="M342,240 L342,290 L210,290 L210,242" class="line" stroke-dasharray="5 4" marker-end="url(#b1m)"/>
+        <text x="352" y="284" font-size="12" class="muted">不具合 → 実装に戻る</text>
+        <text x="20" y="340" font-size="12" class="muted">調査で前提が崩れたら、1〜3に戻ってよい（戻ること自体は失敗ではない）</text>
+      </svg>
+      <p class="cap">図1 要望確認からリリース後の確認までの10ステップ</p>
+    </div>
+    <p>前半の5ステップ（考える）は、手を動かしていないので進んでいないように感じます。でも、ここを飛ばすと後で「作り直し」になり、結果的に一番時間がかかります。目安として、<b>小さな改修でも全体の3〜4割の時間を前半に使う</b>つもりでいてください。</p>
+    <div class="callout info"><b>小さな改修でも流れは同じ</b><p>ラベル1文字の修正なら、各ステップは数分で終わります。それでも「影響はないか」「確認したか」を一度は通る。この習慣が、大きな改修のときに自分を守ってくれます。</p></div>
+  </section>
+
+  <section id="s4">
+    <h2>要望の聞き返し：作る前に確かめること</h2>
+    <p>要望は「解決策」の形で届くことが多いです。「深夜残業を別集計したい」の裏には、「深夜割増の支給額を給与担当がExcelで手計算していて大変」という<b>本当の困りごと</b>があるかもしれません。それが分かれば、別集計の列を足すのか、給与連携CSVに項目を足すのが良いのか、選択肢が変わります。</p>
+
+    <h3>基本の聞き返しリスト</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>観点</th><th>質問例</th><th>なぜ聞くか</th></tr></thead>
+      <tbody>
+        <tr><td>目的</td><td>この集計は何に使いますか？誰が見ますか？</td><td>目的が分かれば、より簡単な方法が見つかることがある</td></tr>
+        <tr><td>背景</td><td>今はどうやって対応していますか？</td><td>現状の手作業が、要件の正解を教えてくれる</td></tr>
+        <tr><td>いつから</td><td>何月分から適用しますか？期限は？</td><td>締め処理・給与支給日との関係で期限が決まる</td></tr>
+        <tr><td>誰が</td><td>全社員ですか？特定の雇用区分だけですか？</td><td>パート・管理職・派遣で扱いが違うことが多い</td></tr>
+        <tr><td>何件</td><td>対象は何人・月何件くらいですか？</td><td>性能やバッチ時間に影響する</td></tr>
+        <tr><td>過去データ</td><td>過去分もさかのぼって出しますか？</td><td>データ移行・再計算が必要かが変わる</td></tr>
+        <tr><td>例外</td><td>当てはまらないケースはありますか？</td><td>徒歩通勤、休職中、月途中入社など</td></tr>
+        <tr><td>完了の基準</td><td>どうなっていれば「できた」と言えますか？</td><td>受け入れテストの基準になる</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>勤怠特有の観点</h3>
+    <div class="cards">
+      <div class="card"><h4>締め済み月</h4><p>締め処理が終わった月のデータを変えるか。給与計算済みなら再計算・差額精算が必要になる。</p></div>
+      <div class="card"><h4>法令</h4><p>深夜（22時〜翌5時）割増、時間外労働の上限、年5日の有給取得義務など。法令の解釈は顧客の人事・社労士に確認する。</p></div>
+      <div class="card"><h4>就業規則</h4><p>会社ごとに所定労働時間、休憩、時間単位有給の上限などが違う。規則のどの条文に基づくかを聞く。</p></div>
+      <div class="card"><h4>端数処理</h4><p>1分単位か、15分・30分単位か。切り捨て・切り上げ・四捨五入か。日ごとか月合計でか。</p></div>
+      <div class="card"><h4>日またぎ</h4><p>22:00〜翌3:00の勤務はどちらの日に計上するか。勤務日基準か暦日基準か。</p></div>
+      <div class="card"><h4>休日</h4><p>法定休日と所定休日の区別、振替休日・代休、祝日の扱い。</p></div>
+      <div class="card"><h4>異動・入退社</h4><p>月途中で所属や勤務体系が変わる人。集計の所属はどちらか、承認者は誰か。</p></div>
+      <div class="card"><h4>シフト・変形労働</h4><p>変形労働時間制やフレックスの人は、残業の判定基準が通常と違う。</p></div>
+    </div>
+    <div class="callout tip"><b>聞き返しのコツ</b><p>「質問が多くてすみません」と遠慮しなくて大丈夫です。むしろ「作ってから違った」が一番迷惑をかけます。質問は箇条書きにして、<b>自分の推測を添える</b>と答えやすくなります。例：「過去データは対象外（来月分から）という理解でよろしいでしょうか」。伝え方は<a href="11-communication.html">11 伝える技術</a>でも扱います。</p></div>
+
+    <h3>例：「有給の半日単位を時間単位に」を聞き返す</h3>
+    <ul>
+      <li>半日単位は廃止しますか？併用しますか？</li>
+      <li>1日は何時間として換算しますか？（所定労働時間が人によって違う場合は？）</li>
+      <li>年間の時間単位取得の上限は何日分ですか？（法令上は年5日分が上限。就業規則の規定も確認）</li>
+      <li>残日数の表示は「日＋時間」ですか？</li>
+      <li>申請画面・承認・残数計算・給与連携・有給管理簿のどこまで変えますか？</li>
+      <li>年度途中から始める場合、すでに取った半日休はどう換算しますか？</li>
+    </ul>
+  </section>
+
+  <section id="s5">
+    <h2>影響調査：変更がどこまで波及するかを追う</h2>
+    <p>影響調査は「この変更で、他に変わってしまうところはないか」を探す作業です。基本は<b>画面からテーブルまで縦に追い、次にテーブルから他の利用者を横に探す</b>の2方向です。</p>
+    <div class="figure">
+      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="縦に追う調査と横に探す調査">
+        <defs><marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        <marker id="b2m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
+        <text x="20" y="22" font-size="13" font-weight="700">① 縦に追う（変更の入口から）</text>
+        <rect x="20" y="34" width="200" height="44" rx="6" class="box"/><text x="32" y="61" font-size="13">画面（JSP / HTML / XML）</text>
+        <rect x="20" y="98" width="200" height="44" rx="6" class="box"/><text x="32" y="125" font-size="13">Controller</text>
+        <rect x="20" y="162" width="200" height="44" rx="6" class="box"/><text x="32" y="189" font-size="13">Service</text>
+        <rect x="20" y="226" width="200" height="44" rx="6" class="box"/><text x="32" y="253" font-size="13">SQL（Mapper / Repository）</text>
+        <rect x="20" y="290" width="200" height="44" rx="6" class="box-ok"/><text x="32" y="317" font-size="13">テーブル・カラム</text>
+        <path d="M120,78 L120,96" class="line-accent" marker-end="url(#b2)"/>
+        <path d="M120,142 L120,160" class="line-accent" marker-end="url(#b2)"/>
+        <path d="M120,206 L120,224" class="line-accent" marker-end="url(#b2)"/>
+        <path d="M120,270 L120,288" class="line-accent" marker-end="url(#b2)"/>
+        <text x="300" y="22" font-size="13" font-weight="700">② 横に探す（同じテーブルを使う他の処理）</text>
+        <rect x="300" y="50" width="170" height="44" rx="6" class="box-warn"/><text x="312" y="77" font-size="13">夜間バッチ（集計）</text>
+        <rect x="490" y="50" width="170" height="44" rx="6" class="box-warn"/><text x="502" y="77" font-size="13">帳票（PDF・印刷）</text>
+        <rect x="300" y="130" width="170" height="44" rx="6" class="box-warn"/><text x="312" y="157" font-size="13">CSV出力</text>
+        <rect x="490" y="130" width="170" height="44" rx="6" class="box-warn"/><text x="502" y="157" font-size="13">給与システム連携</text>
+        <rect x="300" y="210" width="170" height="44" rx="6" class="box-warn"/><text x="312" y="237" font-size="13">他の画面・API</text>
+        <rect x="490" y="210" width="170" height="44" rx="6" class="box-warn"/><text x="502" y="237" font-size="13">Web申請の確定SQL</text>
+        <path d="M220,312 L290,312 L290,72 L298,72" class="line" marker-end="url(#b2m)"/>
+        <path d="M290,152 L298,152" class="line" marker-end="url(#b2m)"/>
+        <path d="M290,232 L298,232" class="line" marker-end="url(#b2m)"/>
+        <path d="M470,72 L488,72" class="line" marker-end="url(#b2m)"/>
+        <path d="M470,152 L488,152" class="line" marker-end="url(#b2m)"/>
+        <path d="M470,232 L488,232" class="line" marker-end="url(#b2m)"/>
+        <rect x="300" y="290" width="360" height="90" rx="8" class="box-soft"/>
+        <text x="314" y="314" font-size="13" font-weight="700">探し方</text>
+        <text x="314" y="338" font-size="12" class="muted">テーブル名・カラム名・項目名で grep</text>
+        <text x="314" y="358" font-size="12" class="muted">IDEの「呼び出し階層」「参照を検索」</text>
+        <text x="314" y="376" font-size="12" class="muted">cron・ジョブ定義・連携仕様書も見る</text>
+      </svg>
+      <p class="cap">図2 縦に追う調査（変更の入口から）と横に探す調査（同じデータを使う他の処理）</p>
+    </div>
+    <p>Spring Bootのアプリで画面からControllerへ、ControllerからServiceへどうつながるかは<a href="04-spring-boot.html">04 Spring Bootの正体</a>、全体の配置は<a href="02-system-map.html">02 システムの全体像</a>を見てください。</p>
+
+    <h3>grepで探す：名前を手がかりにする</h3>
+    <p>影響調査のいちばん強い武器は「名前で全文検索」です。テーブル名、カラム名、画面項目名、帳票名など、変更に関係する名前を全部のソース・XML・SQL・設定ファイルから探します。</p>
+<pre><code><span class="c"># 深夜残業に関係しそうな名前を探す（例：カラム名 late_night_minutes）</span>
+grep -rn <span class="s">"late_night_minutes"</span> src/ resources/ batch/ forms/
+
+<span class="c"># 大文字小文字を区別しない（SQLは大文字で書かれていることもある）</span>
+grep -rni <span class="s">"t_attendance_daily"</span> .
+
+<span class="c"># Javaのフィールド名はキャメルケースになっていることが多い</span>
+grep -rn <span class="s">"lateNightMinutes"</span> src/
+
+<span class="c"># ファイル名だけ一覧にする</span>
+grep -rli <span class="s">"commute_allowance"</span> . | sort</code></pre>
+    <div class="callout warn"><b>名前の「表記ゆれ」に注意</b><p>DBでは <code>late_night_minutes</code>、Javaでは <code>lateNightMinutes</code>、画面では「深夜時間」、CSVでは「深夜残業」、帳票では略して「深夜」。1つの概念に複数の名前があるので、<b>全部の表記で検索</b>します。VS Codeの「フォルダーを指定して検索」（<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>）も使えます。</p></div>
+
+    <h3>呼び出し元を確認する</h3>
+    <p>変更するメソッドが見つかったら、「このメソッドを誰が呼んでいるか」を確認します。IntelliJなら「Call Hierarchy（呼び出し階層）」、Eclipseなら「呼び出し階層を開く」、VS CodeのJava拡張なら「すべての参照を検索」で一覧が出ます。共通ユーティリティ（例：<code>TimeUtil.roundMinutes()</code>）を変えると、思いもよらない画面やバッチに影響することがあります。</p>
+
+    <h3>漏らさないためのチェックリスト</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="c09-1"><label for="c09-1">画面（一覧・詳細・入力・承認画面、スマホ用画面があればそれも）</label></li>
+      <li><input type="checkbox" id="c09-2"><label for="c09-2">入力チェック（画面側とサーバー側の両方）</label></li>
+      <li><input type="checkbox" id="c09-3"><label for="c09-3">夜間バッチ・月次バッチ（集計、締め処理、有給付与）</label></li>
+      <li><input type="checkbox" id="c09-4"><label for="c09-4">帳票（出勤簿、残業実績表、有給管理簿）</label></li>
+      <li><input type="checkbox" id="c09-5"><label for="c09-5">CSV出力・取込（列の追加は取込側の仕様に影響する）</label></li>
+      <li><input type="checkbox" id="c09-6"><label for="c09-6">他システム連携（給与、人事、経費、入退館）とその仕様書</label></li>
+      <li><input type="checkbox" id="c09-7"><label for="c09-7">Web申請XML（選択肢SQL、確定SQL）</label></li>
+      <li><input type="checkbox" id="c09-8"><label for="c09-8">DBのビュー・トリガー・ストアドプロシージャ</label></li>
+      <li><input type="checkbox" id="c09-9"><label for="c09-9">権限（誰が見られる・操作できるか）</label></li>
+      <li><input type="checkbox" id="c09-10"><label for="c09-10">過去データ（締め済み月、移行が必要か）</label></li>
+      <li><input type="checkbox" id="c09-11"><label for="c09-11">マニュアル・ヘルプ・社員向け案内文</label></li>
+      <li><input type="checkbox" id="c09-12"><label for="c09-12">性能（対象件数が増えてバッチ時間が延びないか）</label></li>
+    </ul>
+    <p>影響調査の結果は「影響あり／なし／要確認」の3つに分けて表にすると、レビューで伝わりやすくなります。「なし」と書くときは、<b>なぜなしと言えるか</b>（例：grepで該当なし、該当カラムを参照していない）も一言添えます。</p>
+  </section>
+
+  <section id="s6">
+    <h2>方式検討と見積：案は必ず2つ以上出す</h2>
+    <p>やり方が1つしか思いつかないときは、まだ調査が足りないことが多いです。「深夜残業を別集計したい」なら、例えば次のような案が考えられます。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>観点</th><th>案A：日次テーブルに列追加</th><th>案B：集計時に計算</th><th>案C：CSV出力だけ追加</th></tr></thead>
+      <tbody>
+        <tr><td>概要</td><td>打刻確定時に深夜時間を計算して保存</td><td>帳票・CSV出力のSQLで打刻から計算</td><td>給与担当向けのCSVに深夜列を追加</td></tr>
+        <tr><td>改修範囲</td><td>DB・計算処理・バッチ・画面</td><td>集計SQLのみ</td><td>CSV出力処理のみ</td></tr>
+        <tr><td>過去データ</td><td>再計算バッチが必要</td><td>自動で過去分も出る</td><td>自動で過去分も出る</td></tr>
+        <tr><td>性能</td><td>集計は速い</td><td>件数が多いと遅くなる</td><td>出力時のみ計算</td></tr>
+        <tr><td>リスク</td><td>計算処理を触るため影響大</td><td>計算ロジックが2か所に分散</td><td>画面では見られない</td></tr>
+        <tr><td>工数（例）</td><td>大</td><td>中</td><td>小</td></tr>
+        <tr><td>目的への適合</td><td>◎ 画面・帳票すべてで使える</td><td>○</td><td>△ 給与担当の手計算解消のみ</td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">※ 工数・評価は説明用の例です。実際は現状のつくりによって変わります。</p>
+    <p>比較表は「おすすめはどれか」を書いて終わりにします。決めるのは顧客や上司ですが、<b>判断材料をそろえて推奨を述べる</b>のがSEの役割です。</p>
+
+    <h3>方式比較表のテンプレ</h3>
+<pre><code>【要望】       （顧客の言葉のまま）
+【目的】       （聞き返して分かった本当の困りごと）
+【案A / 案B / 案C】
+  概要 / 改修範囲 / 過去データ / 性能 / リスク / 工数 / 目的への適合
+【推奨】       案○。理由：……
+【未確定事項】  （顧客に確認中のこと）</code></pre>
+
+    <h3>見積のコツ</h3>
+    <ul>
+      <li>作業を細かく分ける（調査・設計・実装・テスト・リリース準備・本番確認）。</li>
+      <li>テストは実装と同じくらいかかることが多い。回帰テストを忘れない。</li>
+      <li>分からない部分は「要調査：+○日」と別に書く。全部まとめて丸めない。</li>
+      <li>レビュー待ち・顧客確認待ちの時間も期間に入れる。</li>
+    </ul>
+
+    <h3>設計書に書くこと（最低限）</h3>
+    <p>変更の目的、変更箇所の一覧（ファイル・メソッド・SQL・テーブル）、変更前後の動き、影響調査の結果、テスト方針、リリース手順と戻し方。<b>半年後の自分が読んで分かる</b>ことを基準にします。</p>
+  </section>
+
+  <section id="s7">
+    <h2>テスト：単体・結合・回帰と、勤怠の境界値</h2>
+    <div class="flow">
+      <div class="node"><b>単体テスト</b>メソッドやSQL単位で、計算が正しいか</div><div class="arrow"></div>
+      <div class="node"><b>結合テスト</b>画面→保存→バッチ→帳票まで通して正しいか</div><div class="arrow"></div>
+      <div class="node hot"><b>回帰テスト</b>変更していない既存機能が壊れていないか</div>
+    </div>
+    <p>新しく作った部分のテストは誰でもやります。差が出るのは<b>回帰テスト</b>です。影響調査で「影響あり」「要確認」にしたものは、すべて回帰テストの対象にします。</p>
+
+    <h3>テスト観点表（深夜残業別集計の例）</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>No</th><th>観点</th><th>条件</th><th>期待結果</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>深夜開始の境界</td><td>21:59退勤 / 22:00退勤 / 22:01退勤</td><td>0分 / 0分 / 1分（端数ルールに従う）</td></tr>
+        <tr><td>2</td><td>深夜終了の境界</td><td>4:59 / 5:00 / 5:01 まで勤務</td><td>5:00以降は深夜に含まない</td></tr>
+        <tr><td>3</td><td>0時をまたぐ</td><td>20:00〜翌2:00</td><td>勤務日基準なら当日に4時間計上</td></tr>
+        <tr><td>4</td><td>24時表記</td><td>退勤が「24:00」「26:30」で記録される場合</td><td>翌0:00 / 翌2:30 として正しく計算</td></tr>
+        <tr><td>5</td><td>月末</td><td>31日22:00〜翌月1日3:00</td><td>どちらの月に計上するか仕様どおり</td></tr>
+        <tr><td>6</td><td>うるう年</td><td>2月28日・29日・3月1日</td><td>2月29日も集計対象になる</td></tr>
+        <tr><td>7</td><td>締め日</td><td>締め日が15日の場合、15日22:00〜16日2:00</td><td>締め期間の区切りが正しい</td></tr>
+        <tr><td>8</td><td>休日</td><td>法定休日の深夜勤務</td><td>休日割増と深夜割増の両方が正しく区分</td></tr>
+        <tr><td>9</td><td>0件・境界</td><td>深夜勤務がない月</td><td>0と表示（空欄やエラーにならない）</td></tr>
+        <tr><td>10</td><td>締め済み月</td><td>締め済みの月を参照</td><td>仕様どおり（再計算しない等）</td></tr>
+        <tr><td>11</td><td>異動</td><td>月途中で所属変更</td><td>集計先の所属が仕様どおり</td></tr>
+        <tr><td>12</td><td>回帰</td><td>通常残業・休日出勤の集計</td><td>変更前と同じ結果</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><b>回帰テストの簡単なやり方</b><p>テスト環境で、改修前と改修後に同じ月の帳票やCSVを出力し、WinMergeや <code>diff</code> で比べます。「変わってほしい列だけが変わっている」ことを確認できれば、強い証拠になります。</p></div>
+    <p>リリースでは、手順書に「戻し方（ロールバック）」も書きます。DB列追加なら列を消す手順、XMLなら前のファイルに戻す手順です。リリース後は本番で、少なくとも1件、実データで期待どおりかを確認して完了です。</p>
+  </section>
+
+  <section id="s8">
+    <h2>AIに改修案を作らせるときに、自分で確認すること</h2>
+    <p>AIは改修案をすばやく出してくれますが、あなたのシステムの全体を知っているわけではありません。見せたコードの範囲でしか判断できず、<b>見せていないバッチや帳票への影響は考慮されません</b>。</p>
+    <div class="compare">
+      <div class="bad"><b>そのまま使う</b><p>「深夜残業を別集計するコードを書いて」→ 出てきたコードを貼り付け → 画面で1回動いたのでOK。</p></div>
+      <div class="good"><b>検証して使う</b><p>案を受け取ったら「どのファイルのどこを変えるか」「なぜそこか」「他に影響する場所は」「どうテストするか」を自分で確かめてから採用する。</p></div>
+    </div>
+    <h3>確認ポイント</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="a09-1"><label for="a09-1"><b>変更箇所の根拠</b>：なぜそのファイル・メソッドを変えるのか、自分の言葉で説明できるか</label></li>
+      <li><input type="checkbox" id="a09-2"><label for="a09-2"><b>前提の確認</b>：AIが仮定したテーブル名・カラム名・メソッドは実在するか（grepで確認）</label></li>
+      <li><input type="checkbox" id="a09-3"><label for="a09-3"><b>副作用</b>：変更するメソッドの呼び出し元をすべて確認したか</label></li>
+      <li><input type="checkbox" id="a09-4"><label for="a09-4"><b>業務ルール</b>：端数処理・日またぎ・締めの扱いが、自社の仕様と合っているか</label></li>
+      <li><input type="checkbox" id="a09-5"><label for="a09-5"><b>テスト方法</b>：境界値を含むテストケースを自分で作れるか</label></li>
+      <li><input type="checkbox" id="a09-6"><label for="a09-6"><b>代替案</b>：「他の方式は？それぞれの欠点は？」と聞き、比較したか</label></li>
+      <li><input type="checkbox" id="a09-7"><label for="a09-7"><b>情報の扱い</b>：顧客名・社員番号・実データをAIに渡していないか</label></li>
+    </ul>
+    <p class="code-title">影響調査を手伝ってもらうプロンプト例</p>
+<pre><code>次のメソッドを変更して、深夜時間（22時〜翌5時）を別に集計したいです。
+（コードを貼る。社員番号や顧客名は伏せる）
+
+1. 変更が必要な箇所と、その理由を教えてください。
+2. このメソッドを変更したとき、影響を受けそうな処理の種類を挙げてください。
+   私が grep で確認すべきキーワードも提案してください。
+3. 境界値を含むテストケースを表にしてください。
+4. あなたが前提として仮定したことを列挙してください。</code></pre>
+    <p>4番の「仮定を列挙して」は特に役立ちます。AIの仮定が自社の仕様と違えば、そこが事故の芽です。AIとの付き合い方は<a href="10-ai-learning.html">10 AIと一緒に強くなる</a>で詳しく扱います。</p>
+  </section>
+
+  <section id="s9">
+    <h2>よくあるつまずき</h2>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>要望の文言どおりに作ったら「そういう意味じゃない」と言われた。</p></div>
+      <div class="good"><b>対策</b><p>作る前に「目的」と「完了の基準」を文章で確認し、返事をもらっておく。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>画面は直したが、月次の帳票だけ古い計算のままだった。</p></div>
+      <div class="good"><b>対策</b><p>テーブル名・カラム名でgrepし、帳票・バッチ・CSVの利用箇所を全部書き出す。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>テスト環境では問題なかったのに、本番で締め済み月のデータが変わった。</p></div>
+      <div class="good"><b>対策</b><p>締め済み月を観点表に必ず入れる。更新系の処理は対象期間の条件を確認する。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>見積が実装だけで、テストとリリース準備の時間が足りなくなった。</p></div>
+      <div class="good"><b>対策</b><p>作業を分解して見積る。テストは実装と同程度を見込む。</p></div>
+    </div>
+  </section>
+
+  <section id="s10">
+    <h2>練習問題</h2>
+    <details class="quiz"><summary>Q1. 「通勤費申請に経路の添付を必須にしたい」と言われました。作る前に聞き返す質問を3つ挙げてください。</summary>
+      <div class="ans"><p>例：①いつ申請された分から必須にしますか（差戻し中の申請も含みますか）②徒歩・自転車など添付が用意できない人は例外にしますか ③添付の形式（PDF・画像）やサイズに制限はありますか。ほかに「変更申請も対象か」「目的は不正防止か、確認作業の効率化か」なども良い質問です。</p></div>
+    </details>
+    <details class="quiz"><summary>Q2. 共通メソッド <code>TimeUtil.roundMinutes()</code> の端数処理を変えたい。最初にやるべきことは？</summary>
+      <div class="ans"><p>呼び出し元をすべて洗い出すことです（IDEの呼び出し階層、grep）。共通メソッドは残業計算・有給・帳票など多くの処理から使われている可能性があり、1か所の要望のために全体の計算が変わってしまうことがあります。影響が広いなら、新しいメソッドを作る案も比較します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q3. 深夜時間集計のテストで、境界値として必ず入れるべき時刻を4つ挙げてください。</summary>
+      <div class="ans"><p>21:59・22:00（深夜の開始）、4:59・5:00（深夜の終了）。加えて0:00（日またぎ）、月末・締め日・2月29日をまたぐケースも入れると安心です。</p></div>
+    </details>
+    <details class="quiz"><summary>Q4. AIの改修案に「t_overtime テーブルの night_min 列を更新」とありました。採用前に確認することは？</summary>
+      <div class="ans"><p>そのテーブル・列が実在するかをDBやgrepで確認します。AIは「ありそうな名前」を作ることがあります。実在する場合も、その列を読んでいる他の処理（帳票・バッチ・連携）を調べます。</p></div>
+    </details>
+  </section>
+
+  <section id="s11">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>要望</dt><dd>顧客が「こうしてほしい」と伝えてくる内容。解決策の形で届くことが多い。</dd>
+      <dt>要件</dt><dd>要望の目的を確認したうえで、「システムが満たすべきこと」として整理したもの。</dd>
+      <dt>現状調査</dt><dd>今のシステムが実際どう動いているかを確認すること。</dd>
+      <dt>影響調査</dt><dd>変更によって他の機能・データに影響が出ないかを調べること。</dd>
+      <dt>方式検討</dt><dd>実現方法を複数考え、比較して選ぶこと。</dd>
+      <dt>単体テスト</dt><dd>メソッドやSQLなど小さな単位のテスト。</dd>
+      <dt>結合テスト</dt><dd>複数の部品をつなげて、一連の流れで確認するテスト。</dd>
+      <dt>回帰テスト</dt><dd>変更していない既存機能が壊れていないかを確認するテスト。</dd>
+      <dt>境界値</dt><dd>条件が切り替わる値（22:00、月末、締め日など）。不具合が出やすい。</dd>
+      <dt>ロールバック</dt><dd>リリースに問題があったとき、元の状態に戻すこと。</dd>
+      <dt>締め処理</dt><dd>月の勤怠を確定させる処理。締め後のデータ変更は給与に影響する。</dd>
+    </dl>
+  </section>
+
+  <section id="s12">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="t09-1"><label for="t09-1">いま担当している（または最近の）要望を1つ選び、「目的・背景・期限」を1行ずつ書き出す</label></li>
+      <li><input type="checkbox" id="t09-2"><label for="t09-2">その要望に関係するテーブル名・カラム名で grep し、ヒットしたファイルを一覧にする</label></li>
+      <li><input type="checkbox" id="t09-3"><label for="t09-3">一覧を「画面・バッチ・帳票・CSV・連携・申請XML」に分類する</label></li>
+      <li><input type="checkbox" id="t09-4"><label for="t09-4">方式を2案以上考え、比較表テンプレに埋めてみる</label></li>
+      <li><input type="checkbox" id="t09-5"><label for="t09-5">テスト観点表に、0時・22時・月末・うるう年・締め日の行を入れる</label></li>
+      <li><input type="checkbox" id="t09-6"><label for="t09-6">AIの改修案を受け取ったら「仮定を列挙して」と追加で聞く</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="08-xml-forms.html"><span>← 前の章</span>08 XMLのWeb申請</a><a class="next" href="10-ai-learning.html"><span>次の章 →</span>10 AIと一緒に強くなる</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>

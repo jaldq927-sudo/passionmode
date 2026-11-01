@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>08 XMLのWeb申請</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 08 XMLのWeb申請</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">08</div>
+  <div><div class="eyebrow">CHAPTER 08 ・ 業務システム</div><h1>XMLのWeb申請</h1></div>
+  <p class="summary">「シートがいろいろあって、SQLが書かれている」申請定義XMLを、画面・ワークフロー・DBの3つに分けて読めるようになる章です。製品名に依存しない一般的な構造で説明し、自社のXMLで確かめる項目をまとめます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>XMLの基本ルール（要素・属性・入れ子・CDATA・エンティティ・整形式と妥当性）</li>
+    <li>Web申請システムが「定義 → データ → 承認 → DB反映」でできていること</li>
+    <li>「シート」が何を指しているのかを見分ける方法</li>
+    <li>通勤費申請の架空XMLを、画面の部品とDBのテーブルに対応づけて読む方法</li>
+    <li>改修時に壊さないための注意点と、構文エラーの見つけ方</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#s1">なぜ読めると強いか</a><a href="#s2">たとえ話</a><a href="#s3">XMLの基礎</a><a href="#s4">申請システムの構造</a><a href="#s5">「シート」の正体</a><a href="#s6">通勤費申請XML</a><a href="#s7">改修時の注意</a><a href="#s8">読み解き手順</a><a href="#s9">つまずき</a><a href="#s10">練習問題</a><a href="#s11">用語</a><a href="#s12">明日から</a>
+  </nav>
+
+  <section id="s1">
+    <h2>なぜ申請XMLが読めると強いのか</h2>
+    <p>氏名変更届、結婚の届出、通勤費申請。どれも社員にとっては「画面で入力して送信するもの」ですが、裏側ではXMLファイルが「どんな項目を出すか」「誰が承認するか」「確定したらどのテーブルを更新するか」を決めています。つまり、XMLは<b>申請の設計図そのもの</b>です。</p>
+    <p>いまはXMLを開くと、タグがたくさん並び、途中にSQLが埋め込まれていて、どこから読めばいいか分からない状態かもしれません。でも、申請システムがやっていることは実はシンプルで、次の4つしかありません。</p>
+    <ol>
+      <li>画面に項目を並べる（入力欄、選択肢、添付）</li>
+      <li>入力をチェックして保存する</li>
+      <li>承認者に回す（差戻しもある）</li>
+      <li>最終承認されたら、社員マスタなどの本番データに反映する</li>
+    </ol>
+    <p>XMLのどの塊がこの4つのどれに当たるかが分かれば、知らないタグが出てきても「たぶんここは画面の話だな」と当たりをつけられます。改修の相談を受けたときも、「その変更は画面定義だけで済むのか、DB列追加が必要か、承認ルートも変わるか」を自分で切り分けられるようになります。</p>
+    <div class="callout info"><b>この章の前提</b><p>製品名やタグ名は会社ごとに違います。この章のXMLはすべて<b>説明用の架空の例</b>です。実際のタグ名・属性名は自社のXMLや社内Wikiで確認してください。確認すべき項目は最後にリストにしています。</p></div>
+  </section>
+
+  <section id="s2">
+    <h2>たとえ話：申請XMLは「紙の届出用紙＋回覧ルール＋台帳への転記メモ」</h2>
+    <p>昔の会社では、通勤費申請は紙で出していました。その紙の仕組みを思い浮かべると、XMLの役割がつかみやすくなります。</p>
+    <div class="analogy">
+      <div><span class="lbl">紙の時代</span>届出用紙の書式（記入欄、チェックボックス）＋「課長→人事」の回覧ハンコ欄＋「承認後に人事が台帳を書き換える」という手順メモ</div>
+      <div class="eq">＝</div>
+      <div><span class="lbl">Web申請</span>XMLの<b>項目定義</b>（画面）＋<b>承認ルート定義</b>（ワークフロー）＋<b>確定時SQL</b>（社員マスタ更新）</div>
+    </div>
+    <p>紙の用紙に「経路」「金額」の欄があるように、XMLには項目の定義があります。用紙の右上にハンコ欄があるように、XMLには承認ルートがあります。そして人事担当者が台帳を書き換えていた作業を、XMLに書かれたSQLが代わりにやっています。</p>
+    <p>XMLを読むときは「いま読んでいるのは用紙の書式か、回覧ルールか、転記メモか」と自分に問いかけてみてください。</p>
+  </section>
+
+  <section id="s3">
+    <h2>XMLの基礎：これだけ押さえれば読める</h2>
+    <p>XMLは「タグで囲んで、データに名前をつける」ための書き方です。HTMLと見た目は似ていますが、タグ名は自由に決められ、ルールはHTMLよりずっと厳しいのが特徴です。</p>
+
+    <h3>要素・タグ・属性・入れ子</h3>
+    <p class="code-title">基本の形（架空の例）</p>
+<pre><code><span class="c">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>   <span class="c">&lt;!-- XML宣言 --&gt;</span>
+<span class="k">&lt;form</span> id=<span class="s">"commute"</span> name=<span class="s">"通勤費申請"</span><span class="k">&gt;</span>       <span class="c">&lt;!-- ルート要素 --&gt;</span>
+  <span class="k">&lt;field</span> id=<span class="s">"route"</span> type=<span class="s">"text"</span> required=<span class="s">"true"</span><span class="k">&gt;</span>
+    <span class="k">&lt;label&gt;</span>経路<span class="k">&lt;/label&gt;</span>
+  <span class="k">&lt;/field&gt;</span>
+  <span class="k">&lt;field</span> id=<span class="s">"memo"</span> type=<span class="s">"textarea"</span><span class="k">/&gt;</span>     <span class="c">&lt;!-- 中身がない要素は /&gt; で閉じてよい --&gt;</span>
+<span class="k">&lt;/form&gt;</span></code></pre>
+    <div class="figure">
+      <svg viewBox="0 0 640 300" style="max-width:640px" role="img" aria-label="XML要素の各部の名前">
+        <defs><marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <rect x="20" y="110" width="600" height="60" rx="8" class="box-soft"/>
+        <text x="36" y="146" font-size="14" style="font-family:var(--f-mono)">&lt;field id="route" required="true"&gt;経路&lt;/field&gt;</text>
+        <text x="30" y="40" font-size="13">開始タグ</text>
+        <path d="M60,48 L60,128" class="line-accent" marker-end="url(#a1)"/>
+        <text x="110" y="40" font-size="13">属性名="属性値"</text>
+        <path d="M140,48 L130,128" class="line-accent" marker-end="url(#a1)"/>
+        <text x="250" y="40" font-size="13">もう一つの属性</text>
+        <path d="M280,48 L240,128" class="line-accent" marker-end="url(#a1)"/>
+        <text x="260" y="232" font-size="13">内容（テキスト）</text>
+        <path d="M335,214 L335,160" class="line-accent" marker-end="url(#a1)"/>
+        <text x="400" y="232" font-size="13">終了タグ</text>
+        <path d="M420,214 L410,160" class="line-accent" marker-end="url(#a1)"/>
+        <text x="40" y="275" font-size="13" class="muted">開始タグ〜終了タグまで全体を「要素」と呼ぶ。属性はタグの中に書く補足情報。</text>
+      </svg>
+      <p class="cap">図1 要素・タグ・属性の関係</p>
+    </div>
+    <ul>
+      <li><b>要素</b>：開始タグから終了タグまでの全体。<code>&lt;label&gt;経路&lt;/label&gt;</code> が1つの要素です。</li>
+      <li><b>属性</b>：開始タグの中に <code>名前="値"</code> で書く補足情報。値は必ず引用符で囲みます。</li>
+      <li><b>入れ子</b>：要素の中に要素を入れられます。ただし交差は禁止です（<code>&lt;a&gt;&lt;b&gt;&lt;/a&gt;&lt;/b&gt;</code> はエラー）。</li>
+      <li><b>ルート要素</b>：ファイル全体を包む、ただ1つの一番外側の要素。上の例では <code>&lt;form&gt;</code>。</li>
+      <li><b>大文字・小文字</b>は区別されます。<code>&lt;Field&gt;</code> と <code>&lt;field&gt;</code> は別物です。</li>
+    </ul>
+
+    <h3>宣言とエンコーディング</h3>
+    <p>1行目の <code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;</code> は「このファイルはXML 1.0で、文字コードはUTF-8です」という宣言です。古いシステムでは <code>encoding="Shift_JIS"</code> や <code>Windows-31J</code> のこともあります。<b>宣言と実際の保存形式が食い違うと文字化けや読み込みエラーになる</b>ので、エディタで保存するときは文字コードを宣言に合わせてください。</p>
+
+    <h3>コメント</h3>
+    <p><code>&lt;!-- ここはコメント --&gt;</code> の中は無視されます。コメントの中に <code>--</code>（ハイフン2つ）を書くのは禁止なので、SQLのコメント <code>-- 説明</code> をそのままXMLコメントの中に貼ると壊れることがあります。</p>
+
+    <h3>エンティティ：&lt; や &amp; を文字として書く方法</h3>
+    <p>XMLでは <code>&lt;</code> は「タグの始まり」、<code>&amp;</code> は「エンティティの始まり」という特別な意味を持つので、文字としてそのまま書けません。代わりに次の書き方を使います。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>書きたい文字</th><th>XMLでの書き方</th><th>よく出る場面</th></tr></thead>
+      <tbody>
+        <tr><td>&lt;</td><td><code>&amp;lt;</code></td><td>SQLの <code>WHERE amount &lt; 50000</code></td></tr>
+        <tr><td>&gt;</td><td><code>&amp;gt;</code></td><td>SQLの比較（書かなくても通ることが多いが、揃えると安全）</td></tr>
+        <tr><td>&amp;</td><td><code>&amp;amp;</code></td><td>URLのクエリ文字列、会社名「A&amp;B」</td></tr>
+        <tr><td>"</td><td><code>&amp;quot;</code></td><td>属性値の中にダブルクォートを書くとき</td></tr>
+        <tr><td>'</td><td><code>&amp;apos;</code></td><td>属性値をシングルクォートで囲んでいるとき</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>CDATA：SQLをまるごと書くための囲い</h3>
+    <p>SQLには <code>&lt;</code> や <code>&lt;=</code> がよく出てきます。毎回 <code>&amp;lt;</code> に置き換えると読みにくいので、<code>&lt;![CDATA[</code> と <code>]]&gt;</code> で囲みます。この中は「ただの文字」として扱われ、<code>&lt;</code> をそのまま書けます。</p>
+<pre><code><span class="k">&lt;sql&gt;</span><span class="hl">&lt;![CDATA[</span>
+  SELECT code, name FROM m_transport
+  WHERE valid_from <span class="hl">&lt;=</span> CURRENT_DATE
+<span class="hl">]]&gt;</span><span class="k">&lt;/sql&gt;</span></code></pre>
+    <div class="callout warn"><b>CDATAの注意</b><p>CDATAの中に <code>]]&gt;</code> という並びは書けません。また、CDATAの外側（タグの直下）で <code>&lt;</code> を使うとエラーになります。「SQLに比較演算子を足したら申請が読み込まれなくなった」は典型的な事故です。</p></div>
+
+    <h3>整形式と妥当性</h3>
+    <p>XMLの「正しさ」には2段階あります。</p>
+    <div class="cards">
+      <div class="card"><h4>整形式（well-formed）</h4><p>XMLの文法として正しいこと。タグが閉じている、入れ子が交差していない、ルート要素が1つ、属性値が引用符で囲まれている、など。これが崩れると<b>どのツールでも読めません</b>。</p></div>
+      <div class="card"><h4>妥当（valid）</h4><p>整形式であるうえで、XSD（XML Schema）やDTDという「この申請XMLにはこのタグを、この順番で書く」という規則に従っていること。規則ファイルがあるかは製品次第です。</p></div>
+    </div>
+    <p>ファイルの先頭付近に <code>xsi:schemaLocation="... form.xsd"</code> や <code>&lt;!DOCTYPE form SYSTEM "form.dtd"&gt;</code> があれば、規則ファイルが存在する手がかりです。規則ファイルがあれば、エディタで「このタグはここに書けない」と教えてもらえます。</p>
+  </section>
+
+  <section id="s4">
+    <h2>申請システムの一般的な構造</h2>
+    <p>多くのWeb申請（ワークフロー）製品は、次の流れでできています。製品によって呼び名は違いますが、役割の分け方はほぼ共通です。</p>
+    <div class="figure">
+      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="申請システムの構造図">
+        <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        <marker id="a2m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
+        <rect x="20" y="20" width="190" height="80" rx="8" class="box-soft"/>
+        <text x="36" y="48" font-size="14" font-weight="700">① 申請フォーム定義</text>
+        <text x="36" y="70" font-size="12" class="muted">画面項目・選択肢</text>
+        <text x="36" y="88" font-size="12" class="muted">入力チェック（XML）</text>
+        <rect x="245" y="20" width="190" height="80" rx="8" class="box"/>
+        <text x="261" y="48" font-size="14" font-weight="700">② 申請データ</text>
+        <text x="261" y="70" font-size="12" class="muted">入力値を申請用テーブルに</text>
+        <text x="261" y="88" font-size="12" class="muted">保存（まだ本番に未反映）</text>
+        <path d="M210,60 L243,60" class="line-accent" marker-end="url(#a2)"/>
+        <rect x="20" y="150" width="640" height="120" rx="8" class="box-warn"/>
+        <text x="36" y="174" font-size="14" font-weight="700">③ 承認ワークフロー</text>
+        <rect x="50" y="195" width="130" height="50" rx="6" class="box"/><text x="80" y="225" font-size="13">申請者</text>
+        <rect x="270" y="195" width="130" height="50" rx="6" class="box"/><text x="300" y="225" font-size="13">上長</text>
+        <rect x="490" y="195" width="130" height="50" rx="6" class="box"/><text x="520" y="225" font-size="13">人事</text>
+        <path d="M180,212 L268,212" class="line-accent" marker-end="url(#a2)"/>
+        <path d="M400,212 L488,212" class="line-accent" marker-end="url(#a2)"/>
+        <path d="M270,238 L182,238" class="line" stroke-dasharray="5 4" marker-end="url(#a2m)"/>
+        <path d="M490,238 L402,238" class="line" stroke-dasharray="5 4" marker-end="url(#a2m)"/>
+        <text x="196" y="262" font-size="12" class="muted">差戻し</text>
+        <text x="418" y="262" font-size="12" class="muted">差戻し</text>
+        <path d="M340,100 L340,148" class="line-accent" marker-end="url(#a2)"/>
+        <rect x="245" y="310" width="415" height="70" rx="8" class="box-ok"/>
+        <text x="261" y="338" font-size="14" font-weight="700">④ 確定時のDB反映</text>
+        <text x="261" y="362" font-size="12" class="muted">社員マスタ・通勤手当テーブルをUPDATE（確定SQL）</text>
+        <path d="M555,245 L555,308" class="line-accent" marker-end="url(#a2)"/>
+        <text x="563" y="290" font-size="12" class="muted">最終承認</text>
+        <rect x="20" y="310" width="190" height="70" rx="8" class="box-soft"/>
+        <text x="36" y="338" font-size="13" font-weight="700">XMLに書かれる所</text>
+        <text x="36" y="360" font-size="12" class="muted">①③④（②は実行時データ）</text>
+      </svg>
+      <p class="cap">図2 申請フォーム定義 → 申請データ → 承認 → 確定時のDB反映</p>
+    </div>
+    <p>大事なポイントは、<b>申請中のデータと本番データは別の場所にある</b>ことです。通勤費申請を出しただけでは社員マスタは変わりません。人事が最終承認した瞬間に、確定SQLが走って初めて本番データが変わります。差戻しされたら申請データだけが修正され、本番には何も起きません。</p>
+    <p>この構造を知っていると、障害の切り分けがしやすくなります。</p>
+    <ul>
+      <li>「画面に項目が出ない」→ ①フォーム定義、または選択肢を取るSQL</li>
+      <li>「上長に届かない」→ ③承認ルート（組織マスタ、承認者の解決SQL）</li>
+      <li>「承認されたのに社員マスタが変わらない」→ ④確定SQL、またはその実行ログ</li>
+    </ul>
+    <p>確定SQLのエラーはアプリのログに出ることが多いので、<a href="07-logs-incident.html">07 ログと障害調査</a>の手順がそのまま使えます。</p>
+  </section>
+
+  <section id="s5">
+    <h2>「シート」とは何か：推測パターンと見分け方</h2>
+    <p>「XMLにシートがいろいろある」という言い方は、製品や社内の呼び方によって意味が変わります。よくあるパターンを挙げるので、自社のXMLがどれに近いか見比べてください。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>パターン</th><th>シートの意味</th><th>XMLでの見え方（例）</th><th>見分けるヒント</th></tr></thead>
+      <tbody>
+        <tr><td>A 画面のタブ／ページ</td><td>1つの申請画面を「基本情報」「経路」「添付」のように分けた単位</td><td><code>&lt;sheet name="経路"&gt;</code> の下に <code>&lt;field&gt;</code> が並ぶ</td><td>実際の申請画面のタブ名・ページ名とシート名が一致する</td></tr>
+        <tr><td>B 帳票・印刷様式</td><td>承認後に出力するPDFや印刷レイアウト</td><td>座標（x, y）、フォント、ページサイズの属性がある</td><td>帳票出力機能で同じ見た目のものが出る</td></tr>
+        <tr><td>C Excel由来の定義</td><td>Excelで設計した定義をXMLに変換したもの。Excelのシート1枚がXMLの1ブロック</td><td>行・列番号、セル番地（A1 など）が出てくる</td><td>元のExcel設計書がどこかにある。XMLの冒頭に生成ツール名や生成日時のコメント</td></tr>
+        <tr><td>D 処理の段階</td><td>「入力」「承認」「確定」など、段階ごとの定義</td><td><code>&lt;sheet type="approve"&gt;</code> の中にSQLやルート</td><td>シートごとに入力欄ではなく処理（SQL）が中心</td></tr>
+      </tbody>
+    </table></div>
+    <h3>自社でどれかを見分ける方法</h3>
+    <ol class="steps">
+      <li><b>シート名を一覧にする</b>XMLの中の「sheet」に当たるタグの name 属性を全部書き出します。VS Codeで <code>&lt;sheet</code> を検索すると早いです。</li>
+      <li><b>テスト環境の申請画面と見比べる</b>画面のタブ名・ページ名と一致するならパターンA。印刷物と一致するならB。</li>
+      <li><b>中身の種類を数える</b>そのシートの中が入力項目中心か、SQL中心か、座標中心かを見ます。</li>
+      <li><b>小さく変えて確かめる（テスト環境のみ）</b>ラベル文字を1つ変えて画面に反映されるか見ます。必ずテスト環境で、元に戻せる状態で行ってください。</li>
+      <li><b>先輩に答え合わせする</b>「シートは画面のタブ単位という理解で合っていますか」と、推測を添えて聞くと短時間で答えてもらえます。</li>
+    </ol>
+  </section>
+
+  <section id="s6">
+    <h2>実物：通勤費申請の架空XMLを読む</h2>
+    <p>ここでは説明用に作った通勤費申請のXMLを使います。<b>タグ名・属性名は架空</b>です。自社のXMLでは名前が違っても、似た役割の塊があるはずです。</p>
+    <p class="code-title">commute_request.xml（架空の例）</p>
+<pre><code><span class="c">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span>
+<span class="k">&lt;form</span> id=<span class="s">"COMMUTE"</span> name=<span class="s">"通勤費申請"</span> version=<span class="s">"3"</span><span class="k">&gt;</span>
+
+  <span class="c">&lt;!-- (A) 画面項目の定義 --&gt;</span>
+  <span class="k">&lt;sheet</span> name=<span class="s">"申請内容"</span><span class="k">&gt;</span>
+    <span class="k">&lt;field</span> id=<span class="s">"startDate"</span> type=<span class="s">"date"</span> label=<span class="s">"適用開始日"</span> required=<span class="s">"true"</span><span class="k">/&gt;</span>
+    <span class="k">&lt;field</span> id=<span class="s">"transport"</span> type=<span class="s">"select"</span> label=<span class="s">"交通手段"</span> required=<span class="s">"true"</span><span class="k">&gt;</span>
+      <span class="c">&lt;!-- (B) 選択肢をマスタからSQLで取得 --&gt;</span>
+      <span class="k">&lt;options&gt;</span>
+        <span class="k">&lt;sql&gt;</span>&lt;![CDATA[
+          SELECT transport_cd AS value, transport_nm AS label
+            FROM m_transport
+           WHERE valid_from &lt;= CURRENT_DATE
+           ORDER BY sort_no
+        ]]&gt;<span class="k">&lt;/sql&gt;</span>
+      <span class="k">&lt;/options&gt;</span>
+    <span class="k">&lt;/field&gt;</span>
+    <span class="k">&lt;field</span> id=<span class="s">"route"</span> type=<span class="s">"text"</span> label=<span class="s">"経路"</span> maxLength=<span class="s">"200"</span> required=<span class="s">"true"</span><span class="k">/&gt;</span>
+    <span class="k">&lt;field</span> id=<span class="s">"monthlyFare"</span> type=<span class="s">"number"</span> label=<span class="s">"1か月定期代"</span> required=<span class="s">"true"</span><span class="k">&gt;</span>
+      <span class="k">&lt;check</span> type=<span class="s">"range"</span> min=<span class="s">"1"</span> max=<span class="s">"100000"</span> message=<span class="s">"1〜100,000円で入力してください"</span><span class="k">/&gt;</span>
+    <span class="k">&lt;/field&gt;</span>
+    <span class="k">&lt;field</span> id=<span class="s">"attachment"</span> type=<span class="s">"file"</span> label=<span class="s">"経路の資料"</span> required=<span class="s">"false"</span><span class="k">/&gt;</span>
+  <span class="k">&lt;/sheet&gt;</span>
+
+  <span class="c">&lt;!-- (C) 承認ルート --&gt;</span>
+  <span class="k">&lt;route&gt;</span>
+    <span class="k">&lt;step</span> no=<span class="s">"1"</span> name=<span class="s">"上長承認"</span> approver=<span class="s">"BOSS_OF_APPLICANT"</span> canReturn=<span class="s">"true"</span><span class="k">/&gt;</span>
+    <span class="k">&lt;step</span> no=<span class="s">"2"</span> name=<span class="s">"人事承認"</span> approver=<span class="s">"ROLE:HR"</span> canReturn=<span class="s">"true"</span><span class="k">/&gt;</span>
+  <span class="k">&lt;/route&gt;</span>
+
+  <span class="c">&lt;!-- (D) 最終承認時にDBへ反映 --&gt;</span>
+  <span class="k">&lt;onComplete&gt;</span>
+    <span class="k">&lt;sql&gt;</span>&lt;![CDATA[
+      UPDATE t_commute_allowance
+         SET transport_cd = <span class="hl">#{transport}</span>,
+             route        = <span class="hl">#{route}</span>,
+             monthly_fare = <span class="hl">#{monthlyFare}</span>,
+             updated_at   = CURRENT_TIMESTAMP
+       WHERE emp_no = <span class="hl">#{applicantEmpNo}</span>
+         AND start_date = <span class="hl">#{startDate}</span>
+    ]]&gt;<span class="k">&lt;/sql&gt;</span>
+  <span class="k">&lt;/onComplete&gt;</span>
+<span class="k">&lt;/form&gt;</span></code></pre>
+    <p class="note">※ 実務では、該当行がないときにINSERTする処理や、履歴を残す処理が加わることが多いです。ここでは読み方の説明のため単純化しています。</p>
+
+    <h3>XMLの塊 ↔ 画面の部品 ↔ DB の対応</h3>
+    <div class="figure">
+      <svg viewBox="0 0 700 430" style="max-width:700px" role="img" aria-label="XMLの各ブロックと画面、DBの対応図">
+        <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
+        <text x="20" y="22" font-size="13" font-weight="700">XML</text>
+        <text x="260" y="22" font-size="13" font-weight="700">画面（申請者・承認者が見る）</text>
+        <text x="520" y="22" font-size="13" font-weight="700">DB</text>
+        <rect x="20" y="36" width="190" height="60" rx="6" class="box-soft"/>
+        <text x="32" y="60" font-size="13">(A) field 定義</text>
+        <text x="32" y="80" font-size="12" class="muted">type / label / required</text>
+        <rect x="20" y="116" width="190" height="60" rx="6" class="box-soft"/>
+        <text x="32" y="140" font-size="13">(B) options の SQL</text>
+        <text x="32" y="160" font-size="12" class="muted">SELECT … m_transport</text>
+        <rect x="20" y="196" width="190" height="60" rx="6" class="box-soft"/>
+        <text x="32" y="220" font-size="13">(A) check 定義</text>
+        <text x="32" y="240" font-size="12" class="muted">min / max / message</text>
+        <rect x="20" y="276" width="190" height="60" rx="6" class="box-soft"/>
+        <text x="32" y="300" font-size="13">(C) route / step</text>
+        <text x="32" y="320" font-size="12" class="muted">上長 → 人事</text>
+        <rect x="20" y="356" width="190" height="60" rx="6" class="box-soft"/>
+        <text x="32" y="380" font-size="13">(D) onComplete SQL</text>
+        <text x="32" y="400" font-size="12" class="muted">UPDATE …</text>
+        <rect x="250" y="36" width="220" height="60" rx="6" class="box"/>
+        <text x="262" y="60" font-size="13">入力欄「経路」＊必須</text>
+        <text x="262" y="80" font-size="12" class="muted">日付・テキスト・添付欄</text>
+        <rect x="250" y="116" width="220" height="60" rx="6" class="box"/>
+        <text x="262" y="140" font-size="13">プルダウン「交通手段」</text>
+        <text x="262" y="160" font-size="12" class="muted">電車 / バス / 自家用車</text>
+        <rect x="250" y="196" width="220" height="60" rx="6" class="box"/>
+        <text x="262" y="220" font-size="13">エラー表示</text>
+        <text x="262" y="240" font-size="12" class="muted">「1〜100,000円で…」</text>
+        <rect x="250" y="276" width="220" height="60" rx="6" class="box"/>
+        <text x="262" y="300" font-size="13">承認者の受信一覧</text>
+        <text x="262" y="320" font-size="12" class="muted">承認 / 差戻しボタン</text>
+        <rect x="510" y="116" width="170" height="60" rx="6" class="box-ok"/>
+        <text x="522" y="140" font-size="13">m_transport</text>
+        <text x="522" y="160" font-size="12" class="muted">交通手段マスタ</text>
+        <rect x="510" y="276" width="170" height="60" rx="6" class="box-ok"/>
+        <text x="522" y="300" font-size="13">組織・権限マスタ</text>
+        <text x="522" y="320" font-size="12" class="muted">上長・人事ロール</text>
+        <rect x="510" y="356" width="170" height="60" rx="6" class="box-ok"/>
+        <text x="522" y="380" font-size="13">t_commute_allowance</text>
+        <text x="522" y="400" font-size="12" class="muted">通勤手当テーブル</text>
+        <path d="M210,66 L248,66" class="line-accent" marker-end="url(#a3)"/>
+        <path d="M210,146 L248,146" class="line-accent" marker-end="url(#a3)"/>
+        <path d="M210,226 L248,226" class="line-accent" marker-end="url(#a3)"/>
+        <path d="M210,306 L248,306" class="line-accent" marker-end="url(#a3)"/>
+        <path d="M508,146 L472,146" class="line" stroke-dasharray="5 4"/>
+        <path d="M508,306 L472,306" class="line" stroke-dasharray="5 4"/>
+        <path d="M210,386 L508,386" class="line-accent" marker-end="url(#a3)"/>
+        <text x="300" y="376" font-size="12" class="muted">最終承認時に実行</text>
+      </svg>
+      <p class="cap">図3 XMLの塊が、画面のどの部品とDBのどのテーブルにつながるか</p>
+    </div>
+
+    <h3>SQLの中の #{transport} は何か：バインド変数</h3>
+    <p><code>#{transport}</code> は「ここに画面で入力された交通手段の値を入れてね」という<b>差し込み口（バインド変数）</b>です。XMLの <code>field id="transport"</code> と名前が対応しています。システムは値を安全にSQLへ渡すので、入力値に記号が含まれていてもSQLが壊れたり、悪意あるSQLが実行されたり（SQLインジェクション）しにくくなります。</p>
+    <p>書き方は製品によって違います。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>書き方</th><th>よく見る場所</th><th>例</th></tr></thead>
+      <tbody>
+        <tr><td><code>#{名前}</code></td><td>MyBatis系、独自製品</td><td><code>WHERE emp_no = #{empNo}</code></td></tr>
+        <tr><td><code>:名前</code></td><td>Oracle系、JPA、一部製品</td><td><code>WHERE emp_no = :empNo</code></td></tr>
+        <tr><td><code>?</code></td><td>JDBCの素のSQL</td><td><code>WHERE emp_no = ?</code>（順番で対応）</td></tr>
+        <tr><td><code>${名前}</code></td><td>MyBatisなど</td><td>文字列をそのまま埋め込む方式。安全性が下がるので要注意</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout warn"><b>DBツールでそのまま実行しない</b><p>XMLから抜き出したSQLをDBツールに貼っても、<code>#{empNo}</code> のままでは動きません。テスト環境で、具体的な値（架空の社員番号など）に置き換えてから実行します。UPDATE文は本番で試さないこと、まず同じ条件のSELECTで対象件数を確認すること。SQLの読み方は<a href="06-sql-postgres.html">06 自分で書くSQL</a>も参照してください。</p></div>
+    <p>また、<code>applicantEmpNo</code> のように<b>画面項目にない変数</b>が使われていることがあります。これは「申請者の社員番号」「申請日」「申請ID」など、システムが自動で用意する変数です。どんな変数が使えるかは製品マニュアルや既存XMLを見て一覧にしておくと便利です。</p>
+  </section>
+
+  <section id="s7">
+    <h2>改修時の注意：壊さないための5つの観点</h2>
+
+    <h3>1. 既存の申請中データへの影響</h3>
+    <p>XMLを変えた瞬間、すでに<b>上長承認待ち・差戻し中の申請</b>がシステムの中に残っています。たとえば項目を削除すると、申請中データにはその値があるのに画面に出せない、確定SQLが値を見つけられない、といったことが起こりえます。</p>
+    <ul>
+      <li>申請中の件数を事前に確認する（申請データテーブルを状態で絞ってSELECT）</li>
+      <li>製品がXMLのバージョン管理をしているか（古い申請は古い定義で動くか）を確認する</li>
+      <li>必要なら「リリース前に申請中のものを処理してもらう」運用を相談する</li>
+    </ul>
+
+    <h3>2. 項目追加とDB列追加はセット</h3>
+    <p>「通勤費申請に駐車場代の欄を追加したい」となったら、XMLのfieldを足すだけでは終わりません。確定時に保存したいならテーブルに列（例：<code>parking_fee</code>）を追加し、確定SQLにも追加します。列追加はDBの変更なので、手順書・ロールバック手順・リリース順序（DB変更が先、XMLが後）を決めます。</p>
+    <div class="flow">
+      <div class="node"><b>XML</b>field 追加</div><div class="arrow"></div>
+      <div class="node"><b>DB</b>ALTER TABLE で列追加</div><div class="arrow"></div>
+      <div class="node"><b>確定SQL</b>UPDATE に列を追加</div><div class="arrow"></div>
+      <div class="node alt"><b>周辺</b>帳票・CSV・連携先</div>
+    </div>
+
+    <h3>3. XML構文エラーの見つけ方</h3>
+    <ul>
+      <li><b>エディタのXML検証</b>：VS Codeなら Red Hat の「XML」拡張を入れると、閉じ忘れや不正な文字に赤い波線が出ます。XSDがあれば、書けないタグも指摘してくれます。</li>
+      <li><b>xmllint</b>（Linuxサーバーやgit bashで使えることが多い）：<code>xmllint --noout commute_request.xml</code> で、エラーがあれば行番号つきで表示されます。何も出なければ整形式です。XSDがあるなら <code>xmllint --noout --schema form.xsd commute_request.xml</code>。</li>
+      <li><b>ブラウザ</b>：XMLファイルをブラウザで開くと、整形式でない場合はエラー位置が表示されます。</li>
+    </ul>
+<pre><code>$ xmllint --noout commute_request.xml
+commute_request.xml:14: parser error : StartTag: invalid element name
+           WHERE valid_from <span class="hl">&lt;</span>= CURRENT_DATE
+                             ^
+<span class="c"># → CDATAの外で &lt; を使っている。CDATAで囲むか &amp;lt; に置き換える</span></code></pre>
+
+    <h3>4. 差分比較で「何を変えたか」を必ず見る</h3>
+    <p>XMLは長いので、意図しない変更（タブが崩れた、別の場所を消した）が紛れ込みやすいです。変更前と変更後を必ず比較してください。</p>
+    <ul>
+      <li><b>WinMerge</b>：Windowsで2つのファイルを左右に並べて差分表示。フォルダ単位の比較もできます。</li>
+      <li><b>git diff</b>：Gitで管理されていれば <code>git diff commute_request.xml</code> で変更行だけが見られます。</li>
+      <li>レビュー依頼のときに差分を添えると、先輩も短時間で確認できます。</li>
+    </ul>
+
+    <h3>5. 文字コードと改行コード</h3>
+    <p>宣言が Shift_JIS なのにUTF-8で保存した、改行コードがCRLFからLFに変わって差分が全行になった、というのもよくある事故です。保存前にエディタ右下の文字コード・改行表示を確認しましょう。</p>
+  </section>
+
+  <section id="s8">
+    <h2>読み解き手順と、先輩に確認するリスト</h2>
+    <p>知らない申請XMLを渡されたときは、次の順番で読むと迷いにくくなります。</p>
+    <ol class="steps">
+      <li><b>全体を折りたたむ</b>VS Codeで「すべて折りたたむ」（<kbd>Ctrl</kbd>+<kbd>K</kbd> → <kbd>Ctrl</kbd>+<kbd>0</kbd>）をして、ルート要素の直下にある大きな塊だけを見ます。</li>
+      <li><b>塊に役割のラベルを貼る</b>各塊が「画面」「選択肢」「チェック」「承認ルート」「確定処理」「帳票」のどれかをメモします。</li>
+      <li><b>画面と1対1で照合</b>テスト環境で同じ申請画面を開き、項目のラベルとXMLのlabelを照らし合わせます。</li>
+      <li><b>SQLを抜き出して読む</b>SELECT（選択肢・初期値）とUPDATE/INSERT（確定処理）に分けて、対象テーブルを書き出します。</li>
+      <li><b>バインド変数の出どころを確認</b><code>#{...}</code> が画面項目か、システム変数かを分類します。</li>
+      <li><b>承認ルートを紙に描く</b>誰から誰へ、差戻しはどこへ戻るかを矢印で描きます。</li>
+      <li><b>自分の言葉で1枚にまとめる</b>「この申請は、○○を入力し、上長→人事で承認され、確定時に○○テーブルを更新する」と3行で書けたら完了です。</li>
+    </ol>
+    <h3>自社のXMLで確認する項目（先輩・社内Wikiに聞くリスト）</h3>
+    <ul class="check">
+      <li><input type="checkbox" id="q08-1"><label for="q08-1">申請XMLが置かれている場所（リポジトリ・サーバーのパス）と、反映方法（再起動が必要か、管理画面から取り込むか）</label></li>
+      <li><input type="checkbox" id="q08-2"><label for="q08-2">製品名とマニュアルの場所。XSD/DTDなどの規則ファイルはあるか</label></li>
+      <li><input type="checkbox" id="q08-3"><label for="q08-3">「シート」は社内で何を指しているか（画面タブ・帳票・Excel定義・処理段階）</label></li>
+      <li><input type="checkbox" id="q08-4"><label for="q08-4">バインド変数の書き方（#{} / : / ?）と、使えるシステム変数の一覧</label></li>
+      <li><input type="checkbox" id="q08-5"><label for="q08-5">申請データ（申請中）が入るテーブル名と、状態（申請中・差戻し・完了）の値</label></li>
+      <li><input type="checkbox" id="q08-6"><label for="q08-6">承認者はどう決まるか（組織マスタ、ロール、代理承認）</label></li>
+      <li><input type="checkbox" id="q08-7"><label for="q08-7">確定SQLが失敗したとき、どこにログが出て、申請はどうなるか</label></li>
+      <li><input type="checkbox" id="q08-8"><label for="q08-8">XMLを変えたとき、申請中のデータは新旧どちらの定義で動くか</label></li>
+      <li><input type="checkbox" id="q08-9"><label for="q08-9">XML変更のレビュー・リリース手順（誰が承認し、いつ本番に入れるか）</label></li>
+      <li><input type="checkbox" id="q08-10"><label for="q08-10">元になったExcel設計書や項目定義書があるか</label></li>
+    </ul>
+  </section>
+
+  <section id="s9">
+    <h2>よくあるつまずき</h2>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>SQLに <code>&lt;</code> を足したら、申請画面ごと開かなくなった。</p></div>
+      <div class="good"><b>対策</b><p>CDATAの中に書いているか確認。外なら <code>&amp;lt;</code> に。保存前に xmllint かエディタ検証を通す。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>XMLから抜いたSQLをDBツールで実行したら「構文エラー」。</p></div>
+      <div class="good"><b>対策</b><p><code>#{...}</code> を値に置き換える。<code>&amp;lt;</code> が残っていたら <code>&lt;</code> に戻す。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>項目を追加したのに、承認後のデータに値が入らない。</p></div>
+      <div class="good"><b>対策</b><p>fieldだけでなく、確定SQLとテーブル列も追加したか確認。field id とバインド変数名のつづりも照合。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき</b><p>XML全体をAIに貼って「解説して」と頼み、そのまま信じた。</p></div>
+      <div class="good"><b>対策</b><p>社員番号や実データが入っていないか確認してから使う。AIの説明は画面・テスト環境で1つずつ確かめる（<a href="10-ai-learning.html">10 AIと一緒に強くなる</a>）。</p></div>
+    </div>
+    <div class="callout tip"><b>小さな成功体験のつくり方</b><p>テスト環境で、ラベル文字を1つだけ変えて画面に反映させてみる。それができたら、選択肢SQLにORDER BYを足してみる。「XMLを触ると画面がこう変わる」を自分の手で一度体験すると、XMLが急に身近になります。</p></div>
+  </section>
+
+  <section id="s10">
+    <h2>練習問題</h2>
+    <details class="quiz"><summary>Q1. 次のXMLは整形式ではありません。どこが問題でしょう？<br><code>&lt;field id="fare"&gt;&lt;label&gt;定期代&lt;/field&gt;&lt;/label&gt;</code></summary>
+      <div class="ans"><p>入れ子が交差しています。<code>&lt;label&gt;</code> を先に閉じてから <code>&lt;/field&gt;</code> で閉じる必要があります。正しくは <code>&lt;field id="fare"&gt;&lt;label&gt;定期代&lt;/label&gt;&lt;/field&gt;</code>。</p></div>
+    </details>
+    <details class="quiz"><summary>Q2. 「通勤費申請に経路の資料の添付を必須にしたい」。架空のXMLでは、まずどこを見ますか？</summary>
+      <div class="ans"><p>(A) の <code>field id="attachment"</code> の <code>required="false"</code> を見ます。ただし、変えるだけで終わりではありません。申請中のデータ（添付なしで出された申請）が差戻しされたとき再提出できるか、確定SQLで添付を使うか、帳票に影響するかも確認します。</p></div>
+    </details>
+    <details class="quiz"><summary>Q3. 人事が最終承認したのに、通勤手当テーブルが更新されていません。疑う順番は？</summary>
+      <div class="ans"><p>①アプリのログで確定SQLのエラーを確認 → ②確定SQLのWHERE条件（emp_no と start_date が一致する行が本当にあるか。UPDATEは0件でもエラーにならない）→ ③バインド変数名と field id の対応 → ④承認が本当に「最終」ステップまで進んだか、の順が効率的です。</p></div>
+    </details>
+    <details class="quiz"><summary>Q4. SQL中の <code>#{empNo}</code>、<code>:empNo</code>、<code>?</code> の共通点と違いは？</summary>
+      <div class="ans"><p>どれも「後から値を差し込む場所（バインド変数）」です。違いは書き方で、名前で対応づけるか（#{} や :）、出現順で対応づけるか（?）です。どれを使うかは製品・ライブラリが決めます。</p></div>
+    </details>
+  </section>
+
+  <section id="s11">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>要素</dt><dd>開始タグから終了タグまでのひとかたまり。</dd>
+      <dt>属性</dt><dd>開始タグの中に <code>名前="値"</code> で書く補足情報。</dd>
+      <dt>ルート要素</dt><dd>XML全体を包む唯一の一番外側の要素。</dd>
+      <dt>XML宣言</dt><dd>1行目の <code>&lt;?xml ... ?&gt;</code>。バージョンと文字コードを示す。</dd>
+      <dt>エンティティ</dt><dd><code>&amp;lt;</code> <code>&amp;amp;</code> など、特別な文字を表す書き方。</dd>
+      <dt>CDATA</dt><dd><code>&lt;![CDATA[ ... ]]&gt;</code>。中身をただの文字として扱う囲い。SQLを書くのに便利。</dd>
+      <dt>整形式</dt><dd>XMLの文法として正しい状態。</dd>
+      <dt>妥当（valid）</dt><dd>整形式であり、さらにXSD/DTDの規則に従っている状態。</dd>
+      <dt>XSD / DTD</dt><dd>「どのタグをどこに書けるか」を決める規則ファイル。</dd>
+      <dt>バインド変数</dt><dd>SQL中の値の差し込み口。<code>#{}</code>、<code>:名前</code>、<code>?</code> など。</dd>
+      <dt>承認ワークフロー</dt><dd>申請者 → 上長 → 人事のように、申請を回して承認・差戻しする仕組み。</dd>
+      <dt>確定処理</dt><dd>最終承認時に本番データ（社員マスタ等）を更新する処理。</dd>
+      <dt>xmllint</dt><dd>XMLの構文や規則をチェックするコマンドラインツール。</dd>
+    </dl>
+  </section>
+
+  <section id="s12">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="t08-1"><label for="t08-1">担当している申請XMLを1本選び、VS Codeで折りたたんで「大きな塊」に役割ラベルをつける</label></li>
+      <li><input type="checkbox" id="t08-2"><label for="t08-2">VS CodeにXML拡張を入れ、赤い波線が出ないことを確認する</label></li>
+      <li><input type="checkbox" id="t08-3"><label for="t08-3">その申請のSQLを全部抜き出し、参照・更新しているテーブル名を一覧にする</label></li>
+      <li><input type="checkbox" id="t08-4"><label for="t08-4">承認ルートを紙に矢印で描き、差戻しの戻り先も書く</label></li>
+      <li><input type="checkbox" id="t08-5"><label for="t08-5">「シート」が何を指すか推測を1行書き、先輩に「この理解で合っていますか」と聞く</label></li>
+      <li><input type="checkbox" id="t08-6"><label for="t08-6">「この申請は○○を入力し、○○→○○で承認され、確定時に○○を更新する」と3行でまとめる</label></li>
+    </ul>
+  </section>
+
+  <nav class="pager"><a class="prev" href="07-logs-incident.html"><span>← 前の章</span>07 ログと障害調査</a><a class="next" href="09-change-request.html"><span>次の章 →</span>09 要望から改修まで</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>
