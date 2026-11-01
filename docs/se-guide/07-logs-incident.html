@@ -48,13 +48,13 @@
     <h2>ログの地図：どこに何が書かれるか</h2>
     <p>勤怠システムへのリクエストは、ブラウザ → Apache → Tomcat → アプリ（Spring Boot）→ PostgreSQL の順に流れます（全体像は <a href="02-system-map.html">02 システムの全体像</a>）。<strong>それぞれの層が、それぞれのログを書きます</strong>。どの層で止まったかによって、見るべきログが変わります。</p>
     <figure class="figure">
-      <svg viewBox="0 0 680 360" style="max-width:680px" role="img" aria-label="層ごとのログの種類">
+      <svg viewBox="0 0 680 360" style="max-width:680px;min-width:510px" role="img" aria-label="層ごとのログの種類">
         <defs><marker id="arM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <g font-size="13">
           <rect class="box-soft" x="10" y="20" width="110" height="50" rx="6"/><text x="30" y="50" font-weight="700">ブラウザ</text>
           <rect class="box" x="150" y="20" width="110" height="50" rx="6"/><text x="172" y="50" font-weight="700">Apache</text>
           <rect class="box" x="290" y="20" width="110" height="50" rx="6"/><text x="312" y="50" font-weight="700">Tomcat</text>
-          <rect class="box" x="430" y="20" width="110" height="50" rx="6"/><text x="446" y="44" font-weight="700">アプリ</text><text x="446" y="62" font-size="11" class="muted">Spring Boot</text>
+          <rect class="box" x="430" y="20" width="110" height="50" rx="6"/><text x="446" y="44" font-weight="700">アプリ</text><text x="446" y="62" font-size="12" class="muted">Spring Boot</text>
           <rect class="box" x="570" y="20" width="100" height="50" rx="6"/><text x="580" y="50" font-weight="700">PostgreSQL</text>
         </g>
         <line class="line-accent" x1="120" y1="45" x2="148" y2="45" marker-end="url(#arM)"/>
@@ -140,7 +140,7 @@
     <h2>スタックトレースの読み方</h2>
     <p>スタックトレースは「例外がどこで起き、どういう呼び出しの道をたどってきたか」の記録です。長くて怖く見えますが、見るべき場所は決まっています。</p>
     <figure class="figure">
-      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="スタックトレースの各部分の意味">
+      <svg viewBox="0 0 680 400" style="max-width:680px;min-width:510px" role="img" aria-label="スタックトレースの各部分の意味">
         <g font-size="12">
           <rect class="box-soft" x="10" y="14" width="420" height="40" rx="4"/>
           <text x="18" y="30">o.s.dao.DuplicateKeyException:</text>
@@ -201,7 +201,7 @@
 	at com.example.kintai.service.OvertimeCalculator.calc(OvertimeCalculator.java:42)
 	at com.example.kintai.service.MonthlyCloseService.closeEmployee(MonthlyCloseService.java:88)
 	...</code></pre>
-    <p>Java 14以降では「何がnullだったか」がメッセージに出ます。この例は「退勤時刻（clockOut）がnullなのに比較しようとした」、つまり<strong>打刻漏れのデータ</strong>で締め処理が落ちた可能性を示します。<code>OvertimeCalculator.java</code> の42行目を開き、その社員のデータを <a href="06-sql-postgres.html">06 自分で書くSQL</a> の方法で確認します。</p>
+    <p>Java 14以降（標準で有効になったのは15以降）では「何がnullだったか」がメッセージに出ます。この例は「退勤時刻（clockOut）がnullなのに比較しようとした」、つまり<strong>打刻漏れのデータ</strong>で締め処理が落ちた可能性を示します。<code>OvertimeCalculator.java</code> の42行目を開き、その社員のデータを <a href="06-sql-postgres.html">06 自分で書くSQL</a> の方法で確認します。</p>
 
     <h3>PSQLException：データベースがSQLを拒否した</h3>
 <pre><code>org.postgresql.util.PSQLException: ERROR: column "clock_out_time" does not exist
@@ -262,7 +262,7 @@ Caused by: java.sql.SQLTransientConnectionException: HikariPool-1 - Connection i
       <li><b>再発防止を考える</b>直接の修正だけでなく、検知（監視・アラート）、手順、設計の改善まで。</li>
     </ol>
     <figure class="figure">
-      <svg viewBox="0 0 680 300" style="max-width:680px" role="img" aria-label="障害のタイムラインの例">
+      <svg viewBox="0 0 680 300" style="max-width:680px;min-width:510px" role="img" aria-label="障害のタイムラインの例">
         <defs><marker id="arT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
         <line class="line" x1="20" y1="150" x2="665" y2="150" marker-end="url(#arT)"/>
         <g font-size="12">

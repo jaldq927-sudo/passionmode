@@ -60,7 +60,7 @@
       <div class="card"><h4>Tomcat</h4><p>お店の建物。Web アプリを載せて、ブラウザからのリクエストを受け付ける。Spring Boot なら JAR の中に組み込まれていることも（<a href="04-spring-boot.html#s8">04 起動の流れ</a>）。</p></div>
     </div>
     <figure class="figure">
-      <svg viewBox="0 0 640 330" style="max-width:640px" role="img" aria-label="あなたのPCの中でIDEがJDK、Git、Mavenを使い、Mavenは社内プロキシを通ってリモートリポジトリから部品を取得する">
+      <svg viewBox="0 0 640 330" style="max-width:640px;min-width:450px" role="img" aria-label="あなたのPCの中でIDEがJDK、Git、Mavenを使い、Mavenは社内プロキシを通ってリモートリポジトリから部品を取得する">
         <defs><marker id="arr51" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <rect class="box-soft" x="10" y="10" width="440" height="310" rx="12"/>
         <text x="26" y="34" font-size="14" font-weight="700">あなたのPC</text>
@@ -161,7 +161,7 @@ Java version: 17.0.x, vendor: ..., runtime: C:\Program Files\Java\jdk-17
     <h2>Maven の仕組み：部品はどこから来るのか</h2>
     <p>pom.xml には「Spring Boot の Web 部品を使う」「PostgreSQL のドライバを使う」といった注文（依存関係）が書かれています。Maven はこれを読み、部品（JAR ファイル）を次の順番で探します。</p>
     <figure class="figure">
-      <svg viewBox="0 0 640 350" style="max-width:640px" role="img" aria-label="pom.xmlをmvnが読み、ローカルリポジトリを探し、無ければsettings.xmlの設定に従ってプロキシ経由でリモートリポジトリから取得する">
+      <svg viewBox="0 0 640 350" style="max-width:640px;min-width:450px" role="img" aria-label="pom.xmlをmvnが読み、ローカルリポジトリを探し、無ければsettings.xmlの設定に従ってプロキシ経由でリモートリポジトリから取得する">
         <defs><marker id="arr52" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <rect class="box" x="10" y="20" width="160" height="64" rx="8"/>
         <text x="24" y="46" font-size="13" font-weight="700">pom.xml</text>
@@ -325,7 +325,7 @@ git config --global --unset http.proxy
     <h3>PKIX path building failed とは</h3>
     <p>HTTPS では、接続先が「本物か」を証明書で確認します。Java は、JDK の中にある <code>cacerts</code> という<strong>信頼する発行元の一覧</strong>と照らし合わせます。社内プロキシが通信の中身を検査するために、社内の認証局（社内CA）で証明書を発行し直していると、Java の一覧にはその社内CAが載っていないため「信頼できる経路が作れない」と判断して接続を拒否します。これが PKIX エラーです。</p>
     <figure class="figure">
-      <svg viewBox="0 0 640 230" style="max-width:640px" role="img" aria-label="社内プロキシが社内CAで署名し直した証明書を、JDKのcacertsで照合し、社内CAが無いとPKIXエラーになる">
+      <svg viewBox="0 0 640 230" style="max-width:640px;min-width:450px" role="img" aria-label="社内プロキシが社内CAで署名し直した証明書を、JDKのcacertsで照合し、社内CAが無いとPKIXエラーになる">
         <defs><marker id="arr53" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <rect class="box-ok" x="460" y="20" width="170" height="64" rx="8"/>
         <text x="474" y="46" font-size="13" font-weight="700">Maven Central</text>

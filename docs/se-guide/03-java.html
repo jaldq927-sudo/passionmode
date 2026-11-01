@@ -71,7 +71,7 @@
     <h2>.java が動くまで：コンパイルと JDK / JRE / JVM</h2>
     <p>あなたが読む <code>.java</code> ファイルは、そのままでは動きません。<strong>コンパイラ</strong>（<code>javac</code>）が、JVM 向けの命令である<strong>バイトコード</strong>（<code>.class</code> ファイル）に変換し、それを <strong>JVM</strong>（Java 仮想マシン）が実行します。</p>
     <figure class="figure">
-      <svg viewBox="0 0 500 380" style="max-width:540px" role="img" aria-labelledby="jdk-t">
+      <svg viewBox="0 0 500 380" style="max-width:540px;min-width:380px" role="img" aria-labelledby="jdk-t">
         <title id="jdk-t">.javaをjavacで.classに変換しJVMが実行する流れと、JDK・JRE・JVMの包含関係</title>
         <defs>
           <marker id="j1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
@@ -163,7 +163,7 @@
     }
 }</code></pre>
     <figure class="figure">
-      <svg viewBox="0 0 500 400" style="max-width:540px" role="img" aria-labelledby="cls-t">
+      <svg viewBox="0 0 500 400" style="max-width:540px;min-width:380px" role="img" aria-labelledby="cls-t">
         <title id="cls-t">クラスの構造：パッケージ宣言、import、クラス宣言の中にフィールド、コンストラクタ、メソッドがある</title>
         <rect x="10" y="10" width="480" height="40" rx="8" class="box-soft"/>
         <text x="24" y="35" class="t-s"><tspan class="t-b">package / import</tspan>　どこに属し、何を借りてくるか</text>
@@ -382,7 +382,7 @@ AttendanceRecord rec = today.orElseThrow(
     <h2>ソースを読むコツ：入口から呼び出しをたどる</h2>
     <p>勤怠システム全体のソースは数百〜数千ファイルあるかもしれません。全部を読む必要はありません。調べたい<strong>画面操作の入口</strong>を見つけ、そこから呼び出しを1本たどるのが基本です。</p>
     <figure class="figure">
-      <svg viewBox="0 0 500 470" style="max-width:540px" role="img" aria-labelledby="rd-t">
+      <svg viewBox="0 0 500 470" style="max-width:540px;min-width:380px" role="img" aria-labelledby="rd-t">
         <title id="rd-t">URLからControllerを探し、定義へ移動でService、Repository、SQLへとたどるコード読解の手順</title>
         <defs>
           <marker id="r1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>

@@ -65,7 +65,7 @@
     <p>「依存」とは、あるクラスが仕事をするために必要な別のクラスのことです。残業申請を処理する <code>OvertimeService</code> は、DB を操作する <code>OvertimeMapper</code> に依存しています。それを外から「注入」するので依存性注入です。IoC（Inversion of Control：制御の反転）は、前の節のハリウッドの原則と同じ意味で、「部品の生成や呼び出しの主導権がフレームワーク側にある」ことを指します。部品を管理する入れ物を <strong>IoC コンテナ</strong>（または ApplicationContext）と呼び、管理されている部品を <strong>Bean（ビーン）</strong>と呼びます。</p>
 
     <figure class="figure">
-      <svg viewBox="0 0 640 300" style="max-width:640px" role="img" aria-label="DIなしでは自分でnewする。DIありではIoCコンテナがBeanを作ってServiceに注入する">
+      <svg viewBox="0 0 640 300" style="max-width:640px;min-width:450px" role="img" aria-label="DIなしでは自分でnewする。DIありではIoCコンテナがBeanを作ってServiceに注入する">
         <defs><marker id="arr41" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <text x="20" y="26" font-size="14" font-weight="700">DIなし：自分で作る</text>
         <rect class="box" x="20" y="44" width="260" height="62" rx="8"/>
@@ -140,7 +140,7 @@
     <h2>3層構造：Controller → Service → Repository/Mapper → DB</h2>
     <p>Spring Boot の業務アプリは、ほぼ必ず役割ごとに層（レイヤー）が分かれています。役所の窓口にたとえると、<strong>Controller は受付窓口</strong>（用件を聞き、書類の不備をチェック）、<strong>Service は担当課</strong>（ルールに従って判断）、<strong>Mapper/Repository は書庫係</strong>（台帳の出し入れだけをする）です。窓口の人が勝手に台帳を書き換えないのと同じで、層を飛ばさないのが原則です。</p>
     <figure class="figure">
-      <svg viewBox="0 0 640 410" style="max-width:640px" role="img" aria-label="ブラウザからController、Service、Mapper、DBへ順に処理が流れる3層構造">
+      <svg viewBox="0 0 640 410" style="max-width:640px;min-width:450px" role="img" aria-label="ブラウザからController、Service、Mapper、DBへ順に処理が流れる3層構造">
         <defs><marker id="arr42" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <rect class="box-soft" x="20" y="10" width="190" height="56" rx="8"/>
         <text x="36" y="34" font-size="13" font-weight="700">ブラウザ／スマホ</text>
@@ -340,7 +340,7 @@ server.port=<span class="s">8080</span></code></pre>
     <h2>@Transactional とロールバック</h2>
     <p>残業申請の承認では「申請ステータスを承認済みにする」「承認履歴を追加する」の2つの更新があります。1つ目だけ成功して2つ目で失敗したら、「承認済みなのに履歴がない」という中途半端なデータが残ります。これを防ぐのがトランザクションで、<code>@Transactional</code> を付けたメソッドの中の更新は<strong>全部成功するか、全部なかったことになるか</strong>のどちらかになります。</p>
     <figure class="figure">
-      <svg viewBox="0 0 640 270" style="max-width:640px" role="img" aria-label="トランザクション開始後、2つの更新を行い、正常ならCOMMIT、例外ならROLLBACKで両方取り消される">
+      <svg viewBox="0 0 640 270" style="max-width:640px;min-width:480px" role="img" aria-label="トランザクション開始後、2つの更新を行い、正常ならCOMMIT、例外ならROLLBACKで両方取り消される">
         <defs><marker id="arr43" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker></defs>
         <rect class="box-soft" x="10" y="50" width="100" height="50" rx="8"/>
         <text x="24" y="72" font-size="13" font-weight="700">開始</text>

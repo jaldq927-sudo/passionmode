@@ -57,7 +57,7 @@
   <section id="s3">
     <h2>全体の流れ：要望からリリース後の確認まで</h2>
     <div class="figure">
-      <svg viewBox="0 0 680 360" style="max-width:680px" role="img" aria-label="要望から改修までの10ステップ">
+      <svg viewBox="0 0 680 360" style="max-width:680px;min-width:510px" role="img" aria-label="要望から改修までの10ステップ">
         <defs><marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
         <marker id="b1m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
         <text x="20" y="24" font-size="13" font-weight="700" class="muted">考える（ここで品質の大半が決まる）</text>
@@ -73,7 +73,7 @@
         <path d="M606,98 L606,134 L78,134 L78,176" class="line-accent" marker-end="url(#b1)"/>
         <text x="20" y="166" font-size="13" font-weight="700" class="muted">作る・確かめる</text>
         <rect x="20" y="178" width="116" height="62" rx="8" class="box"/><text x="32" y="204" font-size="13" font-weight="700">6 設計書</text><text x="32" y="224" font-size="12" class="muted">変更点を文章に</text>
-        <rect x="152" y="178" width="116" height="62" rx="8" class="box"/><text x="164" y="204" font-size="13" font-weight="700">7 実装</text><text x="164" y="224" font-size="12" class="muted">コード・SQL・XML</text>
+        <rect x="152" y="178" width="116" height="62" rx="8" class="box"/><text x="164" y="204" font-size="13" font-weight="700">7 実装</text><text x="164" y="224" font-size="12" class="muted">コード/SQL/XML</text>
         <rect x="284" y="178" width="116" height="62" rx="8" class="box-warn"/><text x="296" y="204" font-size="13" font-weight="700">8 テスト</text><text x="296" y="224" font-size="12" class="muted">単体・結合・回帰</text>
         <rect x="416" y="178" width="116" height="62" rx="8" class="box"/><text x="428" y="204" font-size="13" font-weight="700">9 リリース</text><text x="428" y="224" font-size="12" class="muted">手順書・戻し方</text>
         <rect x="548" y="178" width="116" height="62" rx="8" class="box-ok"/><text x="560" y="204" font-size="13" font-weight="700">10 確認</text><text x="560" y="224" font-size="12" class="muted">本番で動作確認</text>
@@ -138,7 +138,7 @@
     <h2>影響調査：変更がどこまで波及するかを追う</h2>
     <p>影響調査は「この変更で、他に変わってしまうところはないか」を探す作業です。基本は<b>画面からテーブルまで縦に追い、次にテーブルから他の利用者を横に探す</b>の2方向です。</p>
     <div class="figure">
-      <svg viewBox="0 0 680 400" style="max-width:680px" role="img" aria-label="縦に追う調査と横に探す調査">
+      <svg viewBox="0 0 680 400" style="max-width:680px;min-width:510px" role="img" aria-label="縦に追う調査と横に探す調査">
         <defs><marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
         <marker id="b2m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker></defs>
         <text x="20" y="22" font-size="13" font-weight="700">① 縦に追う（変更の入口から）</text>
