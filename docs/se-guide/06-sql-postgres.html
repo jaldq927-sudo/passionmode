@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>06 自分で書くSQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+<style>
+/* 紙芝居の中の小さな表（この章だけ） */
+.mini-wrap{overflow-x:auto}
+.mini{border-collapse:collapse;margin:6px auto 0;font-size:.92rem;min-width:240px}
+.mini th,.mini td{border:1px solid var(--rule);padding:4px 14px;text-align:left;white-space:nowrap}
+.mini th{background:var(--accent-soft);font-size:.82rem}
+.mini tr.out td{color:var(--muted);text-decoration:line-through;background:var(--bg)}
+.mini tr.g1 td{background:var(--accent-soft)}
+.mini tr.g2 td{background:var(--violet-soft)}
+.mini tr.g3 td{background:var(--warn-soft)}
+.mini tr.win td{background:var(--ok-soft);font-weight:700}
+.mini .gone{color:var(--muted);text-decoration:line-through;background:var(--bg)}
+.sqlline{text-align:center;margin:0 0 4px}
+.sqlline code{font-size:1rem}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">06 自分で書くSQL</span><a href="v1/06-sql-postgres.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">06</div>
+  <div><div class="eyebrow">CHAPTER 06</div><h1>自分で書くSQL</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-route"/></svg>SQLはFROMから動く</div>
+    <div><svg class="ic"><use href="#i-search"/></svg>件数を見て確かめる</div>
+    <div><svg class="ic"><use href="#i-shield"/></svg>更新はBEGINで守る</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ===== SCENE 1：ER図 ===== -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-table"/></svg><div><span class="tag">SCENE 1</span><h2>まず表の地図を持つ</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 660 320" style="min-width:495px;max-width:700px" role="img" aria-label="勤怠テーブルのER図。employeesを中心に部署・打刻・休暇・申請がemployee_idでつながる">
+      <!-- lines -->
+      <path class="line" d="M185 160 H235"/>
+      <path class="line-accent" d="M425 160 C450 160 450 60 475 60"/>
+      <path class="line" d="M425 160 H475"/>
+      <path class="line" d="M425 160 C450 160 450 260 475 260"/>
+      <text x="190" y="152" font-size="14" class="t-muted">1</text>
+      <text x="216" y="152" font-size="14" class="t-muted">多</text>
+      <text x="430" y="180" font-size="14" class="t-accent">1</text>
+      <text x="455" y="52" font-size="14" class="t-accent">多</text>
+      <text x="455" y="152" font-size="14" class="t-muted">多</text>
+      <text x="456" y="284" font-size="14" class="t-muted">多</text>
+      <!-- departments -->
+      <rect class="box-bg" x="15" y="115" width="170" height="90" rx="10"/>
+      <text x="28" y="142" font-size="15" font-weight="700">departments</text>
+      <text x="28" y="164" font-size="13" class="t-muted">部署</text>
+      <text x="28" y="190" font-size="13">PK department_id</text>
+      <!-- employees -->
+      <rect class="box" x="235" y="90" width="190" height="140" rx="10"/>
+      <text x="248" y="117" font-size="15" font-weight="700">employees</text>
+      <text x="248" y="139" font-size="13" class="t-muted">社員（まん中）</text>
+      <text x="248" y="165" font-size="13" class="t-accent">PK employee_id</text>
+      <text x="248" y="188" font-size="13">FK department_id</text>
+      <text x="248" y="212" font-size="13">retired_on（NULL=在職）</text>
+      <!-- attendance -->
+      <rect class="box" x="475" y="15" width="170" height="95" rx="10"/>
+      <text x="488" y="40" font-size="15" font-weight="700">attendance</text>
+      <text x="488" y="60" font-size="13" class="t-muted">打刻（毎日増える）</text>
+      <text x="488" y="82" font-size="13">FK employee_id</text>
+      <text x="488" y="101" font-size="13">clock_out（NULLあり）</text>
+      <!-- leave_requests -->
+      <rect class="box-bg" x="475" y="122" width="170" height="78" rx="10"/>
+      <text x="488" y="145" font-size="15" font-weight="700">leave_requests</text>
+      <text x="488" y="166" font-size="13" class="t-muted">休暇</text>
+      <text x="488" y="190" font-size="13">FK employee_id</text>
+      <!-- applications -->
+      <rect class="box-bg" x="475" y="210" width="170" height="95" rx="10"/>
+      <text x="488" y="235" font-size="15" font-weight="700">applications</text>
+      <text x="488" y="255" font-size="13" class="t-muted">申請（通勤費など）</text>
+      <text x="488" y="277" font-size="13">FK employee_id</text>
+      <text x="488" y="296" font-size="13">status</text>
+    </svg></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-key"/></svg><b>PK（主キー）</b><span class="eq">行の背番号</span></div>
+      <div><svg class="ic"><use href="#i-link"/></svg><b>FK（外部キー）</b><span class="eq">相手の背番号を指す</span></div>
+      <div><svg class="ic"><use href="#i-users"/></svg><b>1対多</b><span class="eq">JOINで行が増える元</span></div>
+    </div>
+    <p class="say">表名・列名は説明用の架空です。本物は <code>\d 表名</code> で確認。</p>
+  </section>
+
+  <!-- ===== SCENE 2：書く順と動く順 ===== -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 2</span><h2>書く順と動く順はちがう</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 540 400" style="min-width:405px;max-width:560px" role="img" aria-label="書く順はSELECTから、動く順はFROMから。SELECTは6番目に動く">
+      <text x="120" y="30" font-size="15" font-weight="700" text-anchor="middle">書く順</text>
+      <text x="410" y="30" font-size="15" font-weight="700" text-anchor="middle" class="t-accent">動く順</text>
+      <!-- connectors: left row i (y=66+42i) to right row j -->
+      <path class="line-accent" d="M200 66 C270 66 260 276 320 276"/>
+      <path class="line" d="M200 108 C260 108 260 66 320 66"/>
+      <path class="line" d="M200 150 C260 150 260 108 320 108"/>
+      <path class="line" d="M200 192 C260 192 260 150 320 150"/>
+      <path class="line" d="M200 234 C260 234 260 192 320 192"/>
+      <path class="line" d="M200 276 C260 276 260 234 320 234"/>
+      <path class="line" d="M200 318 H320"/>
+      <path class="line" d="M200 360 H320"/>
+      <!-- left: written order -->
+      <rect class="box-soft" x="40" y="50" width="160" height="32" rx="8"/><text x="120" y="71" font-size="14" text-anchor="middle" font-weight="700">SELECT</text>
+      <rect class="box-bg" x="40" y="92" width="160" height="32" rx="8"/><text x="120" y="113" font-size="14" text-anchor="middle">FROM</text>
+      <rect class="box-bg" x="40" y="134" width="160" height="32" rx="8"/><text x="120" y="155" font-size="14" text-anchor="middle">JOIN</text>
+      <rect class="box-bg" x="40" y="176" width="160" height="32" rx="8"/><text x="120" y="197" font-size="14" text-anchor="middle">WHERE</text>
+      <rect class="box-bg" x="40" y="218" width="160" height="32" rx="8"/><text x="120" y="239" font-size="14" text-anchor="middle">GROUP BY</text>
+      <rect class="box-bg" x="40" y="260" width="160" height="32" rx="8"/><text x="120" y="281" font-size="14" text-anchor="middle">HAVING</text>
+      <rect class="box-bg" x="40" y="302" width="160" height="32" rx="8"/><text x="120" y="323" font-size="14" text-anchor="middle">ORDER BY</text>
+      <rect class="box-bg" x="40" y="344" width="160" height="32" rx="8"/><text x="120" y="365" font-size="14" text-anchor="middle">LIMIT</text>
+      <!-- right: run order -->
+      <rect class="box" x="320" y="50" width="180" height="32" rx="8"/><text x="334" y="71" font-size="14">① FROM 表を選ぶ</text>
+      <rect class="box" x="320" y="92" width="180" height="32" rx="8"/><text x="334" y="113" font-size="14">② JOIN つなぐ</text>
+      <rect class="box" x="320" y="134" width="180" height="32" rx="8"/><text x="334" y="155" font-size="14">③ WHERE 行を絞る</text>
+      <rect class="box" x="320" y="176" width="180" height="32" rx="8"/><text x="334" y="197" font-size="14">④ GROUP まとめる</text>
+      <rect class="box" x="320" y="218" width="180" height="32" rx="8"/><text x="334" y="239" font-size="14">⑤ HAVING 組を絞る</text>
+      <rect class="box-warn" x="320" y="260" width="180" height="32" rx="8"/><text x="334" y="281" font-size="14" font-weight="700">⑥ SELECT 列を作る</text>
+      <rect class="box" x="320" y="302" width="180" height="32" rx="8"/><text x="334" y="323" font-size="14">⑦ ORDER 並べる</text>
+      <rect class="box" x="320" y="344" width="180" height="32" rx="8"/><text x="334" y="365" font-size="14">⑧ LIMIT 切る</text>
+    </svg></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>WHEREで別名</b><code>WHERE worked &gt; …</code><br>③の時点で worked はまだ無い</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>ORDER BYで別名</b><code>ORDER BY worked</code><br>⑦は⑥の後なので使える</div>
+    </div>
+    <p class="say">長いSQLは <span class="mark">FROMから読む</span>と意味がわかる。</p>
+  </section>
+
+  <!-- ===== SCENE 3：紙芝居 SELECTの実行順 ===== -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 3</span><h2>表が絞られていく様子</h2></div></div>
+<pre><code><span class="k">SELECT</span>   emp, sum(ot) <span class="k">AS</span> total     <span class="c">-- ⑤</span>
+<span class="k">FROM</span>     attendance                 <span class="c">-- ①</span>
+<span class="k">WHERE</span>    work_date &gt;= <span class="s">'2026-03-01'</span>  <span class="c">-- ②</span>
+<span class="k">GROUP BY</span> emp                        <span class="c">-- ③</span>
+<span class="k">HAVING</span>   sum(ot) &gt;= 1               <span class="c">-- ④</span>
+<span class="k">ORDER BY</span> total <span class="k">DESC</span> <span class="k">LIMIT</span> 1;      <span class="c">-- ⑥</span></code></pre>
+    <p class="say">ot＝その日の残業時間（説明用に簡略化した表）。</p>
+    <div class="stepper">
+      <div class="frame">
+        <p class="sqlline"><code>① FROM attendance</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th>work_date</th><th>ot</th></tr>
+          <tr><td>佐藤</td><td>02-27</td><td>2</td></tr>
+          <tr><td>佐藤</td><td>03-02</td><td>1.5</td></tr>
+          <tr><td>佐藤</td><td>03-03</td><td>2</td></tr>
+          <tr><td>鈴木</td><td>03-02</td><td>0</td></tr>
+          <tr><td>鈴木</td><td>03-04</td><td>0.5</td></tr>
+          <tr><td>高橋</td><td>03-05</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">まず表の行を全部持ってくる（6行）</p>
+      </div>
+      <div class="frame">
+        <p class="sqlline"><code>② WHERE work_date &gt;= '2026-03-01'</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th>work_date</th><th>ot</th></tr>
+          <tr class="out"><td>佐藤</td><td>02-27</td><td>2</td></tr>
+          <tr><td>佐藤</td><td>03-02</td><td>1.5</td></tr>
+          <tr><td>佐藤</td><td>03-03</td><td>2</td></tr>
+          <tr><td>鈴木</td><td>03-02</td><td>0</td></tr>
+          <tr><td>鈴木</td><td>03-04</td><td>0.5</td></tr>
+          <tr><td>高橋</td><td>03-05</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">2月の行が落ちる（5行）</p>
+      </div>
+      <div class="frame">
+        <p class="sqlline"><code>③ GROUP BY emp</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th>まとめた行</th><th>sum(ot)</th></tr>
+          <tr class="g1"><td>佐藤</td><td>2行</td><td>3.5</td></tr>
+          <tr class="g2"><td>鈴木</td><td>2行</td><td>0.5</td></tr>
+          <tr class="g3"><td>高橋</td><td>1行</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">同じ社員を1つの箱に（3組）</p>
+      </div>
+      <div class="frame">
+        <p class="sqlline"><code>④ HAVING sum(ot) &gt;= 1</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th>まとめた行</th><th>sum(ot)</th></tr>
+          <tr class="g1"><td>佐藤</td><td>2行</td><td>3.5</td></tr>
+          <tr class="out"><td>鈴木</td><td>2行</td><td>0.5</td></tr>
+          <tr class="g3"><td>高橋</td><td>1行</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">集計結果で絞るのは HAVING（2組）</p>
+      </div>
+      <div class="frame">
+        <p class="sqlline"><code>⑤ SELECT emp, sum(ot) AS total</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th class="gone">まとめた行</th><th>total</th></tr>
+          <tr><td>佐藤</td><td class="gone">2行</td><td>3.5</td></tr>
+          <tr><td>高橋</td><td class="gone">1行</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">ここでやっと列を作る。別名 total が生まれる</p>
+      </div>
+      <div class="frame">
+        <p class="sqlline"><code>⑥ ORDER BY total DESC LIMIT 1</code></p>
+        <div class="mini-wrap"><table class="mini">
+          <tr><th>emp</th><th>total</th></tr>
+          <tr class="win"><td>佐藤</td><td>3.5</td></tr>
+          <tr class="out"><td>高橋</td><td>3</td></tr>
+        </table></div>
+        <p class="cap">多い順に並べて、1行だけ残す</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 4：JOIN ===== -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-link"/></svg><div><span class="tag">SCENE 4</span><h2>JOINは行のペア作り</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="INNER JOIN">
+        <div class="fig"><svg viewBox="0 0 600 230" style="min-width:450px;max-width:640px" role="img" aria-label="INNER JOIN：相手のいる行だけペアになり、打刻のない高橋は消える。結果3行">
+          <text x="65" y="30" font-size="14" font-weight="700" text-anchor="middle">employees</text>
+          <text x="265" y="30" font-size="14" font-weight="700" text-anchor="middle">attendance</text>
+          <text x="495" y="30" font-size="14" font-weight="700" text-anchor="middle" class="t-accent">結果 3行</text>
+          <path class="line-accent" d="M120 60 L180 60"/>
+          <path class="line-accent" d="M120 60 L180 100"/>
+          <path class="line-accent" d="M120 100 L180 140"/>
+          <rect class="box" x="10" y="45" width="110" height="30" rx="6"/><text x="22" y="65" font-size="14">1 佐藤</text>
+          <rect class="box" x="10" y="85" width="110" height="30" rx="6"/><text x="22" y="105" font-size="14">2 鈴木</text>
+          <rect class="box-ng" x="10" y="125" width="110" height="30" rx="6"/><text x="22" y="145" font-size="14">3 高橋</text>
+          <text x="22" y="178" font-size="13" class="t-ng">相手なし</text>
+          <rect class="box-bg" x="180" y="45" width="170" height="30" rx="6"/><text x="192" y="65" font-size="14">emp=1 3/2 9:00-</text>
+          <rect class="box-bg" x="180" y="85" width="170" height="30" rx="6"/><text x="192" y="105" font-size="14">emp=1 3/3 9:05-</text>
+          <rect class="box-bg" x="180" y="125" width="170" height="30" rx="6"/><text x="192" y="145" font-size="14">emp=2 3/2 8:55-</text>
+          <path class="line" d="M362 100 H388"/><path class="line" d="M380 93 L388 100 L380 107"/>
+          <rect class="box-ok" x="400" y="45" width="190" height="30" rx="6"/><text x="412" y="65" font-size="14">佐藤 | 3/2 9:00-</text>
+          <rect class="box-ok" x="400" y="85" width="190" height="30" rx="6"/><text x="412" y="105" font-size="14">佐藤 | 3/3 9:05-</text>
+          <rect class="box-ok" x="400" y="125" width="190" height="30" rx="6"/><text x="412" y="145" font-size="14">鈴木 | 3/2 8:55-</text>
+          <text x="412" y="185" font-size="14" class="t-ng">高橋は消える</text>
+          <text x="10" y="215" font-size="13" class="t-muted">佐藤は2行と対応 → 結果も2行（1対多で行が増える）</text>
+        </svg></div>
+        <p class="say">両方に相手がいる行だけ残る。</p>
+      </div>
+      <div class="tab" data-label="LEFT JOIN">
+        <div class="fig"><svg viewBox="0 0 600 230" style="min-width:450px;max-width:640px" role="img" aria-label="LEFT JOIN：左の行は必ず残る。高橋は右側がNULLで残る。結果4行">
+          <text x="65" y="30" font-size="14" font-weight="700" text-anchor="middle">employees（左）</text>
+          <text x="265" y="30" font-size="14" font-weight="700" text-anchor="middle">attendance</text>
+          <text x="495" y="30" font-size="14" font-weight="700" text-anchor="middle" class="t-accent">結果 4行</text>
+          <path class="line-accent" d="M120 60 L180 60"/>
+          <path class="line-accent" d="M120 60 L180 100"/>
+          <path class="line-accent" d="M120 100 L180 140"/>
+          <rect class="box" x="10" y="45" width="110" height="30" rx="6"/><text x="22" y="65" font-size="14">1 佐藤</text>
+          <rect class="box" x="10" y="85" width="110" height="30" rx="6"/><text x="22" y="105" font-size="14">2 鈴木</text>
+          <rect class="box" x="10" y="125" width="110" height="30" rx="6"/><text x="22" y="145" font-size="14">3 高橋</text>
+          <rect class="box-bg" x="180" y="45" width="170" height="30" rx="6"/><text x="192" y="65" font-size="14">emp=1 3/2 9:00-</text>
+          <rect class="box-bg" x="180" y="85" width="170" height="30" rx="6"/><text x="192" y="105" font-size="14">emp=1 3/3 9:05-</text>
+          <rect class="box-bg" x="180" y="125" width="170" height="30" rx="6"/><text x="192" y="145" font-size="14">emp=2 3/2 8:55-</text>
+          <path class="line" d="M362 100 H388"/><path class="line" d="M380 93 L388 100 L380 107"/>
+          <rect class="box-ok" x="400" y="45" width="190" height="30" rx="6"/><text x="412" y="65" font-size="14">佐藤 | 3/2 9:00-</text>
+          <rect class="box-ok" x="400" y="85" width="190" height="30" rx="6"/><text x="412" y="105" font-size="14">佐藤 | 3/3 9:05-</text>
+          <rect class="box-ok" x="400" y="125" width="190" height="30" rx="6"/><text x="412" y="145" font-size="14">鈴木 | 3/2 8:55-</text>
+          <rect class="box-warn" x="400" y="165" width="190" height="30" rx="6"/><text x="412" y="185" font-size="14">高橋 | NULL</text>
+          <text x="10" y="215" font-size="13" class="t-muted">左の表の行は、相手がいなくても必ず残る（右側はNULL）</text>
+        </svg></div>
+<pre><code><span class="c">-- 3/2に打刻が1件もない社員</span>
+<span class="k">SELECT</span> e.name
+<span class="k">FROM</span>   employees e
+<span class="k">LEFT JOIN</span> attendance a
+       <span class="k">ON</span>  a.employee_id = e.employee_id
+<span class="hl">       <span class="k">AND</span> a.work_date = <span class="s">'2026-03-02'</span>  <span class="c">-- 右表の条件はONに</span></span>
+<span class="k">WHERE</span>  a.attendance_id <span class="k">IS NULL</span>;</code></pre>
+        <p class="say">右表の条件をWHEREに書くと、INNERに化ける。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 5：GROUP BY ===== -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 5</span><h2>GROUP BYは仕分け箱</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 560 270" style="min-width:420px;max-width:600px" role="img" aria-label="打刻の5行が社員ごとの3つの箱に仕分けられ、箱ごとに合計が出る">
+      <text x="95" y="22" font-size="14" font-weight="700" text-anchor="middle">打刻の行（5行）</text>
+      <text x="430" y="22" font-size="14" font-weight="700" text-anchor="middle" class="t-accent">社員ごとの箱（3行）</text>
+      <path class="line-accent flowing" d="M170 55 C250 55 250 70 330 70"/>
+      <path class="line-accent flowing" d="M170 100 C250 100 250 75 330 75"/>
+      <path class="line-accent flowing" d="M170 145 C250 145 250 145 330 145"/>
+      <path class="line-accent flowing" d="M170 190 C250 190 250 150 330 150"/>
+      <path class="line-accent flowing" d="M170 235 C250 235 250 225 330 225"/>
+      <rect class="box-bg" x="20" y="40" width="150" height="30" rx="6"/><text x="32" y="60" font-size="14">佐藤 3/2 1.5h</text>
+      <rect class="box-bg" x="20" y="85" width="150" height="30" rx="6"/><text x="32" y="105" font-size="14">佐藤 3/3 2h</text>
+      <rect class="box-bg" x="20" y="130" width="150" height="30" rx="6"/><text x="32" y="150" font-size="14">鈴木 3/2 0h</text>
+      <rect class="box-bg" x="20" y="175" width="150" height="30" rx="6"/><text x="32" y="195" font-size="14">鈴木 3/4 0.5h</text>
+      <rect class="box-bg" x="20" y="220" width="150" height="30" rx="6"/><text x="32" y="240" font-size="14">高橋 3/5 3h</text>
+      <rect class="box" x="330" y="45" width="200" height="56" rx="10"/><text x="345" y="68" font-size="14" font-weight="700">佐藤の箱</text><text x="345" y="90" font-size="14" class="t-accent">sum = 3.5h / count = 2</text>
+      <rect class="box" x="330" y="120" width="200" height="56" rx="10"/><text x="345" y="143" font-size="14" font-weight="700">鈴木の箱</text><text x="345" y="165" font-size="14" class="t-accent">sum = 0.5h / count = 2</text>
+      <rect class="box" x="330" y="195" width="200" height="56" rx="10"/><text x="345" y="218" font-size="14" font-weight="700">高橋の箱</text><text x="345" y="240" font-size="14" class="t-accent">sum = 3h / count = 1</text>
+    </svg></div>
+    <div class="tiles">
+      <div class="tile ok"><svg class="ic"><use href="#i-check"/></svg><b>SELECTに書ける列</b><span>GROUP BYの列か、sum・countなど集計関数だけ</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>集計で絞る</b><span>WHEREではなく HAVING</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>合計が倍になる</b><span>「多」の表を2つJOINしてから集計した。先に集計してからつなぐ</span></div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 6：落とし穴 ===== -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-warn"/></svg><div><span class="tag">SCENE 6</span><h2>エラーが出ない落とし穴</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>0件になる</b><code>clock_out = NULL</code></div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>正しい</b><code>clock_out IS NULL</code></div>
+    </div>
+    <div class="tiles" style="margin-top:12px">
+      <div class="tile"><svg class="ic"><use href="#i-question"/></svg><b>NULL＝まだ無い</b><span>0でも空文字でもない。計算に混ざると結果もNULL</span></div>
+      <div class="tile ng"><svg class="ic"><use href="#i-x"/></svg><b>NOT IN のわな</b><span>中にNULLが1つあると0件。否定は NOT EXISTS</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-calendar"/></svg><b>月の範囲</b><span><code>&gt;= 月初 AND &lt; 翌月1日</code>。timestampにBETWEENだと月末が漏れる</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-clock"/></svg><b>9時間ずれる</b><span>壊れたとは限らない。<code>SHOW TimeZone;</code>と列の型を確認</span></div>
+    </div>
+    <p class="say">AIはこの会社のデータの癖を知らない。<span class="mark">件数と中身</span>を自分で見る。</p>
+  </section>
+
+  <!-- ===== SCENE 7：安全な更新 ===== -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-shield"/></svg><div><span class="tag">SCENE 7</span><h2>更新はいつも同じ型で</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>SELECT</b>同じWHEREで件数確認</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-lock"/></svg><b>BEGIN</b>やり直せる状態に</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>UPDATE</b>書き換える</div><div class="to"></div>
+      <div class="n warn"><svg class="ic"><use href="#i-eye"/></svg><b>件数確認</b>UPDATE 3 か？</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-check"/></svg><b>COMMIT</b>違えば ROLLBACK</div>
+    </div>
+<pre><code><span class="k">SELECT</span> * <span class="k">FROM</span> applications <span class="k">WHERE</span> application_id <span class="k">IN</span> (50121,50122,50130); <span class="c">-- 3件?</span><span class="tag">①</span>
+<span class="hl"><span class="k">BEGIN</span>;</span>
+<span class="k">UPDATE</span> applications <span class="k">SET</span> status = <span class="s">'RETURNED'</span>
+<span class="k">WHERE</span>  application_id <span class="k">IN</span> (50121,50122,50130)
+  <span class="k">AND</span>  status = <span class="s">'APPROVED'</span>            <span class="c">-- 想定外は触らない保険</span>
+<span class="k">RETURNING</span> application_id, status;      <span class="c">-- UPDATE 3 ?</span><span class="tag">②</span>
+<span class="hl"><span class="k">ROLLBACK</span>;  <span class="c">-- 予行演習。本番で確認が取れたら COMMIT;</span></span></code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>依頼の件数と違えば、ここで止めて確認</div>
+      <div><span class="num">2</span>表示される件数を必ず見る</div>
+    </div>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>自動コミットに注意</b><span>ONだとBEGIN忘れのUPDATEは即確定</span></div>
+      <div class="tile ok"><svg class="ic"><use href="#i-check"/></svg><b>迷ったら ROLLBACK</b><span>やり直しはいつでもできる</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-server"/></svg><b>接続先を声に出す</b><span>本番か検証か、DB名とホスト名で確認</span></div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 8：インデックス ===== -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-book"/></svg><div><span class="tag">SCENE 8</span><h2>インデックスは本の索引</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-book"/></svg><b>本の索引</b><span class="eq">インデックス</span></div>
+      <div><svg class="ic"><use href="#i-list"/></svg><b>全ページめくる</b><span class="eq">Seq Scan</span></div>
+      <div><svg class="ic"><use href="#i-target"/></svg><b>「p.120」へ直行</b><span class="eq">Index Scan</span></div>
+    </div>
+<pre><code><span class="k">EXPLAIN ANALYZE</span> <span class="k">SELECT</span> * <span class="k">FROM</span> attendance <span class="k">WHERE</span> employee_id = 1234;
+<span class="c">-- 索引なし（例）</span>
+<span class="hl">Seq Scan on attendance (...)</span><span class="tag">①</span>
+  Rows Removed by Filter: 999952<span class="tag">②</span>
+Execution Time: 85.240 ms<span class="tag">③</span>
+<span class="c">-- 索引 (employee_id, work_date) を作った後（例）</span>
+<span class="hl">Index Scan using idx_attendance_emp_date on attendance (...)</span>
+Execution Time: 0.090 ms</code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>どう探したか</div>
+      <div><span class="num">2</span>読んだのに捨てた行。多いほどムダ</div>
+      <div><span class="num">3</span>全体にかかった時間</div>
+    </div>
+    <p class="say">Seq Scan＝悪ではない。半分以上読むなら全部めくる方が速い。</p>
+    <p class="say">EXPLAIN ANALYZE は本当に実行する。UPDATEに付けるならBEGIN〜ROLLBACKで。</p>
+  </section>
+
+  <!-- ===== SCENE 9：ロック待ち ===== -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-lock"/></svg><div><span class="tag">SCENE 9</span><h2>ロックはトイレの鍵</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 600 250" style="min-width:450px;max-width:640px" role="img" aria-label="セッションAが行ロックを持つ間、セッションBは待たされ、AのCOMMITで鍵が開いてBが実行される">
+      <text x="10" y="64" font-size="14" font-weight="700">セッションA</text>
+      <text x="10" y="84" font-size="13" class="t-muted">あなたの作業</text>
+      <text x="10" y="154" font-size="14" font-weight="700">セッションB</text>
+      <text x="10" y="174" font-size="13" class="t-muted">打刻画面</text>
+      <path class="line dash" d="M120 70 H580"/>
+      <path class="line dash" d="M120 160 H580"/>
+      <!-- A -->
+      <rect class="box-warn" x="150" y="55" width="270" height="30" rx="6"/>
+      <text x="160" y="75" font-size="14">BEGIN; UPDATE id=1（鍵を持つ）</text>
+      <rect class="box-ok" x="420" y="55" width="90" height="30" rx="6"/>
+      <text x="432" y="75" font-size="14">COMMIT</text>
+      <path class="line-accent" d="M465 90 V140"/><path class="line-accent" d="M458 132 L465 141 L472 132"/>
+      <text x="475" y="120" font-size="13" class="t-accent">鍵が開く</text>
+      <!-- B -->
+      <text x="200" y="140" font-size="14">UPDATE id=1</text>
+      <path class="line-ng dash" d="M200 160 H420"/>
+      <text x="245" y="185" font-size="14" class="t-ng">待ち（画面が固まる）</text>
+      <rect class="box-ok" x="430" y="145" width="140" height="30" rx="6"/>
+      <text x="442" y="165" font-size="14">やっと実行</text>
+      <path class="line" d="M120 215 H575"/><path class="line" d="M567 208 L577 215 L567 222"/>
+      <text x="530" y="240" font-size="13" class="t-muted">時間</text>
+      <text x="120" y="240" font-size="13" class="t-muted">AがCOMMITを忘れると、Bはずっと待つ</text>
+    </svg></div>
+<pre><code><span class="c">-- 誰が誰を待たせているか（見るだけなら安全）</span>
+<span class="k">SELECT</span> pid, state, now() - xact_start <span class="k">AS</span> xact_age,
+       pg_blocking_pids(pid) <span class="k">AS</span> blocked_by, left(query, 60)
+<span class="k">FROM</span>   pg_stat_activity
+<span class="k">WHERE</span>  datname = current_database();</code></pre>
+    <div class="tiles">
+      <div class="tile warn"><svg class="ic"><use href="#i-clock"/></svg><b>idle in transaction</b><span>長く続く行＝BEGIN放置。犯人のことが多い</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-route"/></svg><b>デッドロック</b><span>互いの鍵待ち。PostgreSQLが片方をエラーで止める</span></div>
+      <div class="tile ng"><svg class="ic"><use href="#i-hand"/></svg><b>強制終了は自分でしない</b><span>pg_terminate_backend は先輩・責任者の判断で</span></div>
+    </div>
+  </section>
+
+  <!-- ===== QUIZ ===== -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>WHEREでSELECTの別名が使えないのは？</summary><div class="a">WHERE（③）はSELECT（⑥）より先に動くから。</div></details>
+      <details class="flip"><summary>LEFT JOINなのに行が消えた。まず見る所は？</summary><div class="a">右表の条件がWHEREにないか。ONへ移す。</div></details>
+      <details class="flip"><summary>打刻漏れを探したら0件。どこが変？</summary><div class="a"><code>= NULL</code> と書いている。<code>IS NULL</code> が正解。</div></details>
+      <details class="flip"><summary>UPDATEの前に必ずやることは？</summary><div class="a">同じWHEREでSELECTして件数を確認。次にBEGIN。</div></details>
+    </div>
+  </section>
+
+  <!-- ===== TODO ===== -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch06">
+      <li><input type="checkbox" id="ch06-1"><label for="ch06-1">よく使う表3つを <code>\d</code> で見て紙にER図を書く</label></li>
+      <li><input type="checkbox" id="ch06-2"><label for="ch06-2">自分の今月の打刻をAIなしでSELECTする</label></li>
+      <li><input type="checkbox" id="ch06-3"><label for="ch06-3">AIのSQLはFROMから読み、JOINごとに件数を見る</label></li>
+      <li><input type="checkbox" id="ch06-4"><label for="ch06-4">クライアントの自動コミット設定の場所を確認する</label></li>
+      <li><input type="checkbox" id="ch06-5"><label for="ch06-5">検証環境で BEGIN → UPDATE → SELECT → ROLLBACK</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/06-sql-postgres.html">文字版（v1）の06章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="05-build-env.html"><span>← 前の章</span>05 開発環境をつくる</a><a class="next" href="07-logs-incident.html"><span>次の章 →</span>07 ログと障害調査</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

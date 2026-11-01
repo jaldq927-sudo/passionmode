@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>07 ログと障害調査</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">07 ログと障害調査</span><a href="v1/07-logs-incident.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">07</div>
+  <div><div class="eyebrow">CHAPTER 07</div><h1>ログと障害調査</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-search"/></svg>最初の1件を探す</div>
+    <div><svg class="ic"><use href="#i-target"/></svg>一番下のCaused byを読む</div>
+    <div><svg class="ic"><use href="#i-clock"/></svg>問い合わせ時刻≠発生時刻</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- ===== SCENE 1：ログの地図 ===== -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 1</span><h2>ログの地図</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b>利用者</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b>受付</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b>作業場</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b>Spring Boot</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>PostgreSQL</b>保存</div>
+    </div>
+    <p class="say">層ごとに別のログ。押して、何が書かれるか見よう。</p>
+    <div class="explore" style="margin-top:14px">
+      <div class="spots">
+        <button class="spot" data-show="p-apache"><svg class="ic"><use href="#i-web"/></svg><span>Apache<small>access_log / error_log</small></span></button>
+        <button class="spot" data-show="p-tomcat"><svg class="ic"><use href="#i-server"/></svg><span>Tomcat<small>catalina.out ほか</small></span></button>
+        <button class="spot" data-show="p-app"><svg class="ic"><use href="#i-app"/></svg><span>アプリ<small>logback / log4j2</small></span></button>
+        <button class="spot" data-show="p-pg"><svg class="ic"><use href="#i-db"/></svg><span>PostgreSQL<small>postgresql-日付.log</small></span></button>
+        <button class="spot" data-show="p-gc"><svg class="ic"><use href="#i-gear"/></svg><span>JVM<small>GCログ</small></span></button>
+      </div>
+      <div class="panel" id="p-apache"><h3><svg class="ic"><use href="#i-web"/></svg>Apache</h3><ul><li>access_log＝受付台帳</li><li>誰が・いつ・何に・結果は</li><li>影響範囲を<b>数える</b>のに使う</li></ul></div>
+      <div class="panel" id="p-tomcat" hidden><h3><svg class="ic"><use href="#i-server"/></svg>Tomcat</h3><ul><li>catalina.out：標準出力・OOM</li><li>catalina.日付.log：起動・配備</li><li>localhost.日付.log：初期化失敗</li></ul></div>
+      <div class="panel" id="p-app" hidden><h3><svg class="ic"><use href="#i-app"/></svg>アプリ</h3><ul><li>開発者が書いたログ</li><li>例外とスタックトレース</li><li><b>なぜ</b>失敗したかを探す</li></ul></div>
+      <div class="panel" id="p-pg" hidden><h3><svg class="ic"><use href="#i-db"/></svg>PostgreSQL</h3><ul><li>SQLのエラー</li><li>デッドロック・接続数超過</li><li>遅いSQL（設定したとき）</li></ul></div>
+      <div class="panel" id="p-gc" hidden><h3><svg class="ic"><use href="#i-gear"/></svg>JVM（GCログ）</h3><ul><li>メモリ掃除の回数と停止時間</li><li>メモリ不足の前ぶれ</li><li>起動オプションで出す設定</li></ul></div>
+    </div>
+    <p class="say">置き場所は構成で変わる。実物の場所は先輩に聞いてメモ。</p>
+  </section>
+
+  <!-- ===== SCENE 2：ログ1行 ===== -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-log"/></svg><div><span class="tag">SCENE 2</span><h2>ログ1行を分解する</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 680 220" style="min-width:510px;max-width:720px" role="img" aria-label="アプリログ1行を日時・レベル・プロセスID・スレッド・ロガー・メッセージに分解した図">
+      <!-- row 1 -->
+      <rect class="box-soft" x="10" y="30" width="200" height="34" rx="6"/>
+      <text x="22" y="52" font-size="14">2026-03-12 09:03:41.512</text>
+      <rect class="box-ng" x="220" y="30" width="70" height="34" rx="6"/>
+      <text x="232" y="52" font-size="14" font-weight="700" class="t-ng">ERROR</text>
+      <text x="304" y="52" font-size="14" class="t-muted">21844 ---</text>
+      <rect class="box-warn" x="390" y="30" width="170" height="34" rx="6"/>
+      <text x="402" y="52" font-size="14">[nio-8080-exec-7]</text>
+      <text x="22" y="90" font-size="14" font-weight="700" class="t-accent">① 日時</text>
+      <text x="22" y="110" font-size="13" class="t-muted">いつ。他のログと合わせる軸</text>
+      <text x="232" y="90" font-size="14" font-weight="700" class="t-ng">② レベル</text>
+      <text x="232" y="110" font-size="13" class="t-muted">重さ</text>
+      <text x="304" y="90" font-size="13" class="t-muted">プロセスID</text>
+      <text x="402" y="90" font-size="14" font-weight="700">③ スレッド</text>
+      <text x="402" y="110" font-size="13" class="t-muted">どの作業員か。同じ名前で追う</text>
+      <!-- row 2 -->
+      <rect class="box" x="10" y="130" width="270" height="34" rx="6"/>
+      <text x="22" y="152" font-size="14">c.e.kintai.service.ClockService</text>
+      <text x="286" y="152" font-size="14" class="t-muted">:</text>
+      <rect class="box-ok" x="300" y="130" width="370" height="34" rx="6"/>
+      <text x="312" y="152" font-size="14">打刻登録に失敗しました employeeCode=E01234</text>
+      <text x="22" y="190" font-size="14" font-weight="700" class="t-accent">④ ロガー</text>
+      <text x="22" y="210" font-size="13" class="t-muted">どのクラスか。自社かライブラリか</text>
+      <text x="312" y="190" font-size="14" font-weight="700" class="t-ok">⑤ メッセージ</text>
+      <text x="312" y="210" font-size="13" class="t-muted">何が起きたか。下にトレースが続く</text>
+    </svg></div>
+    <div class="stack" style="margin-top:12px">
+      <div><svg class="ic c-ng"><use href="#i-fire"/></svg>ERROR<span>処理が失敗</span></div>
+      <div><svg class="ic c-warn"><use href="#i-warn"/></svg>WARN<span>注意・続行</span></div>
+      <div><svg class="ic c-accent"><use href="#i-list"/></svg>INFO<span>通常の記録</span></div>
+      <div><svg class="ic c-muted"><use href="#i-code"/></svg>DEBUG<span>開発用（本番は普通出さない）</span></div>
+    </div>
+    <p class="say">平常時のWARNを知っておくと「いつもと違う」に気づける。</p>
+  </section>
+
+  <!-- ===== SCENE 3：アクセスログ ===== -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-table"/></svg><div><span class="tag">SCENE 3</span><h2>アクセスログは受付台帳</h2></div></div>
+    <p class="say">本当は1行。項目ごとに分けて表示（Apache combined＋%D）。</p>
+<pre><code>10.20.31.45                        <span class="tag">①</span> <span class="c">IP</span>
+- -                                    <span class="c">ユーザー（通常は空）</span>
+[12/Mar/2026:09:03:41 +0900]       <span class="tag">②</span> <span class="c">時刻</span>
+"POST /kintai/clock/in HTTP/1.1"   <span class="tag">③</span> <span class="c">何の機能</span>
+<span class="hl">500                                <span class="tag">④</span> <span class="c">ステータス</span></span>
+1243                                   <span class="c">返したバイト数</span>
+"https://…/kintai/top" "Mozilla/…"     <span class="c">参照元・ブラウザ</span>
+<span class="hl">30215871                           <span class="tag">⑤</span> <span class="c">処理時間</span></span></code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>プロキシ経由だとプロキシのIP</div>
+      <div><span class="num">2</span>応答ではなく、受け付けた時刻</div>
+      <div><span class="num">3</span>メソッドとURL</div>
+      <div><span class="num">4</span>下のタイルで意味を見る</div>
+      <div><span class="num">5</span>Apacheはマイクロ秒 → 約30.2秒</div>
+    </div>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile ok"><svg class="ic"><use href="#i-check"/></svg><b>2xx</b><span>成功（3xxは転送）</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-user"/></svg><b>4xx</b><span>利用者側（404など）</span></div>
+      <div class="tile ng"><svg class="ic"><use href="#i-server"/></svg><b>5xx</b><span>500アプリ失敗／502・503裏につながらない／504裏が時間切れ</span></div>
+    </div>
+    <p class="say">Tomcatの既定には処理時間が無い。%Dの単位も版で違う。</p>
+  </section>
+
+  <!-- ===== SCENE 4：スタックトレース ===== -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-eye"/></svg><div><span class="tag">SCENE 4</span><h2>スタックトレースの見る所</h2></div></div>
+<pre><code><span class="k">o.s.dao.DuplicateKeyException</span>: PreparedStatementCallback; ...<span class="tag">①</span>
+    at o.s.jdbc.core.JdbcTemplate.update(...)
+<span class="hl">    at c.e.kintai.repo.ClockRepository.insert(ClockRepository.java:58)<span class="tag">②</span></span>
+    at c.e.kintai.service.ClockService.clockIn(ClockService.java:31)
+    ... 23 more<span class="tag">③</span>
+<span class="hl"><span class="k">Caused by: o.postgresql.util.PSQLException</span>:<span class="tag">④</span></span>
+<span class="hl">  ERROR: duplicate key value violates unique constraint "attendance_emp_date_key"</span>
+  Detail: Key (employee_id, work_date)=(1234, 2026-03-12) already exists.</code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>一番上：外側の包み（結果）</div>
+      <div><span class="num">2</span>自社パッケージの最初の行＝現場（ファイル:行）</div>
+      <div><span class="num">3</span>上と同じ行なので省略。消えてはいない</div>
+      <div><span class="num">4</span>一番下の Caused by＝根本原因に一番近い</div>
+    </div>
+    <div class="pipe">
+      <div class="n on"><svg class="ic"><use href="#i-target"/></svg><b>④ 最初に読む</b>一番下のCaused by</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-code"/></svg><b>② 次に</b>自社コードの行</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-layers"/></svg><b>① 最後に</b>一番上</div>
+    </div>
+    <p class="say">この例：同じ社員・同じ日の打刻が二重登録された。o.s.・c.e.は説明用の省略。</p>
+  </section>
+
+  <!-- ===== SCENE 5：典型障害パターン ===== -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 5</span><h2>よくある障害7つ</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="q-oom"><svg class="ic"><use href="#i-box"/></svg><span>メモリ不足<small>OutOfMemoryError</small></span></button>
+        <button class="spot" data-show="q-pool"><svg class="ic"><use href="#i-db"/></svg><span>DBコネクション枯渇<small>貸し傘が全部出払う</small></span></button>
+        <button class="spot" data-show="q-thread"><svg class="ic"><use href="#i-users"/></svg><span>スレッド枯渇<small>作業員が全員ふさがる</small></span></button>
+        <button class="spot" data-show="q-lock"><svg class="ic"><use href="#i-lock"/></svg><span>長時間SQL・ロック待ち<small>特定の処理だけ固まる</small></span></button>
+        <button class="spot" data-show="q-disk"><svg class="ic"><use href="#i-folder"/></svg><span>ディスクフル<small>書く場所がない</small></span></button>
+        <button class="spot" data-show="q-ext"><svg class="ic"><use href="#i-cloud"/></svg><span>外部連携タイムアウト<small>相手が返事しない</small></span></button>
+        <button class="spot" data-show="q-boot"><svg class="ic"><use href="#i-play"/></svg><span>デプロイ後の起動失敗<small>リリース直後に全滅</small></span></button>
+      </div>
+      <div class="panel" id="q-oom"><h3><svg class="ic"><use href="#i-box"/></svg>メモリ不足</h3><ul><li><b>症状</b> じわじわ重く→無応答</li><li><b>証拠</b> OOM・Full GC多発</li><li><b>対処</b> 再起動は応急。原因処理を特定</li></ul></div>
+      <div class="panel" id="q-pool" hidden><h3><svg class="ic"><use href="#i-db"/></svg>コネクション枯渇</h3><ul><li><b>症状</b> 30秒ほど待って500</li><li><b>証拠</b> Connection is not available</li><li><b>対処</b> 返らない原因（遅SQL等）を解消</li></ul></div>
+      <div class="panel" id="q-thread" hidden><h3><svg class="ic"><use href="#i-users"/></svg>スレッド枯渇</h3><ul><li><b>症状</b> 静的ページも遅い・502/503</li><li><b>証拠</b> 処理時間が全体に伸びる</li><li><b>対処</b> 待っている先を解消</li></ul></div>
+      <div class="panel" id="q-lock" hidden><h3><svg class="ic"><use href="#i-lock"/></svg>ロック待ち</h3><ul><li><b>症状</b> 特定の更新だけ固まる</li><li><b>証拠</b> wait_event_type = Lock</li><li><b>対処</b> ブロック元を特定（06章）</li></ul></div>
+      <div class="panel" id="q-disk" hidden><h3><svg class="ic"><use href="#i-folder"/></svg>ディスクフル</h3><ul><li><b>症状</b> 突然書けない・ログが途切れる</li><li><b>証拠</b> No space left on device</li><li><b>対処</b> 手順どおり退避・ローテーション</li></ul></div>
+      <div class="panel" id="q-ext" hidden><h3><svg class="ic"><use href="#i-cloud"/></svg>外部連携タイムアウト</h3><ul><li><b>症状</b> 連携する処理だけ遅い</li><li><b>証拠</b> SocketTimeoutException</li><li><b>対処</b> 相手先に確認・再送手順</li></ul></div>
+      <div class="panel" id="q-boot" hidden><h3><svg class="ic"><use href="#i-play"/></svg>起動失敗</h3><ul><li><b>症状</b> 直後から全画面404/503</li><li><b>証拠</b> APPLICATION FAILED TO START</li><li><b>対処</b> 一番下のCaused by→切り戻し判断</li></ul></div>
+    </div>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>再起動で直った≠解決</b><span>原因が残れば、また起きる</span></div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 6：調査フロー 紙芝居 ===== -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 6</span><h2>調査は7コマで進む</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-clock"/></svg><br>1. <em>時刻と症状</em>を確定</div>
+        <div class="vs">
+          <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>あいまい</b>朝、打刻できないらしい</div>
+          <div class="mid">→</div>
+          <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>確定</b>3/12 9:03ごろ、打刻画面で500</div>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-calendar"/></svg><br>2. <em>前後の出来事</em>を並べる</div>
+        <p class="cap">リリース・設定変更・バッチ・締め日・外部メンテ</p>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-table"/></svg><br>3. アクセスログで<em>範囲</em></div>
+        <p class="cap">500は何時から何件？どのURL？全画面か一部か</p>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-search"/></svg><br>4. <em>最初のERROR</em>を探す</div>
+        <p class="cap">少し前から読む。後半のエラーは巻き添えが多い</p>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-target"/></svg><br>5. <em>根本原因</em>へ</div>
+        <p class="cap">Caused by・自社コード・DBの状態。「なぜ」を2〜3回</p>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-users"/></svg><br>6. <em>影響</em>を数える</div>
+        <p class="cap">どの機能・どのデータ・何人。登録漏れや二重登録は？</p>
+      </div>
+      <div class="frame">
+        <div class="big"><svg class="ic xl c-accent"><use href="#i-shield"/></svg><br>7. <em>再発防止</em></div>
+        <p class="cap">修正だけでなく、検知（監視）と手順も直す</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 7：タイムライン ===== -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-clock"/></svg><div><span class="tag">SCENE 7</span><h2>本当の始まりはいつ？</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 680 270" style="min-width:510px;max-width:720px" role="img" aria-label="架空の障害タイムライン。9:00締めバッチ開始、9:02ロック待ち（最初の異変）、9:03コネクション枯渇で500、9:10問い合わせ、9:25バッチ完了で回復。影響時間帯は9:02から9:25">
+      <path class="line" d="M30 140 H655"/><path class="line" d="M647 133 L657 140 L647 147"/>
+      <!-- above -->
+      <text x="60" y="62" font-size="15" font-weight="700" text-anchor="middle">09:00</text>
+      <text x="60" y="84" font-size="13" text-anchor="middle">締めバッチ開始</text>
+      <text x="60" y="102" font-size="13" text-anchor="middle" class="t-muted">大量UPDATE</text>
+      <path class="line dash" d="M60 110 V132"/>
+      <text x="270" y="62" font-size="15" font-weight="700" text-anchor="middle">09:03</text>
+      <text x="270" y="84" font-size="13" text-anchor="middle">Connection is</text>
+      <text x="270" y="102" font-size="13" text-anchor="middle">not available → 500</text>
+      <path class="line dash" d="M270 110 V132"/>
+      <text x="600" y="62" font-size="15" font-weight="700" text-anchor="middle">09:25</text>
+      <text x="600" y="84" font-size="13" text-anchor="middle">バッチ完了</text>
+      <text x="600" y="102" font-size="13" text-anchor="middle" class="t-ok">500が止まる</text>
+      <path class="line dash" d="M600 110 V132"/>
+      <!-- below -->
+      <path class="line-ng" d="M170 148 V168"/>
+      <text x="170" y="186" font-size="15" font-weight="700" text-anchor="middle" class="t-ng">09:02</text>
+      <text x="170" y="206" font-size="13" text-anchor="middle">打刻がロック待ち</text>
+      <text x="170" y="224" font-size="13" font-weight="700" text-anchor="middle" class="t-ng">最初の異変</text>
+      <path class="line dash" d="M420 148 V168"/>
+      <text x="420" y="186" font-size="15" font-weight="700" text-anchor="middle" class="t-muted">09:10</text>
+      <text x="420" y="206" font-size="13" text-anchor="middle">問い合わせ</text>
+      <text x="420" y="224" font-size="13" text-anchor="middle" class="t-muted">＝発生時刻ではない</text>
+      <!-- dots -->
+      <circle cx="60" cy="140" r="7" class="f-accent"/>
+      <circle cx="170" cy="140" r="8" class="f-ng"/>
+      <circle cx="270" cy="140" r="7" class="f-ng"/>
+      <circle cx="420" cy="140" r="7" class="f-muted"/>
+      <circle cx="600" cy="140" r="7" class="f-ok"/>
+      <!-- impact band -->
+      <rect class="box-ng" x="170" y="238" width="430" height="24" rx="6"/>
+      <text x="385" y="255" font-size="13" font-weight="700" text-anchor="middle" class="t-ng">影響時間帯 09:02〜09:25（500を数える範囲）</text>
+    </svg></div>
+    <p class="say">「9:10発生」と書くと、9:02〜9:10の人を見落とす。</p>
+    <p class="say muted">架空の例：締めバッチのロックで打刻が待たされ、接続が枯渇。</p>
+  </section>
+
+  <!-- ===== SCENE 8：コマンド ===== -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-terminal"/></svg><div><span class="tag">SCENE 8</span><h2>巨大ログはコマンドで</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="Linux">
+<pre><code><span class="c"># 流れてくるログを見る</span>
+tail -F /opt/tomcat/logs/catalina.out
+<span class="c"># 例外の行＋後ろ30行（スタックトレース）</span>
+grep -n -A 30 <span class="s">'SQLTransientConnectionException'</span> app.log | less
+<span class="c"># 圧縮した古いログも数える</span>
+zgrep -c <span class="s">'OutOfMemoryError'</span> catalina.out-20260311.gz
+<span class="c"># ステータス500の件数（combined形式は9番目）</span>
+awk <span class="s">'$9 == 500'</span> access_log | wc -l
+<span class="c"># 500が出たURLの上位</span>
+awk <span class="s">'$9 == 500 {print $7}'</span> access_log | sort | uniq -c | sort -rn | head</code></pre>
+      </div>
+      <div class="tab" data-label="Windows">
+<pre><code><span class="c">REM 例外名を含む行（/N 行番号）</span>
+findstr /N /C:<span class="s">"OutOfMemoryError"</span> catalina.2026-03-12.log
+<span class="c"># PowerShell：流れてくるログを見る</span>
+Get-Content .\app.log -Wait -Tail 50
+<span class="c"># 例外の行＋後ろ30行</span>
+Select-String -Path .\app.log -Pattern <span class="s">'SQLTransientConnectionException'</span> -Context 0,30
+<span class="c"># ステータス500の件数</span>
+(Select-String -Path .\localhost_access_log.2026-03-12.txt -Pattern <span class="s">'" 500 '</span>).Count</code></pre>
+      </div>
+    </div>
+    <div class="tiles" style="margin-top:12px">
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>トレースは日時なし</b><span>時刻で絞ると消える。原因はgrep -Aで読む</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-calendar"/></svg><b>日またぎ・.gz</b><span>前日のファイルと圧縮済みも見る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-pen"/></svg><b>文字化けしたら</b><span>Select-String -Encoding UTF8</span></div>
+    </div>
+  </section>
+
+  <!-- ===== SCENE 9：報告とAI ===== -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 9</span><h2>事実で報告、AIは助手</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>あいまい</b>朝、DBが重くて打刻できない人がいたようです</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>事実</b>3/12 9:02〜9:25、打刻で500が412件。原因は推定（調査中）</div>
+    </div>
+    <div class="tiles" style="margin-top:12px">
+      <div class="tile ng"><svg class="ic"><use href="#i-lock"/></svg><b>個人情報を消す</b><span>氏名・社員コード・IP。渡してよいか社内ルールを確認</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>範囲を絞る</b><span>発生前後の数分と、最初のエラー</span></div>
+      <div class="tile ok"><svg class="ic"><use href="#i-eye"/></svg><b>根拠を自分で見る</b><span>AIの推測の行を、ログで裏取りする</span></div>
+    </div>
+    <p class="say">「確認済み」と「推定」を分けて書く。</p>
+  </section>
+
+  <!-- ===== QUIZ ===== -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>スタックトレース、最初に読む所は？</summary><div class="a">一番下の Caused by のメッセージ。次に自社パッケージの行。</div></details>
+      <details class="flip"><summary>同じエラーが500件。調べるのは？</summary><div class="a">一番最初の1件。後のエラーは巻き添えのことが多い。</div></details>
+      <details class="flip"><summary>Apacheの %D が 30215871。何秒？</summary><div class="a">マイクロ秒なので約30.2秒。</div></details>
+      <details class="flip"><summary>ClientAbortException が1件。大問題？</summary><div class="a">単発なら利用者が去っただけ。大量なら「遅さ」が本当の問題。</div></details>
+    </div>
+  </section>
+
+  <!-- ===== TODO ===== -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch07">
+      <li><input type="checkbox" id="ch07-1"><label for="ch07-1">検証環境で4種類のログの場所をメモする</label></li>
+      <li><input type="checkbox" id="ch07-2"><label for="ch07-2">平常時のアプリログを10分眺める</label></li>
+      <li><input type="checkbox" id="ch07-3"><label for="ch07-3">昨日の500の件数をコマンドで数える</label></li>
+      <li><input type="checkbox" id="ch07-4"><label for="ch07-4">AIに貼る前に「一番下のCaused by」を指さす</label></li>
+      <li><input type="checkbox" id="ch07-5"><label for="ch07-5">AIの答えの根拠行を1つ自分で見つける</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/07-logs-incident.html">文字版（v1）の07章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="06-sql-postgres.html"><span>← 前の章</span>06 自分で書くSQL</a><a class="next" href="08-xml-forms.html"><span>次の章 →</span>08 XMLのWeb申請</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
