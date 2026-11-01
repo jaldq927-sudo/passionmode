@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>02 システムの全体像</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .figure svg text{font-size:13px}
+  .figure svg .t-s{font-size:12px}
+  .figure svg .t-b{font-weight:700}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 02 システムの全体像</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">02</div>
+  <div><div class="eyebrow">CHAPTER 02 ・ 地図をもつ</div><h1>システムの全体像</h1></div>
+  <p class="summary">勤怠システムは「ブラウザ → Apache → Tomcat → Spring Boot アプリ → PostgreSQL」という層の積み重ねです。この地図が頭に入ると、ログをどこから見ればよいか、障害がどの層で起きているかを自分で考えられるようになります。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>勤怠システムを構成する5つの層と、それぞれの役割・ログの場所</li>
+    <li>打刻ボタンを押してから画面が返るまでに、裏で何が起きているか</li>
+    <li>HTTP の基本（GET / POST、ステータスコード）と、障害時の「どの層か」の切り分け方</li>
+    <li>WAR 配備と Spring Boot 実行可能 jar の違い、現場のシステムがどちらかを確かめる方法</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#why">なぜ地図が要るか</a><a href="#analogy">レストランでたとえる</a><a href="#map">構成図とログ</a><a href="#http">HTTPの基礎</a><a href="#life">リクエストの一生</a><a href="#batch">バッチとオンライン</a><a href="#servers">複数台構成</a><a href="#war">WARとjar</a><a href="#trouble">障害の切り分け</a><a href="#pitfall">つまずき</a><a href="#quiz">練習問題</a><a href="#terms">用語</a><a href="#todo">明日から</a>
+  </nav>
+
+  <section id="why">
+    <h2>なぜ「地図」が要るのか</h2>
+    <p>ログ調査を AI に頼んで解決できた。でも、なぜそのログを見ればよかったのか、自分では説明できない。そんなもやもやを感じているなら、足りていないのは個々の知識よりも<strong>全体の地図</strong>かもしれません。</p>
+    <p>勤怠システムは、1つの大きなプログラムではありません。ブラウザ、Web サーバ（Apache）、AP サーバ（Tomcat）、アプリ（Spring Boot）、データベース（PostgreSQL）という、役割の違う部品がリレーのように仕事を受け渡しています。障害が起きたときに「どこで止まったのか」を考えるには、このリレーの順番と、それぞれの部品がどこに記録（ログ）を残すかを知っている必要があります。</p>
+    <p>逆に言えば、地図さえあれば AI への質問も変わります。「エラーが出ました、どうすれば？」ではなく、「Apache のアクセスログでは 503、Tomcat の catalina.out には起動完了の行がない。Tomcat が上がっていない可能性をどう確かめればよいか」と聞けるようになります。これは AI に頼らない力であると同時に、AI をうまく使う力でもあります。</p>
+    <div class="callout info"><b>この章の前提</b>
+      <p>ここで示す構成・パス・設定は<strong>一般的な例</strong>です。あなたの現場のサーバ台数、インストール先、ログのファイル名は違う可能性があります。章の途中に「先輩・社内 Wiki に確認する項目」をまとめているので、読み終えたら一度答え合わせをしてください。</p>
+    </div>
+  </section>
+
+  <section id="analogy">
+    <h2>レストランでたとえる</h2>
+    <p>まずは細かい用語を置いておいて、レストランの姿で全体をつかみましょう。</p>
+    <div class="analogy">
+      <div><span class="lbl">レストラン</span>受付係：お客さんを迎え、席へ案内する。メニュー表（決まった印刷物）はその場で渡せる。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">勤怠システム</span><b>Apache</b>：リクエストを最初に受ける。画像や CSS などの静的ファイルは自分で返し、それ以外は奥へ取り次ぐ。SSL（https）の暗号化もここ。</div>
+    </div>
+    <div class="analogy">
+      <div><span class="lbl">レストラン</span>厨房：コンロや冷蔵庫がそろった、料理をつくる場所。料理人はここで働く。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">勤怠システム</span><b>Tomcat</b>：Java のアプリが動く場所（サーブレットコンテナ、AP サーバ）。同時に来た注文をさばくスレッドもここが用意する。</div>
+    </div>
+    <div class="analogy">
+      <div><span class="lbl">レストラン</span>料理人とレシピ：「打刻の注文が来たら、この手順でつくる」という決まりごと。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">勤怠システム</span><b>Spring Boot アプリ</b>：会社が作った業務ロジック。打刻の記録、残業時間の計算、締め処理などの手順が Java で書かれている。</div>
+    </div>
+    <div class="analogy">
+      <div><span class="lbl">レストラン</span>食料庫：材料を保管しておく場所。料理人は必要な分だけ取り出し、余ったら戻す。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">勤怠システム</span><b>PostgreSQL</b>：打刻データ、社員マスタ、有給残日数などを保存するデータベース。アプリは SQL で出し入れする。</div>
+    </div>
+    <p>お客さん（ブラウザ）は厨房の中を見ることはできません。受付係に注文を伝え、しばらくすると料理（画面）が届く、という体験だけをします。<strong>「料理が来ない」というクレーム1つでも、原因は受付・厨房・レシピ・食料庫のどこにでもありうる</strong>。これが障害調査の難しさであり、地図が必要な理由です。</p>
+    <div class="callout tip"><b>たとえの限界も知っておく</b>
+      <p>実際の Tomcat は「厨房」でありながら、注文の受付（HTTP の受信）も自分でできます。Apache を置かずに Tomcat や Spring Boot が直接ブラウザと話す構成もあります。たとえは入口としてだけ使い、細部は次の図で確かめましょう。</p>
+    </div>
+  </section>
+
+  <section id="map">
+    <h2>勤怠システムの構成図と、ログの場所</h2>
+    <p>次の図が、この章でいちばん大事な地図です。左が処理の流れ、右がその層が残すログの一般的な場所です。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 520 650" style="max-width:560px" role="img" aria-labelledby="map-t">
+        <title id="map-t">ブラウザからPostgreSQLまでの5層構成と、各層のログの場所</title>
+        <defs>
+          <marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+          <marker id="m1g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker>
+        </defs>
+        <!-- browser -->
+        <rect x="20" y="10" width="290" height="60" rx="8" class="box-soft"/>
+        <text x="36" y="36" class="t-b">ブラウザ（利用者のPC）</text>
+        <text x="36" y="56" class="t-s muted">打刻画面を表示・ボタンを押す</text>
+        <line x1="165" y1="70" x2="165" y2="104" class="line-accent" marker-end="url(#m1)"/>
+        <text x="175" y="92" class="t-s muted">https（443番）</text>
+        <!-- apache -->
+        <rect x="20" y="108" width="290" height="96" rx="8" class="box"/>
+        <text x="36" y="132" class="t-b">Apache httpd（Webサーバ）</text>
+        <text x="36" y="152" class="t-s">静的ファイル（画像・CSS・JS）</text>
+        <text x="36" y="170" class="t-s">SSL終端・リバースプロキシ</text>
+        <text x="36" y="190" class="t-s muted">mod_proxy_ajp / mod_jk / mod_proxy_http</text>
+        <line x1="165" y1="204" x2="165" y2="238" class="line-accent" marker-end="url(#m1)"/>
+        <text x="175" y="226" class="t-s muted">AJP（8009）または HTTP（8080）</text>
+        <!-- tomcat outer -->
+        <rect x="20" y="242" width="290" height="250" rx="8" class="box"/>
+        <text x="36" y="266" class="t-b">Tomcat（APサーバ／サーブレットコンテナ）</text>
+        <text x="36" y="284" class="t-s muted">スレッドを用意し、アプリを動かす</text>
+        <!-- spring app -->
+        <rect x="38" y="296" width="254" height="182" rx="8" class="box-ok"/>
+        <text x="52" y="318" class="t-b">Spring Boot アプリ（kintai）</text>
+        <rect x="54" y="330" width="222" height="36" rx="6" class="box"/>
+        <text x="66" y="353" class="t-s">Controller（入口・画面の振り分け）</text>
+        <rect x="54" y="380" width="222" height="36" rx="6" class="box"/>
+        <text x="66" y="403" class="t-s">Service（業務ロジック・計算）</text>
+        <rect x="54" y="430" width="222" height="36" rx="6" class="box"/>
+        <text x="66" y="453" class="t-s">Repository（SQLでDBとやりとり）</text>
+        <line x1="165" y1="366" x2="165" y2="378" class="line-accent" marker-end="url(#m1)"/>
+        <line x1="165" y1="416" x2="165" y2="428" class="line-accent" marker-end="url(#m1)"/>
+        <line x1="165" y1="492" x2="165" y2="536" class="line-accent" marker-end="url(#m1)"/>
+        <text x="175" y="520" class="t-s muted">JDBC（5432番）</text>
+        <!-- postgres -->
+        <rect x="20" y="540" width="290" height="60" rx="8" class="box-warn"/>
+        <text x="36" y="566" class="t-b">PostgreSQL（データベース）</text>
+        <text x="36" y="586" class="t-s muted">打刻・社員・有給・申請データ</text>
+        <!-- logs -->
+        <text x="330" y="24" class="t-b">ログの場所（一般例）</text>
+        <rect x="330" y="108" width="176" height="96" rx="6" class="box-soft"/>
+        <text x="340" y="128" class="t-s t-b">access_log</text>
+        <text x="340" y="144" class="t-s muted">誰がどのURLに来たか</text>
+        <text x="340" y="164" class="t-s t-b">error_log</text>
+        <text x="340" y="180" class="t-s muted">Apache自身の異常</text>
+        <text x="340" y="197" class="t-s muted">/var/log/httpd/ 等</text>
+        <rect x="330" y="242" width="176" height="72" rx="6" class="box-soft"/>
+        <text x="340" y="262" class="t-s t-b">catalina.out</text>
+        <text x="340" y="280" class="t-s t-b">localhost_access_log</text>
+        <text x="340" y="304" class="t-s muted">$CATALINA_BASE/logs/</text>
+        <rect x="330" y="330" width="176" height="86" rx="6" class="box-soft"/>
+        <text x="340" y="350" class="t-s t-b">アプリログ</text>
+        <text x="340" y="367" class="t-s muted">例：logs/kintai.log</text>
+        <text x="340" y="384" class="t-s muted">業務処理・例外の</text>
+        <text x="340" y="401" class="t-s muted">スタックトレース</text>
+        <rect x="330" y="540" width="176" height="60" rx="6" class="box-soft"/>
+        <text x="340" y="560" class="t-s t-b">postgresql-*.log</text>
+        <text x="340" y="577" class="t-s muted">$PGDATA/log/ 等</text>
+        <text x="340" y="593" class="t-s muted">SQLエラー・遅いSQL</text>
+        <line x1="328" y1="156" x2="312" y2="156" class="line" marker-end="url(#m1g)"/>
+        <line x1="328" y1="270" x2="312" y2="270" class="line" marker-end="url(#m1g)"/>
+        <line x1="328" y1="372" x2="294" y2="372" class="line" marker-end="url(#m1g)"/>
+        <line x1="328" y1="570" x2="312" y2="570" class="line" marker-end="url(#m1g)"/>
+        <text x="20" y="630" class="t-s muted">レスポンス（画面のHTMLやJSON）は、同じ道を逆向きにたどって返る</text>
+      </svg>
+      <figcaption>図1　勤怠システムの5層と、各層が残すログ（パスは一般的な例）</figcaption>
+    </figure>
+
+    <h3>各層の役割をもう少しくわしく</h3>
+    <div class="cards">
+      <div class="card"><h4>ブラウザ</h4><p>HTML を画面に描き、JavaScript を動かし、ボタンが押されたらサーバへリクエストを送ります。Cookie を覚えておき、次のリクエストに自動で付けて送るのもブラウザの仕事です。F12 キーで開く開発者ツールで、送ったリクエストと返ってきたレスポンスを見られます。</p></div>
+      <div class="card"><h4>Apache httpd</h4><p>443 番ポートで https を受け、暗号を解きます（SSL 終端）。<code>/images/</code> のような静的ファイルは自分のディスクから返し、<code>/kintai/</code> 以下などアプリ宛てのリクエストは、モジュールを使って Tomcat へ転送します。この「代わりに奥へ取り次ぐ」働きをリバースプロキシと呼びます。</p></div>
+      <div class="card"><h4>Tomcat</h4><p>Java のサーブレットという仕組みに沿ってアプリを動かす入れ物です。受け取ったリクエスト1件ごとにスレッドを割り当て、アプリの処理を呼びます。セッション（ログイン状態）の管理もここで行い、<code>JSESSIONID</code> という Cookie で利用者を見分けます。</p></div>
+      <div class="card"><h4>Spring Boot アプリ</h4><p>会社の業務ロジックそのものです。Controller が URL ごとの入口、Service が計算や判定、Repository が DB 操作、という役割分担が一般的です。くわしい仕組みは <a href="04-spring-boot.html">04 Spring Bootの正体</a> で扱います。</p></div>
+      <div class="card"><h4>PostgreSQL</h4><p>データを表（テーブル）の形で保存し、SQL で読み書きされます。複数の更新を「全部成功か、全部なかったことにするか」でまとめるトランザクションもここが保証します。SQL は <a href="06-sql-postgres.html">06 自分で書くSQL</a> で練習します。</p></div>
+    </div>
+
+    <h3>Apache から Tomcat へのつなぎ方は3種類</h3>
+    <p>Apache が Tomcat へリクエストを渡す方法には、主に次の3つがあります。どれを使っているかで、見るべき設定ファイルが変わります。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>方式</th><th>通信</th><th>設定の例</th><th>特徴</th></tr></thead>
+      <tbody>
+        <tr><td>mod_proxy_ajp</td><td>AJP（通常 8009）</td><td><code>ProxyPass /kintai ajp://localhost:8009/kintai</code></td><td>Apache 標準のモジュール。AJP は Apache と Tomcat の間専用のバイナリ形式。</td></tr>
+        <tr><td>mod_jk</td><td>AJP（通常 8009）</td><td><code>JkMount /kintai/* worker1</code> と workers.properties</td><td>Tomcat プロジェクトが配布する別モジュール。昔からのシステムに多い。</td></tr>
+        <tr><td>mod_proxy_http</td><td>HTTP（通常 8080）</td><td><code>ProxyPass /kintai http://localhost:8080/kintai</code></td><td>ふつうの HTTP で転送。Spring Boot の組み込み Tomcat と組み合わせやすい。</td></tr>
+      </tbody>
+    </table></div>
+    <div class="code-title">httpd.conf（または conf.d/kintai.conf）の一般的な例</div>
+    <pre><code><span class="c"># 静的ファイルは Apache が直接返す</span>
+Alias /static /var/www/kintai/static
+
+<span class="c"># アプリ宛ては Tomcat へ（mod_proxy_ajp の場合）</span>
+<span class="k">ProxyPass</span>        /kintai ajp://localhost:8009/kintai secret=xxxxx
+<span class="k">ProxyPassReverse</span> /kintai ajp://localhost:8009/kintai</code></pre>
+    <div class="callout warn"><b>AJP の注意点</b>
+      <p>2020 年に AJP コネクタの脆弱性（通称 Ghostcat）が公表され、Tomcat 9.0.31・8.5.51 以降では AJP コネクタが初期状態で無効になり、使う場合は <code>secret</code> の設定が求められるようになりました。バージョンアップ後に「Apache からつながらない」場合、この変更が関係していることがあります。</p>
+    </div>
+  </section>
+
+  <section id="http">
+    <h2>HTTP の基礎：ブラウザとサーバの会話</h2>
+    <p>層と層の間の会話には決まった形式があります。ブラウザと Apache、Apache と Tomcat（mod_proxy_http の場合）は <strong>HTTP</strong> で話します。HTTP は「リクエスト（お願い）」と「レスポンス（返事）」の1往復が基本です。</p>
+    <div class="code-title">打刻ボタンを押したときに飛ぶリクエストの例（一般的な例）</div>
+    <pre><code><span class="k">POST</span> /kintai/punch/in HTTP/1.1
+Host: kintai.example.co.jp
+Cookie: JSESSIONID=3F2A9C...E81
+Content-Type: application/x-www-form-urlencoded
+
+_csrf=8d1e...&amp;memo=</code></pre>
+    <div class="code-title">返ってくるレスポンスの例</div>
+    <pre><code>HTTP/1.1 <span class="k">302</span> Found
+Location: /kintai/punch?done=in
+Set-Cookie: ...</code></pre>
+    <p>1行目がいちばん大事です。リクエストは「<strong>メソッド</strong>（何をしたいか）＋<strong>URL</strong>（どこに）」、レスポンスは「<strong>ステータスコード</strong>（結果はどうだったか）」です。</p>
+
+    <h3>GET と POST</h3>
+    <div class="tbl"><table>
+      <thead><tr><th>メソッド</th><th>意味</th><th>勤怠での例</th><th>データの載せ方</th></tr></thead>
+      <tbody>
+        <tr><td>GET</td><td>取得する。何度送っても結果が変わらないのが原則</td><td>月次勤怠一覧を表示 <code>/kintai/monthly?ym=2026-10</code></td><td>URL の <code>?</code> 以降（クエリ文字列）</td></tr>
+        <tr><td>POST</td><td>送る・登録する。サーバの状態が変わる</td><td>出勤打刻、残業申請の提出</td><td>リクエストの本文（ボディ）</td></tr>
+        <tr><td>PUT / DELETE</td><td>更新・削除（API でよく使う）</td><td>JSON API で申請を取り消す、など</td><td>ボディ／URL</td></tr>
+      </tbody>
+    </table></div>
+    <p>打刻のように「データを登録する」操作は POST にするのが原則です。GET にしてしまうと、ブラウザの再読み込みや履歴からの再アクセスで二重打刻が起きかねません。</p>
+
+    <h3>ステータスコード表</h3>
+    <p>3桁の数字の、<strong>百の位</strong>で大まかな意味が決まります。2xx は成功、3xx は「別の場所へ」、4xx は「リクエスト側の問題」、5xx は「サーバ側の問題」です。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>コード</th><th>名前</th><th>意味</th><th>勤怠での典型的な場面</th></tr></thead>
+      <tbody>
+        <tr><td>200</td><td>OK</td><td>成功</td><td>月次一覧が表示された</td></tr>
+        <tr><td>302</td><td>Found</td><td>別の URL へ移動してほしい</td><td>打刻後に完了画面へ、未ログインでログイン画面へ</td></tr>
+        <tr><td>304</td><td>Not Modified</td><td>前回から変わっていない</td><td>CSS や画像をブラウザのキャッシュで済ませた</td></tr>
+        <tr><td>400</td><td>Bad Request</td><td>リクエストの形がおかしい</td><td>日付パラメータの形式が不正</td></tr>
+        <tr><td>401</td><td>Unauthorized</td><td>認証が必要</td><td>API をログインなしで呼んだ</td></tr>
+        <tr><td>403</td><td>Forbidden</td><td>権限がない／拒否</td><td>一般社員が承認画面へ、CSRF トークン切れ</td></tr>
+        <tr><td>404</td><td>Not Found</td><td>その URL はない</td><td>URL の打ち間違い、アプリが配備されていない</td></tr>
+        <tr><td>405</td><td>Method Not Allowed</td><td>そのメソッドは受け付けない</td><td>POST 専用の URL に GET で来た</td></tr>
+        <tr><td>500</td><td>Internal Server Error</td><td>サーバ内部で想定外のエラー</td><td>アプリで例外（NullPointerException など）</td></tr>
+        <tr><td>502</td><td>Bad Gateway</td><td>奥のサーバから正しい返事が来ない</td><td>Apache が Tomcat から不正な応答を受けた</td></tr>
+        <tr><td>503</td><td>Service Unavailable</td><td>今は処理できない</td><td>Tomcat が停止中・起動中、メンテナンス中</td></tr>
+        <tr><td>504</td><td>Gateway Timeout</td><td>奥のサーバの返事が時間切れ</td><td>重い集計が Apache 側のタイムアウトを超えた</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout tip"><b>「誰が」返したステータスかを意識する</b>
+      <p>502・503・504 は、多くの場合 <strong>Apache が</strong>「奥（Tomcat）とうまく話せなかった」ことを伝えるコードです。一方 500 は、<strong>Tomcat やアプリが</strong>「処理中に失敗した」ことを伝えるコードです。同じ 5xx でも、疑う層が違います。</p>
+    </div>
+  </section>
+
+  <section id="life">
+    <h2>打刻ボタンを押してから画面が返るまで：リクエストの一生</h2>
+    <p>ここからは、朝 9:00 に社員の田中さんが「出勤」ボタンを押した場面を、時間の順に追いかけます。ここは本当に順番がある処理です。</p>
+    <ol class="steps">
+      <li><b>ブラウザが HTTP リクエストをつくる</b>ボタンを押すと、ブラウザはフォームの内容を集めて <code>POST /kintai/punch/in</code> というリクエストをつくります。前回ログインしたときに受け取った Cookie（<code>JSESSIONID=...</code>）も自動で付けます。</li>
+      <li><b>DNS で行き先を調べ、Apache に届く</b>URL のホスト名（例：<code>kintai.example.co.jp</code>）を IP アドレスに変換し、そのサーバの 443 番ポートへ接続します。https なので通信は暗号化されています。</li>
+      <li><b>Apache が受け取り、振り分ける</b>Apache は暗号を解き、URL を見ます。<code>/kintai/</code> で始まるので静的ファイルではない、と判断し、ProxyPass などの設定に従って Tomcat へ転送します。このとき access_log に1行記録されます（記録されるのは応答を返し終えたタイミングです）。</li>
+      <li><b>Tomcat がスレッドを割り当てる</b>Tomcat はリクエストを受けると、待機中のスレッドを1つ割り当てます。ログに出る <code>[nio-8080-exec-3]</code> や <code>[ajp-nio-8009-exec-3]</code> のような名前は、このスレッドの名前です。Cookie の JSESSIONID からセッションを探し、「これは田中さんのログイン状態だ」とわかります。</li>
+      <li><b>Spring が URL に合う Controller を呼ぶ</b>Spring の DispatcherServlet が、<code>/punch/in</code> と POST の組み合わせに対応するメソッド（例：<code>PunchController.punchIn()</code>）を探して呼び出します。ログイン中かどうか、CSRF トークンが正しいかといったチェックもこの前後で行われます。</li>
+      <li><b>Service が業務ルールを判定する</b>Controller は Service（例：<code>PunchService.punchIn(社員ID, 現在時刻)</code>）を呼びます。Service は「今日すでに出勤打刻していないか」「休日出勤の扱いは」といったルールを判定します。</li>
+      <li><b>トランザクションを開始し、SQL を発行する</b>Service のメソッドに <code>@Transactional</code> が付いていると、ここでトランザクションが始まります。Repository が JDBC ドライバを通じて PostgreSQL に SQL を送ります。たとえば「今日の打刻があるか」の SELECT と、出勤時刻を書き込む INSERT です。</li>
+      <li><b>PostgreSQL が処理し、コミットする</b>メソッドが例外なく終わると、トランザクションがコミットされ、データが確定します。途中で例外が起きればロールバックされ、INSERT はなかったことになります。</li>
+      <li><b>レスポンスをつくる</b>Controller は結果に応じて、画面用なら Thymeleaf や JSP などのテンプレートで HTML を組み立てるか、完了画面へのリダイレクト（302）を返します。画面の一部だけを JavaScript で書き換える方式なら、<code>{"status":"ok","time":"09:00"}</code> のような JSON を返します。</li>
+      <li><b>同じ道を逆にたどって、画面が変わる</b>レスポンスは Tomcat → Apache → ブラウザへと戻ります。ブラウザは HTML を描画し（302 なら指定された URL を GET し直し）、田中さんの画面に「09:00 出勤しました」と表示されます。ここまで多くの場合、1 秒もかかりません。</li>
+    </ol>
+    <div class="code-title">このとき発行される SQL のイメージ（テーブル名・列名は一般的な例）</div>
+    <pre><code><span class="k">BEGIN</span>;
+<span class="k">SELECT</span> id, clock_in <span class="k">FROM</span> attendance_record
+ <span class="k">WHERE</span> employee_id = 1001 <span class="k">AND</span> work_date = <span class="s">'2026-10-31'</span>;
+<span class="c">-- 0件なら、まだ出勤していないので登録する</span>
+<span class="k">INSERT INTO</span> attendance_record (employee_id, work_date, clock_in)
+ <span class="k">VALUES</span> (1001, <span class="s">'2026-10-31'</span>, <span class="s">'2026-10-31 09:00:12'</span>);
+<span class="k">COMMIT</span>;</code></pre>
+    <h3>セッションと Cookie のしくみ</h3>
+    <p>HTTP には「前のリクエストと同じ人だ」と覚えておく仕組みがありません。そこで、ログインに成功したとき Tomcat が受付番号のような文字列（セッション ID）を発行し、<code>Set-Cookie: JSESSIONID=...</code> でブラウザに渡します。ブラウザはそれ以降のリクエストにこの Cookie を付けて送り、Tomcat はその番号でサーバ側のメモリにある「田中さんの情報」を取り出します。</p>
+    <div class="callout warn"><b>セッションはサーバのメモリにある</b>
+      <p>Tomcat を再起動すると、メモリ上のセッションは（特別な設定をしていなければ）消えます。「再起動したら全員ログアウトされた」「入力中の申請が消えた」という問い合わせは、この仕組みが理由です。サーバが複数台のときにセッションをどう扱うかは、後の「複数台構成」で触れます。</p>
+    </div>
+  </section>
+
+  <section id="batch">
+    <h2>オンライン処理とバッチ処理</h2>
+    <p>ここまでの「ボタンを押すとすぐ返る」処理を<strong>オンライン処理</strong>と呼びます。勤怠システムには、もう1つ大事な処理の形があります。決まった時刻に、まとめて大量のデータを処理する<strong>バッチ処理</strong>です。</p>
+    <div class="compare">
+      <div class="good"><b>オンライン処理</b>
+        <ul>
+          <li>きっかけ：利用者の操作（打刻、申請、承認）</li>
+          <li>1回に扱うデータ：少ない（その人の1日分など）</li>
+          <li>求められること：すぐ返ること（数秒以内）</li>
+          <li>失敗したら：画面にエラー。利用者がやり直せる</li>
+          <li>ログ：Apache・Tomcat・アプリのログ</li>
+        </ul>
+      </div>
+      <div class="good"><b>バッチ処理</b>
+        <ul>
+          <li>きっかけ：時刻（cron、ジョブ管理ツール、Spring の <code>@Scheduled</code> など）</li>
+          <li>1回に扱うデータ：多い（全社員の1か月分など）</li>
+          <li>求められること：決められた時間内に、確実に終わること</li>
+          <li>失敗したら：誰も画面を見ていない。翌朝の問い合わせで発覚することも</li>
+          <li>ログ：バッチ専用ログ、ジョブ管理ツールの実行結果</li>
+        </ul>
+      </div>
+    </div>
+    <p>勤怠でよくあるバッチの例は次のとおりです。</p>
+    <ul>
+      <li><strong>夜間集計</strong>：毎晩、その日の打刻から実労働時間・残業時間・深夜時間を計算して集計テーブルに書き込む。</li>
+      <li><strong>月次締め処理</strong>：月末や翌月初に、その月の勤怠を確定させ、給与システムへ渡すデータ（CSV など）を作る。締め後は一般社員が修正できないようにロックする。</li>
+      <li><strong>有給付与</strong>：入社日や基準日に合わせて、有給休暇の日数を付与する。</li>
+      <li><strong>打刻漏れ通知</strong>：退勤打刻がない社員にメールを送る。</li>
+    </ul>
+    <div class="flow" aria-label="月次締めバッチの流れの例">
+      <div class="node alt"><b>起動</b>ジョブ管理や cron が毎月1日 2:00 に起動</div>
+      <div class="arrow"></div>
+      <div class="node"><b>読み込み</b>全社員の前月分の打刻・申請を SELECT</div>
+      <div class="arrow"></div>
+      <div class="node"><b>計算</b>残業・深夜・休日労働を集計</div>
+      <div class="arrow"></div>
+      <div class="node"><b>書き込み</b>集計テーブルへ登録、締めフラグを立てる</div>
+      <div class="arrow"></div>
+      <div class="node hot"><b>連携</b>給与システム向けファイル出力・終了コード</div>
+    </div>
+    <div class="callout info"><b>バッチがどこで動いているかは現場ごとに違う</b>
+      <p>バッチは、オンラインと同じ Tomcat の中で <code>@Scheduled</code> で動く場合もあれば、別のサーバで <code>java -jar kintai-batch.jar</code> のように独立して起動される場合も、シェルスクリプトから SQL を直接流す場合もあります。自分の現場のバッチが「いつ・どこで・何によって」起動されているかは、必ず確認しておきましょう。</p>
+    </div>
+  </section>
+
+  <section id="servers">
+    <h2>サーバが複数台のとき：Web / AP / DB の分離と冗長化</h2>
+    <p>小さなシステムでは、Apache・Tomcat・PostgreSQL を1台のサーバに同居させることもあります。利用者が多いシステムや止められないシステムでは、役割ごとにサーバを分け（<strong>分離</strong>）、同じ役割のサーバを2台以上用意します（<strong>冗長化</strong>）。次の図はよくある一般例です。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 500 430" style="max-width:540px" role="img" aria-labelledby="srv-t">
+        <title id="srv-t">ロードバランサ、Webサーバ2台、APサーバ2台、DBプライマリとスタンバイの一般的な冗長構成</title>
+        <defs>
+          <marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+          <marker id="m2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-muted"/></marker>
+        </defs>
+        <rect x="150" y="10" width="200" height="44" rx="8" class="box-soft"/>
+        <text x="250" y="37" text-anchor="middle" class="t-b">ロードバランサ（LB）</text>
+        <line x1="210" y1="54" x2="120" y2="98" class="line-accent" marker-end="url(#m2)"/>
+        <line x1="290" y1="54" x2="380" y2="98" class="line-accent" marker-end="url(#m2)"/>
+        <text x="12" y="128" class="t-s muted">Web層</text>
+        <rect x="60" y="100" width="150" height="50" rx="8" class="box"/>
+        <text x="135" y="122" text-anchor="middle" class="t-b">web01</text>
+        <text x="135" y="140" text-anchor="middle" class="t-s muted">Apache</text>
+        <rect x="290" y="100" width="150" height="50" rx="8" class="box"/>
+        <text x="365" y="122" text-anchor="middle" class="t-b">web02</text>
+        <text x="365" y="140" text-anchor="middle" class="t-s muted">Apache</text>
+        <line x1="135" y1="150" x2="135" y2="196" class="line-accent" marker-end="url(#m2)"/>
+        <line x1="365" y1="150" x2="365" y2="196" class="line-accent" marker-end="url(#m2)"/>
+        <line x1="160" y1="150" x2="340" y2="196" class="line" marker-end="url(#m2g)"/>
+        <line x1="340" y1="150" x2="160" y2="196" class="line" marker-end="url(#m2g)"/>
+        <text x="12" y="228" class="t-s muted">AP層</text>
+        <rect x="60" y="200" width="150" height="50" rx="8" class="box-ok"/>
+        <text x="135" y="222" text-anchor="middle" class="t-b">ap01</text>
+        <text x="135" y="240" text-anchor="middle" class="t-s muted">Tomcat＋アプリ</text>
+        <rect x="290" y="200" width="150" height="50" rx="8" class="box-ok"/>
+        <text x="365" y="222" text-anchor="middle" class="t-b">ap02</text>
+        <text x="365" y="240" text-anchor="middle" class="t-s muted">Tomcat＋アプリ</text>
+        <line x1="135" y1="250" x2="210" y2="296" class="line-accent" marker-end="url(#m2)"/>
+        <line x1="365" y1="250" x2="230" y2="296" class="line-accent" marker-end="url(#m2)"/>
+        <text x="12" y="328" class="t-s muted">DB層</text>
+        <rect x="60" y="300" width="170" height="50" rx="8" class="box-warn"/>
+        <text x="145" y="322" text-anchor="middle" class="t-b">db01（プライマリ）</text>
+        <text x="145" y="340" text-anchor="middle" class="t-s muted">読み書き</text>
+        <rect x="290" y="300" width="150" height="50" rx="8" class="box-warn"/>
+        <text x="365" y="322" text-anchor="middle" class="t-b">db02（スタンバイ）</text>
+        <text x="365" y="340" text-anchor="middle" class="t-s muted">複製を保持</text>
+        <line x1="230" y1="325" x2="288" y2="325" class="line" stroke-dasharray="5 4" marker-end="url(#m2g)"/>
+        <text x="238" y="370" class="t-s muted">ストリーミングレプリケーション</text>
+        <text x="12" y="402" class="t-s muted">※ 台数・名前・LBの有無は一般例。現場の構成図で必ず確認する</text>
+      </svg>
+      <figcaption>図2　Web / AP / DB を分離し、それぞれを冗長化した一般的な構成</figcaption>
+    </figure>
+    <p>こうした構成では、調査の手順も変わります。</p>
+    <ul>
+      <li><strong>ログが台数分に分かれる</strong>：ap01 と ap02 のどちらでエラーが出たかわからないと、片方のログだけ見て「何も出ていない」と勘違いします。時刻とサーバ名をセットで確認しましょう。</li>
+      <li><strong>セッションの扱い</strong>：ap01 でログインした人のリクエストが ap02 に行くと、ap02 はその人のセッションを持っていません。そのため、同じ人を同じサーバに送り続ける設定（スティッキーセッション）や、セッションを共有する仕組みが使われます。</li>
+      <li><strong>片方だけおかしい</strong>：「ときどきエラーになる」という症状は、2台のうち1台だけが不調なときの典型です。</li>
+      <li><strong>DB の切り替え</strong>：プライマリが止まったとき、スタンバイを新しいプライマリに昇格させる運用があります。切り替えの手順と判断者は、運用設計書などで決まっているはずです。</li>
+    </ul>
+  </section>
+
+  <section id="war">
+    <h2>WAR ファイルと組み込み Tomcat（実行可能 jar）</h2>
+    <p>「Tomcat の上で Spring Boot が動いている」と書いてきましたが、実はその「乗り方」に2種類あります。どちらなのかで、起動・停止の方法、設定ファイルの場所、ログの場所が大きく変わります。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 500 290" style="max-width:540px" role="img" aria-labelledby="war-t">
+        <title id="war-t">WAR配備では外部Tomcatの中にアプリが入り、実行可能jarではアプリの中にTomcatが入る</title>
+        <text x="125" y="22" text-anchor="middle" class="t-b">A. WAR を外部 Tomcat に配備</text>
+        <rect x="10" y="34" width="230" height="200" rx="10" class="box"/>
+        <text x="24" y="58" class="t-b">Tomcat（OSにインストール）</text>
+        <text x="24" y="76" class="t-s muted">/opt/tomcat など</text>
+        <rect x="28" y="88" width="194" height="80" rx="8" class="box-ok"/>
+        <text x="42" y="110" class="t-s t-b">webapps/kintai.war</text>
+        <text x="42" y="130" class="t-s">Spring Boot アプリ</text>
+        <text x="42" y="150" class="t-s muted">（Tomcatは同梱しない）</text>
+        <rect x="28" y="178" width="194" height="40" rx="8" class="box-soft"/>
+        <text x="42" y="203" class="t-s">他のアプリも同居できる</text>
+        <text x="125" y="258" text-anchor="middle" class="t-s muted">起動：startup.sh / systemctl</text>
+        <text x="125" y="276" text-anchor="middle" class="t-s muted">設定：conf/server.xml</text>
+
+        <text x="375" y="22" text-anchor="middle" class="t-b">B. 実行可能 jar（組み込み）</text>
+        <rect x="260" y="34" width="230" height="200" rx="10" class="box-ok"/>
+        <text x="274" y="58" class="t-b">kintai.jar</text>
+        <text x="274" y="76" class="t-s muted">1ファイルで完結</text>
+        <rect x="278" y="88" width="194" height="60" rx="8" class="box"/>
+        <text x="292" y="112" class="t-s">Spring Boot アプリ</text>
+        <text x="292" y="132" class="t-s muted">Controller/Service/…</text>
+        <rect x="278" y="158" width="194" height="60" rx="8" class="box"/>
+        <text x="292" y="182" class="t-s t-b">組み込み Tomcat</text>
+        <text x="292" y="202" class="t-s muted">ライブラリとして同梱</text>
+        <text x="375" y="258" text-anchor="middle" class="t-s muted">起動：java -jar kintai.jar</text>
+        <text x="375" y="276" text-anchor="middle" class="t-s muted">設定：application.properties</text>
+      </svg>
+      <figcaption>図3　A は「Tomcat の中にアプリ」、B は「アプリの中に Tomcat」。入れ子が逆になる</figcaption>
+    </figure>
+    <div class="tbl"><table>
+      <thead><tr><th>観点</th><th>A. WAR ＋ 外部 Tomcat</th><th>B. 実行可能 jar</th></tr></thead>
+      <tbody>
+        <tr><td>成果物</td><td><code>kintai.war</code></td><td><code>kintai.jar</code></td></tr>
+        <tr><td>配備</td><td><code>webapps/</code> に置くと Tomcat が展開する</td><td>任意の場所に置いて実行する</td></tr>
+        <tr><td>ポートなどの設定</td><td>Tomcat の <code>conf/server.xml</code></td><td><code>application.properties</code> の <code>server.port</code> など</td></tr>
+        <tr><td>Tomcat のバージョン</td><td>インフラ側で入れたもの</td><td>アプリのビルド時に決まる</td></tr>
+        <tr><td>ログ</td><td><code>logs/catalina.out</code> などに出やすい</td><td>標準出力や、アプリで設定したファイル</td></tr>
+        <tr><td>pom.xml の手がかり</td><td><code>&lt;packaging&gt;war&lt;/packaging&gt;</code></td><td><code>&lt;packaging&gt;jar&lt;/packaging&gt;</code>（省略時も jar）</td></tr>
+      </tbody>
+    </table></div>
+    <p>Spring Boot は「jar 1つで動く」手軽さが売りですが、既存の Tomcat 運用に合わせて WAR で配備している現場も少なくありません。ビルドの話は <a href="05-build-env.html">05 開発環境をつくる</a> でくわしく扱います。</p>
+
+    <h3>自分の現場がどちらか確かめる方法</h3>
+    <p>サーバにログインできる権限があるなら、次のような確認ができます（実行前に、本番サーバで操作してよいか先輩に確認してください。以下はどれも「見るだけ」のコマンドです）。</p>
+    <div class="code-title">動いている Java プロセスを見る</div>
+    <pre><code>$ ps -ef | grep java
+<span class="c"># A のとき：Tomcat の起動クラスが見える</span>
+tomcat  1234  1 ... java ... -Dcatalina.base=/opt/tomcat ... <span class="hl">org.apache.catalina.startup.Bootstrap start</span>
+<span class="c"># B のとき：-jar で jar を直接起動している</span>
+kintai  5678  1 ... java -Xmx2g <span class="hl">-jar /opt/kintai/kintai.jar</span></code></pre>
+    <div class="code-title">ファイルの置き場所を見る（パスは一般的な例）</div>
+    <pre><code>$ ls /opt/tomcat/webapps/          <span class="c"># kintai.war や kintai/ があれば A</span>
+$ ls /opt/tomcat/conf/server.xml   <span class="c"># Connector の port="8009" protocol="AJP/1.3" など</span>
+$ systemctl status tomcat          <span class="c"># サービス名は現場ごとに違う</span>
+$ cat /etc/systemd/system/kintai.service   <span class="c"># ExecStart=java -jar ... なら B</span></code></pre>
+    <div class="callout info"><b>先輩・社内 Wiki に確認する項目</b>
+      <ul>
+        <li>勤怠システムのサーバは何台で、それぞれのホスト名と役割（Web / AP / DB / バッチ）は？</li>
+        <li>アプリは WAR 配備ですか、実行可能 jar ですか？　起動・停止はどのコマンド（または手順書）で行いますか？</li>
+        <li>Apache と Tomcat は mod_proxy_ajp / mod_jk / mod_proxy_http のどれでつないでいますか？　設定ファイルはどこですか？</li>
+        <li>Apache・Tomcat・アプリ・PostgreSQL・バッチのログは、それぞれどのパスにありますか？　何日分残りますか？</li>
+        <li>夜間バッチ・締め処理は、いつ・どのサーバで・何（cron、ジョブ管理ツールなど）から起動されていますか？</li>
+        <li>本番サーバで自分が見てよい範囲・やってはいけない操作はどこまでですか？</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="trouble">
+    <h2>障害が起きたとき：「どの層の問題か」を切り分ける</h2>
+    <p>「勤怠システムがおかしい」と連絡が来たら、いきなりソースを読み始めるのではなく、まず<strong>症状から疑う層を絞る</strong>のが近道です。次の図は、よくある症状と最初に疑う層の対応です。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 500 420" style="max-width:540px" role="img" aria-labelledby="tr-t">
+        <title id="tr-t">症状ごとに最初に疑う層を示す切り分け図</title>
+        <defs>
+          <marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        </defs>
+        <text x="10" y="20" class="t-b">症状</text>
+        <text x="250" y="20" class="t-b">最初に疑う層と見る場所</text>
+        <!-- row1 -->
+        <rect x="10" y="32" width="190" height="64" rx="8" class="box-ng"/>
+        <text x="22" y="58" class="t-b">画面が真っ白</text>
+        <text x="22" y="78" class="t-s muted">何も表示されない</text>
+        <line x1="200" y1="64" x2="244" y2="64" class="line-accent" marker-end="url(#m3)"/>
+        <rect x="248" y="32" width="242" height="64" rx="8" class="box-soft"/>
+        <text x="260" y="56" class="t-s">ブラウザ（JSエラー）→ F12の</text>
+        <text x="260" y="74" class="t-s">Console・Network でステータス</text>
+        <text x="260" y="90" class="t-s muted">を確認してから次の層へ</text>
+        <!-- row2 -->
+        <rect x="10" y="108" width="190" height="56" rx="8" class="box-ng"/>
+        <text x="22" y="132" class="t-b">503 / 502</text>
+        <text x="22" y="152" class="t-s muted">「サービス利用不可」</text>
+        <line x1="200" y1="136" x2="244" y2="136" class="line-accent" marker-end="url(#m3)"/>
+        <rect x="248" y="108" width="242" height="56" rx="8" class="box-soft"/>
+        <text x="260" y="132" class="t-s">Tomcat停止・起動中／接続設定</text>
+        <text x="260" y="152" class="t-s muted">Apache error_log・catalina.out</text>
+        <!-- row3 -->
+        <rect x="10" y="176" width="190" height="56" rx="8" class="box-ng"/>
+        <text x="22" y="200" class="t-b">500</text>
+        <text x="22" y="220" class="t-s muted">「内部エラー」</text>
+        <line x1="200" y1="204" x2="244" y2="204" class="line-accent" marker-end="url(#m3)"/>
+        <rect x="248" y="176" width="242" height="56" rx="8" class="box-soft"/>
+        <text x="260" y="200" class="t-s">アプリの例外（バグ・想定外データ）</text>
+        <text x="260" y="220" class="t-s muted">アプリログのスタックトレース</text>
+        <!-- row4 -->
+        <rect x="10" y="244" width="190" height="56" rx="8" class="box-warn"/>
+        <text x="22" y="268" class="t-b">遅い</text>
+        <text x="22" y="288" class="t-s muted">表示に何十秒もかかる</text>
+        <line x1="200" y1="272" x2="244" y2="272" class="line-accent" marker-end="url(#m3)"/>
+        <rect x="248" y="244" width="242" height="56" rx="8" class="box-soft"/>
+        <text x="260" y="268" class="t-s">DB（遅いSQL・ロック待ち）が最有力</text>
+        <text x="260" y="288" class="t-s muted">次にAP（スレッド枯渇・メモリ）</text>
+        <!-- row5 -->
+        <rect x="10" y="312" width="190" height="56" rx="8" class="box-warn"/>
+        <text x="22" y="336" class="t-b">データがおかしい</text>
+        <text x="22" y="356" class="t-s muted">残業時間が合わない等</text>
+        <line x1="200" y1="340" x2="244" y2="340" class="line-accent" marker-end="url(#m3)"/>
+        <rect x="248" y="312" width="242" height="56" rx="8" class="box-soft"/>
+        <text x="260" y="336" class="t-s">アプリの計算ロジック／バッチ／</text>
+        <text x="260" y="356" class="t-s muted">DBの実データをSQLで確認</text>
+        <text x="10" y="400" class="t-s muted">※ 最初の当たりをつける目安。決めつけず、ログで裏を取る</text>
+      </svg>
+      <figcaption>図4　症状 → 最初に疑う層。エラーなしで「遅い」「おかしい」ときほど DB とロジックを疑う</figcaption>
+    </figure>
+    <h3>切り分けの基本の流れ</h3>
+    <p>層の地図を手前（ブラウザ）から奥（DB）へたどるのが基本です。次の問いに順番に答えると、迷いにくくなります。</p>
+    <ol class="steps">
+      <li><b>いつから、誰が、どの画面で？</b>全員か一部の人か、全画面か特定の画面か。全員・全画面なら Apache や Tomcat、DB 停止など土台の問題、特定の画面ならアプリのその機能の問題を疑います。</li>
+      <li><b>ブラウザでステータスコードを確かめる</b>F12 の Network タブで、そのリクエストが何番で返ったか見ます。そもそもリクエストが出ていなければブラウザ側（JavaScript）です。</li>
+      <li><b>Apache の access_log にそのリクエストがあるか</b>時刻と URL で探します。なければネットワークや DNS、LB など Apache より手前。あればステータスと応答時間を確認します。</li>
+      <li><b>Tomcat・アプリのログに同じ時刻のエラーがあるか</b>500 ならスタックトレースが出ているはずです。読み方は <a href="03-java.html">03 読めるJava</a> と <a href="07-logs-incident.html">07 ログと障害調査</a> で扱います。</li>
+      <li><b>DB の状態を確かめる</b>遅い SQL、ロック待ち、接続数の上限、ディスク容量など。PostgreSQL のログや、権限があれば <code>pg_stat_activity</code> で実行中の SQL を確認します。</li>
+    </ol>
+    <div class="code-title">Apache access_log の1行の読み方（combined 形式の一般例）</div>
+    <pre><code>192.168.10.25 - - [31/Oct/2026:09:00:12 +0900] <span class="s">"POST /kintai/punch/in HTTP/1.1"</span> <span class="hl">503</span> 299 <span class="s">"https://kintai.example.co.jp/kintai/punch"</span> <span class="s">"Mozilla/5.0 ..."</span>
+<span class="c"># 送信元IP / 日時 / メソッドとURL / ステータス / 返したバイト数 / 参照元 / ブラウザ</span></code></pre>
+    <div class="code-title">同じ時刻の Apache error_log の例</div>
+    <pre><code>[Sat Oct 31 09:00:12.345 2026] [proxy:error] [pid 2345] (111)Connection refused: AH00957: AJP: attempt to connect to 127.0.0.1:8009 (localhost) failed
+<span class="c"># → 8009 番に誰も待ち受けていない ＝ Tomcat が止まっている／AJP が無効、を疑う</span></code></pre>
+    <div class="callout tip"><b>時刻をそろえる</b>
+      <p>Apache・Tomcat・アプリ・DB のログはファイルが別々なので、「同じ時刻」を手がかりに横断して読みます。サーバの時計やログのタイムゾーン（+0900 か UTC か）がずれていないかも、最初に確認しておくと安心です。</p>
+    </div>
+  </section>
+
+  <section id="pitfall">
+    <h2>よくあるつまずき</h2>
+    <div class="compare">
+      <div class="bad"><b>つまずき1：アプリのログだけを見る</b><p>アプリのログに何も出ていないので「アプリは正常」と判断。実はリクエストが Apache で 503 になっていて、アプリまで届いていなかった。</p></div>
+      <div class="good"><b>こう考える</b><p>「ログに何もない」は「その層まで来ていない」可能性を示す情報です。手前の層のログに戻って、どこまで届いたかを確かめます。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき2：Tomcat の設定を探して迷子</b><p><code>server.xml</code> を探しても見つからない。実は実行可能 jar 構成で、設定は <code>application.properties</code> にあった。</p></div>
+      <div class="good"><b>こう考える</b><p>まず <code>ps -ef | grep java</code> などで「どの形で動いているか」を確かめてから、設定の場所を探します。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき3：1台だけ見て結論を出す</b><p>ap01 のログにはエラーがないので「再現しない」と報告。実はエラーは ap02 で出ていた。</p></div>
+      <div class="good"><b>こう考える</b><p>冗長構成では全台のログを見ます。「どのサーバで起きたか」も報告に含めます。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>つまずき4：バッチの存在を忘れる</b><p>「夜中に誰も操作していないのに残業時間が変わった」と悩む。実は夜間集計バッチが再計算していた。</p></div>
+      <div class="good"><b>こう考える</b><p>データが変わった時刻を確認し、その時刻に動くバッチがないかを疑います。バッチの一覧と実行時刻を手元に持っておきましょう。</p></div>
+    </div>
+    <div class="callout warn"><b>「再起動で直った」は解決ではない</b>
+      <p>Tomcat の再起動で症状が消えても、原因（メモリ不足、スレッドの詰まり、DB 接続の取りっぱなしなど）は残っている可能性があります。再起動前に、ログや状態をできる範囲で保存しておく習慣をつけましょう。何を残すかは現場の手順に従ってください。</p>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>練習問題</h2>
+    <details class="quiz">
+      <summary>Q1. 朝9時、全社員から「勤怠画面を開くと 503 Service Unavailable と出る」と連絡がありました。最初に疑う層と、見るログは？</summary>
+      <div class="ans"><p>503 は多くの場合、Apache が「奥の Tomcat と話せない」ことを示します。全員・全画面で起きているので、<strong>Tomcat が停止している、または起動途中</strong>の可能性が高いです。Apache の <code>error_log</code> で接続失敗（Connection refused など）が出ていないか、Tomcat の <code>catalina.out</code> などで停止や起動失敗の記録がないかを確認します。夜間にサーバのメンテナンスや再起動がなかったかも確かめましょう。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q2. 出勤打刻を押したら 500 エラーになった、と1人の社員から連絡がありました。他の人は打刻できています。どこを見ますか？</summary>
+      <div class="ans"><p>500 はアプリ内部の例外が典型で、1人だけなら<strong>その人のデータに特有の状態</strong>（たとえば前日の退勤打刻がない、社員マスタの所属が空など）が原因のことが多いです。アプリログで、その時刻・その社員のリクエストのスタックトレースを探します。そのうえで、SQL でその社員のデータを確認します。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q3. 次のうち、Apache が自分で返すのが自然なものはどれ？　(a) 打刻の登録　(b) ロゴ画像 logo.png　(c) 月次勤怠の一覧画面</summary>
+      <div class="ans"><p><strong>(b)</strong> です。ロゴ画像は誰がいつ見ても同じ内容の静的ファイルなので、Apache がディスクから直接返せます。(a) は DB への登録、(c) は社員ごとに内容が違う画面なので、Tomcat 上のアプリが処理します（ただし構成によっては静的ファイルもアプリから返していることがあります）。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q4. <code>ps -ef | grep java</code> の結果に <code>org.apache.catalina.startup.Bootstrap start</code> が出てきました。アプリの配備形態はどちらの可能性が高く、ポート設定はどこを見ますか？</summary>
+      <div class="ans"><p>外部にインストールされた Tomcat が起動しているので、<strong>WAR ファイルを Tomcat に配備する形</strong>の可能性が高いです。ポートは Tomcat の <code>conf/server.xml</code> の <code>&lt;Connector&gt;</code> 要素を見ます。<code>webapps/</code> 配下に勤怠アプリの WAR やフォルダがあるかも確認しましょう。</p></div>
+    </details>
+  </section>
+
+  <section id="terms">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>Web サーバ</dt><dd>HTTP リクエストを最初に受けるサーバ。ここでは Apache httpd。静的ファイルの配信、SSL 終端、リバースプロキシを担当。</dd>
+      <dt>AP サーバ</dt><dd>アプリケーションサーバ。業務アプリを動かす。ここでは Tomcat。</dd>
+      <dt>サーブレットコンテナ</dt><dd>Java のサーブレット仕様に沿ってアプリを動かす入れ物。Tomcat がその代表。</dd>
+      <dt>リバースプロキシ</dt><dd>利用者の代わりに、奥のサーバへリクエストを取り次ぐ仕組み。</dd>
+      <dt>AJP</dt><dd>Apache と Tomcat の間で使われる通信形式。mod_proxy_ajp や mod_jk が使う。</dd>
+      <dt>静的ファイル</dt><dd>画像・CSS・JavaScript など、誰が見ても同じ内容のファイル。</dd>
+      <dt>HTTP メソッド</dt><dd>リクエストの種類。GET は取得、POST は送信・登録。</dd>
+      <dt>ステータスコード</dt><dd>レスポンスの結果を表す3桁の数字。2xx 成功、3xx 移動、4xx リクエスト側、5xx サーバ側。</dd>
+      <dt>Cookie</dt><dd>サーバがブラウザに預け、ブラウザが次から自動で送り返す小さなデータ。</dd>
+      <dt>セッション</dt><dd>同じ利用者の一連のリクエストをつなげて扱う仕組み。Tomcat では JSESSIONID で識別。</dd>
+      <dt>トランザクション</dt><dd>複数の DB 操作を「全部成功（コミット）か全部取り消し（ロールバック）」でまとめる単位。</dd>
+      <dt>オンライン処理</dt><dd>利用者の操作に即座に応える処理。</dd>
+      <dt>バッチ処理</dt><dd>決まった時刻に大量データをまとめて処理する。夜間集計、締め処理など。</dd>
+      <dt>冗長化</dt><dd>同じ役割のサーバを複数用意し、1台が止まってもサービスを続けられるようにすること。</dd>
+      <dt>WAR</dt><dd>Web アプリをまとめたファイル形式。外部の Tomcat の webapps に配備する。</dd>
+      <dt>実行可能 jar</dt><dd>Tomcat を内蔵し、<code>java -jar</code> だけで起動できる Spring Boot の成果物。</dd>
+    </dl>
+  </section>
+
+  <section id="todo">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="c02-1"><label for="c02-1">図1を紙に手書きで写し、自分の現場のホスト名とログのパスを書き込む（わからない所は空欄のまま残す）</label></li>
+      <li><input type="checkbox" id="c02-2"><label for="c02-2">「先輩・社内 Wiki に確認する項目」のうち、Wiki で調べられるものを調べ、残りを質問として1つのメモにまとめる</label></li>
+      <li><input type="checkbox" id="c02-3"><label for="c02-3">勤怠画面で F12 の Network タブを開き、打刻や一覧表示のときのメソッド・URL・ステータスコードを見てみる（検証環境があればそちらで）</label></li>
+      <li><input type="checkbox" id="c02-4"><label for="c02-4">見てよいと確認できたら、Apache の access_log で自分のリクエストの1行を探し、各項目の意味を説明できるようにする</label></li>
+      <li><input type="checkbox" id="c02-5"><label for="c02-5">自分の現場のアプリが WAR 配備か実行可能 jar かを確かめる</label></li>
+      <li><input type="checkbox" id="c02-6"><label for="c02-6">夜間バッチ・締め処理の一覧（名前・実行時刻・実行サーバ）を手に入れる</label></li>
+    </ul>
+    <p class="note">チェック状態はこのページには保存されません。印刷するか、メモに写して使ってください。</p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="01-mindset.html"><span>← 前の章</span>01 このままでいいのか</a><a class="next" href="03-java.html"><span>次の章 →</span>03 読めるJava</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>

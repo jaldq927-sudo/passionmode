@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>03 読めるJava</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .figure svg text{font-size:13px}
+  .figure svg .t-s{font-size:12px}
+  .figure svg .t-b{font-weight:700}
+  .figure svg .mono{font-family:var(--f-mono)}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">SE成長ガイド / 03 読めるJava</span></div></div>
+
+<header class="chapter"><div class="wrap">
+  <div class="no">03</div>
+  <div><div class="eyebrow">CHAPTER 03 ・ ことばを読む</div><h1>読めるJava</h1></div>
+  <p class="summary">目標は「書ける」より先に「読める」です。勤怠の打刻や残業計算のコードを題材に、Java の文法を「読むのに必要な分だけ」押さえ、ソースのたどり方とスタックトレースの読み始め方を身につけます。</p>
+</div></header>
+
+<main class="wrap">
+  <div class="goals"><b>この章でわかること</b><ul>
+    <li>クラス・フィールド・メソッド・コンストラクタなど、Java のコードの「形」の見分け方</li>
+    <li>勤怠でよく出る型（int / long / String / BigDecimal / LocalDate / LocalDateTime / Duration）の意味</li>
+    <li>null・例外・インタフェース・アノテーションを「読んで意味がわかる」レベル</li>
+    <li>Controller から呼び出しをたどるソースの読み方と、スタックトレースの読み始め方</li>
+    <li>.java が JVM で動くまでの流れと、JDK / JRE / JVM の関係</li>
+  </ul></div>
+  <nav class="ltoc" aria-label="この章の目次">
+    <a href="#why">なぜ「読める」から</a><a href="#analogy">たとえ</a><a href="#compile">動くまで</a><a href="#class">クラスの形</a><a href="#types">型</a><a href="#control">if・for・List・Map</a><a href="#null">null と例外</a><a href="#iface">インタフェース等</a><a href="#package">パッケージ</a><a href="#modern">ラムダ・Stream</a><a href="#reading">ソースを読むコツ</a><a href="#stack">スタックトレース</a><a href="#pitfall">つまずき</a><a href="#quiz">練習問題</a><a href="#terms">用語</a><a href="#todo">明日から</a>
+  </nav>
+
+  <section id="why">
+    <h2>なぜ「書ける」より「読める」が先なのか</h2>
+    <p>11か月目のいま、あなたの仕事で Java に触れる場面を思い出してみてください。ゼロから新しいクラスを書く機会より、<strong>すでにあるコードを読んで「なぜこの残業時間になったのか」「このエラーはどこで起きたのか」を調べる</strong>機会のほうが、ずっと多いはずです。</p>
+    <p>改修も同じです。既存の処理の流れを読めないまま書き足すと、思わぬところを壊します。逆に、読めるようになると、AI が出してきた修正案が「本当にその場所でよいのか」を自分で判断できるようになります。AI の答えをうのみにする不安は、読む力でかなり小さくできます。</p>
+    <p>この章では、Java の文法をすべて覚えることはしません。勤怠システムのコードを読むときに<strong>出てくる頻度が高いもの</strong>に絞って、「これは何をしている行か」を見分けられるようになることを目指します。</p>
+    <div class="callout info"><b>この章のコードについて</b>
+      <p>登場するクラス名・パッケージ名（<code>com.example.kintai</code>、<code>AttendanceRecord</code> など）は説明用の<strong>一般的な例</strong>です。実際の現場のコードとは名前や構成が違います。読み終えたら、現場のコードで「似た形」を探してみてください。</p>
+    </div>
+  </section>
+
+  <section id="analogy">
+    <h2>たとえ：Java のコードは「業務マニュアル」</h2>
+    <p>コードを外国語の文章だと思うと身構えてしまいますが、Java のコードは構造のはっきりした<strong>業務マニュアル</strong>に近いものです。</p>
+    <div class="analogy">
+      <div><span class="lbl">業務マニュアル</span>「勤怠記録票」という書式。社員番号・日付・出勤時刻・退勤時刻の欄がある。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">Java</span><b>クラス</b>と<b>フィールド</b>。<code>AttendanceRecord</code> クラスが書式、<code>clockIn</code> などのフィールドが欄にあたる。</div>
+    </div>
+    <div class="analogy">
+      <div><span class="lbl">業務マニュアル</span>「残業時間の求め方：退勤−出勤−休憩、そこから所定 8 時間を引く」という手順。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">Java</span><b>メソッド</b>。<code>calcOvertimeMinutes()</code> のように、名前の付いた手順のまとまり。</div>
+    </div>
+    <div class="analogy">
+      <div><span class="lbl">業務マニュアル</span>記録票の1枚1枚。田中さんの 10/31 分、佐藤さんの 10/31 分…。</div>
+      <div class="eq">=</div>
+      <div><span class="lbl">Java</span><b>オブジェクト（インスタンス）</b>。<code>new AttendanceRecord(...)</code> で書式から1枚つくる。</div>
+    </div>
+    <p>マニュアルを読むとき、最初から最後まで一字一句追う人はいません。目次を見て、関係ある章へ飛び、そこから「詳細は○ページ参照」をたどります。コードも同じで、<strong>入口を見つけて、参照をたどる</strong>読み方をします。その方法は後半の「ソースを読むコツ」で扱います。</p>
+  </section>
+
+  <section id="compile">
+    <h2>.java が動くまで：コンパイルと JDK / JRE / JVM</h2>
+    <p>あなたが読む <code>.java</code> ファイルは、そのままでは動きません。<strong>コンパイラ</strong>（<code>javac</code>）が、JVM 向けの命令である<strong>バイトコード</strong>（<code>.class</code> ファイル）に変換し、それを <strong>JVM</strong>（Java 仮想マシン）が実行します。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 500 380" style="max-width:540px" role="img" aria-labelledby="jdk-t">
+        <title id="jdk-t">.javaをjavacで.classに変換しJVMが実行する流れと、JDK・JRE・JVMの包含関係</title>
+        <defs>
+          <marker id="j1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        </defs>
+        <!-- flow -->
+        <rect x="10" y="16" width="130" height="56" rx="8" class="box-soft"/>
+        <text x="75" y="40" text-anchor="middle" class="t-b mono">Punch.java</text>
+        <text x="75" y="60" text-anchor="middle" class="t-s muted">人が読むソース</text>
+        <line x1="140" y1="44" x2="180" y2="44" class="line-accent" marker-end="url(#j1)"/>
+        <rect x="184" y="16" width="120" height="56" rx="8" class="box"/>
+        <text x="244" y="40" text-anchor="middle" class="t-b mono">javac</text>
+        <text x="244" y="60" text-anchor="middle" class="t-s muted">コンパイル</text>
+        <line x1="304" y1="44" x2="344" y2="44" class="line-accent" marker-end="url(#j1)"/>
+        <rect x="348" y="16" width="140" height="56" rx="8" class="box-soft"/>
+        <text x="418" y="40" text-anchor="middle" class="t-b mono">Punch.class</text>
+        <text x="418" y="60" text-anchor="middle" class="t-s muted">バイトコード</text>
+        <path d="M418,72 L418,100 L250,100 L250,128" class="line-accent" marker-end="url(#j1)"/>
+        <text x="300" y="94" class="t-s muted">jar / war にまとめて配備</text>
+        <!-- nested -->
+        <rect x="10" y="132" width="480" height="226" rx="10" class="box"/>
+        <text x="24" y="156" class="t-b">JDK（開発キット）</text>
+        <text x="24" y="176" class="t-s muted">javac・jar・jstack などの開発用ツール ＋ ↓</text>
+        <rect x="30" y="188" width="440" height="152" rx="10" class="box-soft"/>
+        <text x="44" y="212" class="t-b">JRE（実行環境）</text>
+        <text x="44" y="232" class="t-s muted">標準ライブラリ（String, List, LocalDate …）＋ ↓</text>
+        <rect x="50" y="246" width="400" height="78" rx="10" class="box-ok"/>
+        <text x="64" y="270" class="t-b">JVM（Java 仮想マシン）</text>
+        <text x="64" y="290" class="t-s">.class を読み込んで実行する。メモリ管理（GC）も担当</text>
+        <text x="64" y="310" class="t-s muted">Windows でも Linux でも同じ .class が動く理由</text>
+      </svg>
+      <figcaption>図1　上：ソースが実行されるまで。下：JDK ⊃ JRE ⊃ JVM の関係</figcaption>
+    </figure>
+    <ul>
+      <li><strong>JVM</strong>：.class を実行するエンジン。Tomcat も Spring Boot アプリも、JVM の上で動く「1つの Java プロセス」です。前章の <code>ps -ef | grep java</code> で見えたのがこれです。</li>
+      <li><strong>JRE</strong>：JVM ＋ 標準ライブラリ。「動かすだけ」に必要なもの。</li>
+      <li><strong>JDK</strong>：JRE ＋ 開発ツール（コンパイラなど）。開発するなら JDK が必要です。なお Java 11 以降、Oracle などは JRE 単体の配布をやめ、JDK として配布するのが一般的になりました。</li>
+    </ul>
+    <p>実際の開発では <code>javac</code> を手で打つことはほとんどなく、Maven や Gradle といった<strong>ビルドツール</strong>が、コンパイル・ライブラリの取得・jar/war へのまとめをまとめて行います。これは <a href="05-build-env.html">05 開発環境をつくる</a> で扱います。</p>
+    <div class="callout tip"><b>Java のバージョンを確かめる</b>
+      <p><code>java -version</code> で実行環境のバージョンがわかります。Java 8 と 17 では使える書き方が少し違い、エラーメッセージの親切さも違います。現場のシステムが何のバージョンで動いているかは、確認しておきたい項目の1つです。</p>
+    </div>
+  </section>
+
+  <section id="class">
+    <h2>クラスの形を見分ける：フィールド・コンストラクタ・メソッド</h2>
+    <p>まずは勤怠記録1件を表すクラスを読んでみましょう。最初は意味がわからなくて大丈夫です。後の図で、どの部分が何かを見分けます。</p>
+    <div class="code-title">AttendanceRecord.java（一般的な例）</div>
+    <pre><code><span class="k">package</span> com.example.kintai.domain;
+
+<span class="k">import</span> java.time.Duration;
+<span class="k">import</span> java.time.LocalDate;
+<span class="k">import</span> java.time.LocalDateTime;
+
+<span class="c">/** 1人・1日分の勤怠記録 */</span>
+<span class="k">public class</span> AttendanceRecord {
+
+    <span class="c">// ---- フィールド（このクラスが持つデータ）----</span>
+    <span class="k">private long</span> employeeId;          <span class="c">// 社員ID</span>
+    <span class="k">private</span> LocalDate workDate;        <span class="c">// 勤務日</span>
+    <span class="k">private</span> LocalDateTime clockIn;     <span class="c">// 出勤時刻</span>
+    <span class="k">private</span> LocalDateTime clockOut;    <span class="c">// 退勤時刻（未打刻なら null）</span>
+    <span class="k">private int</span> breakMinutes;          <span class="c">// 休憩（分）</span>
+
+    <span class="k">private static final int</span> STANDARD_MINUTES = 8 * 60;  <span class="c">// 所定労働 480分</span>
+
+    <span class="c">// ---- コンストラクタ（new したときに呼ばれる初期化）----</span>
+    <span class="k">public</span> AttendanceRecord(<span class="k">long</span> employeeId, LocalDate workDate, LocalDateTime clockIn) {
+        <span class="k">this</span>.employeeId = employeeId;
+        <span class="k">this</span>.workDate = workDate;
+        <span class="k">this</span>.clockIn = clockIn;
+        <span class="k">this</span>.breakMinutes = 60;
+    }
+
+    <span class="c">// ---- メソッド（このクラスができること）----</span>
+    <span class="k">public void</span> punchOut(LocalDateTime time) {
+        <span class="k">this</span>.clockOut = time;
+    }
+
+    <span class="k">public long</span> calcOvertimeMinutes() {
+        <span class="k">if</span> (clockOut == <span class="k">null</span>) {
+            <span class="k">return</span> 0;                    <span class="c">// 退勤前は残業なし扱い</span>
+        }
+        <span class="k">long</span> worked = Duration.between(clockIn, clockOut).toMinutes() - breakMinutes;
+        <span class="k">return</span> Math.max(0, worked - STANDARD_MINUTES);
+    }
+
+    <span class="k">public</span> LocalDateTime getClockOut() {   <span class="c">// ゲッター：値を取り出すだけ</span>
+        <span class="k">return</span> clockOut;
+    }
+}</code></pre>
+    <figure class="figure">
+      <svg viewBox="0 0 500 400" style="max-width:540px" role="img" aria-labelledby="cls-t">
+        <title id="cls-t">クラスの構造：パッケージ宣言、import、クラス宣言の中にフィールド、コンストラクタ、メソッドがある</title>
+        <rect x="10" y="10" width="480" height="40" rx="8" class="box-soft"/>
+        <text x="24" y="35" class="t-s"><tspan class="t-b">package / import</tspan>　どこに属し、何を借りてくるか</text>
+        <rect x="10" y="62" width="480" height="326" rx="10" class="box"/>
+        <text x="24" y="86" class="t-b mono">public class AttendanceRecord { … }</text>
+        <text x="24" y="104" class="t-s muted">クラス＝書式。ファイル名と同じ名前</text>
+        <rect x="28" y="118" width="444" height="74" rx="8" class="box-ok"/>
+        <text x="42" y="140" class="t-b">フィールド（データ・欄）</text>
+        <text x="42" y="160" class="t-s mono">private LocalDateTime clockIn;</text>
+        <text x="42" y="180" class="t-s muted">見分け方：メソッドの外にある「型 名前;」</text>
+        <rect x="28" y="202" width="444" height="74" rx="8" class="box-warn"/>
+        <text x="42" y="224" class="t-b">コンストラクタ（初期化）</text>
+        <text x="42" y="244" class="t-s mono">public AttendanceRecord(…) { … }</text>
+        <text x="42" y="264" class="t-s muted">見分け方：クラスと同じ名前で、戻り値の型がない</text>
+        <rect x="28" y="286" width="444" height="88" rx="8" class="box-soft"/>
+        <text x="42" y="308" class="t-b">メソッド（手順・できること）</text>
+        <text x="42" y="328" class="t-s mono">public long calcOvertimeMinutes() { … }</text>
+        <text x="42" y="348" class="t-s muted">見分け方：戻り値の型 名前(引数) { 本体 }</text>
+        <text x="42" y="366" class="t-s muted">void は「何も返さない」という意味</text>
+      </svg>
+      <figcaption>図2　クラスの中身は「フィールド」「コンストラクタ」「メソッド」の3種類でほぼ説明できる</figcaption>
+    </figure>
+    <h3>読むときのポイント</h3>
+    <ul>
+      <li><strong><code>private</code> / <code>public</code></strong>：アクセスできる範囲です。<code>private</code> はそのクラスの中だけ、<code>public</code> はどこからでも。フィールドは <code>private</code> にして、外からは <code>getClockOut()</code> のようなメソッド経由で触らせるのが一般的です。</li>
+      <li><strong><code>this.clockIn = clockIn;</code></strong>：左の <code>this.clockIn</code> はフィールド、右の <code>clockIn</code> は引数です。名前が同じなので <code>this.</code> で区別しています。</li>
+      <li><strong><code>static final</code></strong>：<code>static</code> は「1枚1枚の記録票ではなく、書式そのものに属する」、<code>final</code> は「変更できない」。大文字の名前は定数の慣習です。</li>
+      <li><strong>使う側</strong>：<code>AttendanceRecord rec = new AttendanceRecord(1001L, today, now);</code> で1枚つくり、<code>rec.punchOut(now);</code> や <code>rec.calcOvertimeMinutes()</code> のように「変数名.メソッド名(…)」で呼びます。</li>
+    </ul>
+    <div class="callout tip"><b>Lombok に注意</b>
+      <p>現場のコードで、フィールドだけ並んでいてゲッターが見当たらないのにクラスの上に <code>@Data</code> や <code>@Getter</code> が付いている場合、Lombok というライブラリがコンパイル時にゲッター等を自動生成しています。「定義が見つからない」と焦らなくて大丈夫です。</p>
+    </div>
+  </section>
+
+  <section id="types">
+    <h2>勤怠でよく出る型</h2>
+    <p>Java では、変数やフィールドには必ず<strong>型</strong>（どんな種類の値を入れるか）があります。型を見れば、その値で何ができるかの見当がつきます。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>型</th><th>中身</th><th>勤怠での例</th><th>読むときの注意</th></tr></thead>
+      <tbody>
+        <tr><td><code>int</code></td><td>整数（約±21億）</td><td>休憩分数、有給残日数</td><td>整数どうしの割り算は小数が切り捨て（90 / 60 は 1）</td></tr>
+        <tr><td><code>long</code></td><td>より大きな整数</td><td>社員ID、分単位の時間</td><td>数字の後ろの <code>L</code>（<code>1001L</code>）は long の印</td></tr>
+        <tr><td><code>boolean</code></td><td>true / false</td><td>締め済みフラグ</td><td><code>isClosed()</code> のような名前が多い</td></tr>
+        <tr><td><code>String</code></td><td>文字列</td><td>氏名、申請種別コード</td><td>中身の比較は <code>==</code> ではなく <code>equals()</code></td></tr>
+        <tr><td><code>BigDecimal</code></td><td>正確な10進数</td><td>通勤費、時給、手当額</td><td>計算は <code>add()</code> などのメソッド。比較は <code>compareTo()</code></td></tr>
+        <tr><td><code>LocalDate</code></td><td>日付（時刻なし）</td><td>勤務日、有給取得日</td><td>タイムゾーンを持たない</td></tr>
+        <tr><td><code>LocalDateTime</code></td><td>日付＋時刻</td><td>出勤・退勤時刻</td><td><code>isBefore()</code> / <code>isAfter()</code> で前後比較</td></tr>
+        <tr><td><code>Duration</code></td><td>時間の長さ</td><td>実労働時間</td><td><code>Duration.between(開始, 終了).toMinutes()</code></td></tr>
+      </tbody>
+    </table></div>
+    <div class="code-title">お金に double を使わない理由</div>
+    <pre><code><span class="k">double</span> a = 0.1 + 0.2;
+System.out.println(a);           <span class="c">// 0.30000000000000004  ← 2進数の誤差</span>
+
+BigDecimal fare = <span class="k">new</span> BigDecimal(<span class="s">"320"</span>);      <span class="c">// 通勤費 片道</span>
+BigDecimal monthly = fare.multiply(BigDecimal.valueOf(2 * 20));
+System.out.println(monthly);     <span class="c">// 12800  ← 正確</span></code></pre>
+    <p>小文字で始まる <code>int</code>・<code>long</code>・<code>boolean</code> などは<strong>プリミティブ型</strong>で、値そのものを持ち、null になりません。大文字で始まる <code>String</code>・<code>BigDecimal</code>・<code>LocalDate</code> などは<strong>参照型</strong>（クラス）で、null になりえます。<code>Integer</code>・<code>Long</code> のように、プリミティブ型をクラスにした版もあり、こちらも null になりえます。</p>
+  </section>
+
+  <section id="control">
+    <h2>if・for・List・Map：処理の流れとデータのまとまり</h2>
+    <p>メソッドの中身は、上から順に実行されるのが基本です。そこに「条件で分ける（if）」「繰り返す（for）」が加わります。複数のデータをまとめて扱うのが <code>List</code> と <code>Map</code> です。</p>
+    <div class="code-title">1か月分の残業を合計する（一般的な例）</div>
+    <pre><code><span class="k">public long</span> sumMonthlyOvertime(List&lt;AttendanceRecord&gt; records) {
+    <span class="k">long</span> total = 0;
+    <span class="k">for</span> (AttendanceRecord rec : records) {      <span class="c">// records の1件ずつを rec に入れて繰り返す</span>
+        <span class="k">if</span> (rec.isHoliday()) {
+            <span class="k">continue</span>;                          <span class="c">// 休日はこの集計の対象外。次の1件へ</span>
+        }
+        total += rec.calcOvertimeMinutes();     <span class="c">// total = total + … と同じ</span>
+    }
+    <span class="k">return</span> total;
+}</code></pre>
+    <ul>
+      <li><strong><code>List&lt;AttendanceRecord&gt;</code></strong>：AttendanceRecord が順番に並んだリスト。<code>&lt; &gt;</code> の中は「何のリストか」を表します（ジェネリクス）。</li>
+      <li><strong><code>for (型 変数 : リスト)</code></strong>：拡張 for 文。リストの要素を1つずつ取り出して繰り返します。<code>for (int i = 0; i &lt; n; i++)</code> という数を数える形もあります。</li>
+      <li><strong><code>continue</code></strong> は「今回の繰り返しを飛ばして次へ」、<strong><code>break</code></strong> は「繰り返しを終わる」、<strong><code>return</code></strong> は「メソッドを終わって値を返す」です。</li>
+      <li>if の条件で使う <code>&amp;&amp;</code> は「かつ」、<code>||</code> は「または」、<code>!</code> は「〜でない」です。</li>
+    </ul>
+    <div class="code-title">Map：キーで値を引く（社員IDごとの残業合計）</div>
+    <pre><code>Map&lt;Long, Long&gt; overtimeByEmployee = <span class="k">new</span> HashMap&lt;&gt;();
+overtimeByEmployee.put(1001L, 1260L);    <span class="c">// 田中さん 21時間</span>
+overtimeByEmployee.put(1002L, 300L);     <span class="c">// 佐藤さん 5時間</span>
+
+Long tanaka = overtimeByEmployee.get(1001L);   <span class="c">// 1260</span>
+Long nobody = overtimeByEmployee.get(9999L);   <span class="c">// キーがないと null が返る</span></code></pre>
+    <p><code>Map&lt;キーの型, 値の型&gt;</code> は、辞書のように「キーを渡すと値が返る」入れ物です。<code>get()</code> でキーが見つからないと例外ではなく <strong>null</strong> が返ってくる点が、次の節につながります。</p>
+  </section>
+
+  <section id="null">
+    <h2>null と NullPointerException、そして例外</h2>
+    <h3>null は「何も入っていない」</h3>
+    <p>参照型の変数には、<strong>null</strong>（何も指していない）が入ることがあります。null の変数に対してメソッドを呼ぶと、<strong>NullPointerException</strong>（略して NPE）が起きます。勤怠システムで最もよく見る例外の1つです。</p>
+    <div class="code-title">退勤打刻を忘れた日に起きる NPE（一般的な例）</div>
+    <pre><code>LocalDateTime out = rec.getClockOut();          <span class="c">// 退勤未打刻なので null</span>
+<span class="hl"><span class="k">if</span> (out.isAfter(lateNightStart)) {             <span class="c">// null.isAfter(…) → NPE！</span></span>
+    ...
+}</code></pre>
+    <p>Java 14 以降（標準で有効になったのは 15 以降）では、NPE のメッセージに「何が null だったか」が出るようになりました。</p>
+    <pre><code>java.lang.NullPointerException: Cannot invoke "java.time.LocalDateTime.isAfter(java.time.chrono.ChronoLocalDateTime)" because "out" is null</code></pre>
+    <p class="note">変数名（ここでは "out"）が表示されるかはコンパイル時の設定によります。表示されない場合は "&lt;local4&gt;" のような番号になります。</p>
+    <p>防ぎ方として、コードの中に <code>if (out != null)</code> のような null チェックが書かれていることがよくあります。読むときは「この値が null になるのはどんなときか（業務的には、どんな操作をした・しなかったときか）」を考えると、原因に近づけます。</p>
+
+    <h3>例外：うまくいかなかったことを知らせる仕組み</h3>
+    <p>例外は「ここで処理を続けられない」ことを呼び出し元に知らせる仕組みです。例外が起きると、その場で処理が中断され、呼び出し元へ、さらにその呼び出し元へと<strong>投げ上げられ</strong>ていきます。どこかで <code>catch</code> されれば、そこで対処されます。誰も catch しなければ、最終的に Tomcat まで届いて 500 エラーになります。</p>
+    <div class="code-title">try-catch と throws（一般的な例）</div>
+    <pre><code><span class="c">// throws：このメソッドは IOException を投げることがある、という宣言</span>
+<span class="k">public void</span> exportCsv(Path file, List&lt;AttendanceRecord&gt; list) <span class="k">throws</span> IOException {
+    Files.writeString(file, toCsv(list));
+}
+
+<span class="k">public void</span> runMonthlyClose() {
+    <span class="k">try</span> {
+        exportCsv(Path.of(<span class="s">"/data/out/kintai_202610.csv"</span>), records);
+    } <span class="k">catch</span> (IOException e) {
+        log.error(<span class="s">"給与連携CSVの出力に失敗しました"</span>, e);   <span class="c">// ログに残す</span>
+        <span class="k">throw new</span> IllegalStateException(<span class="s">"締め処理中断"</span>, e); <span class="c">// 包んで投げ直す</span>
+    } <span class="k">finally</span> {
+        <span class="c">// 成功しても失敗しても必ず実行される（後片付け）</span>
+    }
+}</code></pre>
+    <div class="tbl"><table>
+      <thead><tr><th>種類</th><th>意味</th><th>例</th><th>コード上の特徴</th></tr></thead>
+      <tbody>
+        <tr><td>チェック例外</td><td>起こりうると予想でき、対処を強制されるもの</td><td><code>IOException</code>、<code>SQLException</code></td><td>catch するか、<code>throws</code> で宣言しないとコンパイルエラー</td></tr>
+        <tr><td>非チェック例外</td><td>主にプログラムの誤りや想定外の状態</td><td><code>NullPointerException</code>、<code>IllegalArgumentException</code>、Spring の <code>DataAccessException</code></td><td><code>RuntimeException</code> の子孫。宣言なしで投げられる</td></tr>
+      </tbody>
+    </table></div>
+    <div class="callout warn"><b>「握りつぶし」に注意して読む</b>
+      <p><code>catch (Exception e) { }</code> のように、catch して何もしないコードを見かけたら要注意です。エラーが起きてもログに何も残らず、「エラーは出ていないのにデータがおかしい」という調査の難しい障害の原因になります。</p>
+    </div>
+  </section>
+
+  <section id="iface">
+    <h2>インタフェース・継承・アノテーションの最低限</h2>
+    <h3>インタフェース：「できること」の約束</h3>
+    <p>インタフェースは、メソッドの名前と形だけを決めた<strong>約束</strong>です。中身（実装）は別のクラスが書きます。</p>
+    <pre><code><span class="k">public interface</span> OvertimeCalculator {
+    <span class="k">long</span> calc(AttendanceRecord rec);           <span class="c">// 本体がない：約束だけ</span>
+}
+
+<span class="k">public class</span> StandardOvertimeCalculator <span class="k">implements</span> OvertimeCalculator {
+    <span class="k">@Override</span>
+    <span class="k">public long</span> calc(AttendanceRecord rec) {    <span class="c">// 約束を守って中身を書く</span>
+        <span class="k">return</span> rec.calcOvertimeMinutes();
+    }
+}</code></pre>
+    <p>読むときに困るのは、「定義へ移動」でインタフェースに飛ぶと<strong>中身がない</strong>ことです。そのときは IDE の「実装へ移動」（IntelliJ IDEA なら <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>、Eclipse なら <kbd>Ctrl</kbd>+<kbd>T</kbd> など）で、<code>implements</code> しているクラスを探します。Spring Data JPA の Repository のように、実装クラスがソース上に存在せず、実行時に自動で作られるものもあります（<a href="04-spring-boot.html">04章</a>で扱います）。</p>
+    <h3>継承：既存のクラスを土台にする</h3>
+    <p><code>class ShiftAttendanceRecord extends AttendanceRecord</code> のように <code>extends</code> と書くと、親クラスのフィールドやメソッドを引き継いだ子クラスになります。子クラスで同じ名前のメソッドを書き直すことを<strong>オーバーライド</strong>と呼び、<code>@Override</code> はその目印です。「このメソッドが見つからない」と思ったら、親クラスに書かれていないか確かめましょう。</p>
+    <h3>アノテーション：@ から始まる「目印」</h3>
+    <p><code>@Override</code>、<code>@Controller</code>、<code>@Transactional</code> のように <code>@</code> から始まるものは<strong>アノテーション</strong>です。それ自体は処理を書いたものではなく、コンパイラやフレームワーク（Spring など）に向けた<strong>付箋・目印</strong>です。「このクラスは画面の入口です」「このメソッドはトランザクションで囲んでください」と、裏で動く仕組みに伝えています。</p>
+    <p>Spring Boot のコードはアノテーションだらけで、ここが「何が起きているのかわからない」原因になりがちです。それぞれの意味は <a href="04-spring-boot.html">04 Spring Bootの正体</a> でくわしく扱います。この章では「@ は目印。誰かがそれを見て動いている」とだけ覚えておけば十分です。</p>
+  </section>
+
+  <section id="package">
+    <h2>パッケージとフォルダ構成、import</h2>
+    <p>Java のクラスは<strong>パッケージ</strong>という名前空間に分けて整理されます。パッケージ名はそのままフォルダの階層に対応します。</p>
+    <div class="code-title">Maven / Gradle プロジェクトの一般的なフォルダ構成</div>
+    <pre><code>kintai/
+├── pom.xml                         <span class="c">← ビルド設定（05章）</span>
+└── src/
+    ├── main/
+    │   ├── java/
+    │   │   └── com/example/kintai/
+    │   │       ├── KintaiApplication.java   <span class="c">← 起動クラス</span>
+    │   │       ├── controller/   PunchController.java     <span class="c">← 画面・APIの入口</span>
+    │   │       ├── service/      PunchService.java        <span class="c">← 業務ロジック</span>
+    │   │       ├── repository/   AttendanceRepository.java<span class="c">← DBアクセス</span>
+    │   │       └── domain/       AttendanceRecord.java    <span class="c">← データの形</span>
+    │   └── resources/
+    │       ├── application.properties  <span class="c">← 設定</span>
+    │       ├── templates/              <span class="c">← 画面テンプレート</span>
+    │       └── static/                 <span class="c">← CSS・JS・画像</span>
+    └── test/java/...                   <span class="c">← テストコード</span></code></pre>
+    <p><code>com/example/kintai/controller/PunchController.java</code> の先頭には <code>package com.example.kintai.controller;</code> と書かれています。パッケージ名は、会社のドメインを逆にした形（<code>com.example</code>）から始めるのが慣習です。</p>
+    <p><code>import</code> は「別のパッケージのクラスを、短い名前で使います」という宣言です。<code>import java.time.LocalDate;</code> があるから、本文で <code>LocalDate</code> とだけ書けます。読むときは、import の一覧を眺めるだけで「このクラスは何に依存しているか」（DB を触るのか、ファイルを書くのか、Spring の何を使うのか）の見当がつきます。</p>
+  </section>
+
+  <section id="modern">
+    <h2>Java 8 以降の記法：ラムダ・Stream・Optional を「読める」ように</h2>
+    <p>最近のコードには、矢印 <code>-&gt;</code> や <code>.stream()</code> がよく出てきます。書けなくてよいので、<strong>for 文に読み替えられる</strong>ことを目指しましょう。</p>
+    <div class="compare">
+      <div class="good"><b>for 文で書いた場合</b>
+<pre><code>List&lt;Long&gt; ids = <span class="k">new</span> ArrayList&lt;&gt;();
+<span class="k">for</span> (AttendanceRecord r : records) {
+    <span class="k">if</span> (r.calcOvertimeMinutes() &gt; 45 * 60) {
+        ids.add(r.getEmployeeId());
+    }
+}</code></pre></div>
+      <div class="good"><b>Stream で書いた場合（同じ意味）</b>
+<pre><code>List&lt;Long&gt; ids = records.stream()
+    .filter(r -&gt; r.calcOvertimeMinutes() &gt; 45 * 60)
+    .map(r -&gt; r.getEmployeeId())
+    .collect(Collectors.toList());</code></pre></div>
+    </div>
+    <ul>
+      <li><strong><code>r -&gt; 式</code></strong>（ラムダ式）：「r を受け取って、式の結果を返す小さな関数」です。<code>r</code> は1件ずつの要素だと読めば OK です。</li>
+      <li><strong><code>.filter(条件)</code></strong>：条件に合うものだけ残す（for ＋ if）。</li>
+      <li><strong><code>.map(変換)</code></strong>：1件ずつ別の値に変える（ここでは記録 → 社員ID）。</li>
+      <li><strong><code>.collect(...)</code></strong>：結果をリストなどにまとめる。Java 16 以降は <code>.toList()</code> と書くこともあります。</li>
+      <li><strong><code>AttendanceRecord::getEmployeeId</code></strong>：メソッド参照。<code>r -&gt; r.getEmployeeId()</code> の省略形です。</li>
+    </ul>
+    <div class="code-title">Optional：「ないかもしれない」を表す箱</div>
+    <pre><code>Optional&lt;AttendanceRecord&gt; today = repository.findByEmployeeIdAndWorkDate(1001L, date);
+
+<span class="k">if</span> (today.isPresent()) { ... }                      <span class="c">// 中身があるか</span>
+AttendanceRecord rec = today.orElseThrow(
+    () -&gt; <span class="k">new</span> IllegalStateException(<span class="s">"出勤打刻がありません"</span>));  <span class="c">// なければ例外</span>
+<span class="k">long</span> ot = today.map(AttendanceRecord::calcOvertimeMinutes).orElse(0L);  <span class="c">// なければ 0</span></code></pre>
+    <p>Optional は null を直接返す代わりに「中身があるかもしれないし、ないかもしれない箱」を返す書き方です。<code>orElse(…)</code> は「なければこれ」、<code>orElseThrow(…)</code> は「なければ例外」と読みます。</p>
+  </section>
+
+  <section id="reading">
+    <h2>ソースを読むコツ：入口から呼び出しをたどる</h2>
+    <p>勤怠システム全体のソースは数百〜数千ファイルあるかもしれません。全部を読む必要はありません。調べたい<strong>画面操作の入口</strong>を見つけ、そこから呼び出しを1本たどるのが基本です。</p>
+    <figure class="figure">
+      <svg viewBox="0 0 500 470" style="max-width:540px" role="img" aria-labelledby="rd-t">
+        <title id="rd-t">URLからControllerを探し、定義へ移動でService、Repository、SQLへとたどるコード読解の手順</title>
+        <defs>
+          <marker id="r1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fill-accent"/></marker>
+        </defs>
+        <rect x="10" y="10" width="300" height="56" rx="8" class="box-soft"/>
+        <text x="24" y="34" class="t-b">① 手がかり：URL・画面名・ログ</text>
+        <text x="24" y="54" class="t-s mono">POST /punch/in</text>
+        <line x1="160" y1="66" x2="160" y2="94" class="line-accent" marker-end="url(#r1)"/>
+        <text x="172" y="86" class="t-s muted">全文検索で "/punch/in"</text>
+        <rect x="10" y="98" width="300" height="70" rx="8" class="box"/>
+        <text x="24" y="122" class="t-b">② Controller（入口）</text>
+        <text x="24" y="142" class="t-s mono">@PostMapping("/punch/in")</text>
+        <text x="24" y="160" class="t-s mono">punchIn(…)</text>
+        <line x1="160" y1="168" x2="160" y2="196" class="line-accent" marker-end="url(#r1)"/>
+        <text x="172" y="188" class="t-s muted">定義へ移動</text>
+        <rect x="10" y="200" width="300" height="70" rx="8" class="box"/>
+        <text x="24" y="224" class="t-b">③ Service（業務ルール）</text>
+        <text x="24" y="244" class="t-s mono">punchService.punchIn(id, now)</text>
+        <text x="24" y="262" class="t-s muted">if 分岐・計算・ログ出力を読む</text>
+        <line x1="160" y1="270" x2="160" y2="298" class="line-accent" marker-end="url(#r1)"/>
+        <text x="172" y="290" class="t-s muted">定義へ／実装へ移動</text>
+        <rect x="10" y="302" width="300" height="70" rx="8" class="box"/>
+        <text x="24" y="326" class="t-b">④ Repository（DBアクセス）</text>
+        <text x="24" y="346" class="t-s mono">attendanceRepository.save(rec)</text>
+        <text x="24" y="364" class="t-s muted">実装が自動生成のこともある</text>
+        <line x1="160" y1="372" x2="160" y2="400" class="line-accent" marker-end="url(#r1)"/>
+        <rect x="10" y="404" width="300" height="56" rx="8" class="box-warn"/>
+        <text x="24" y="428" class="t-b">⑤ SQL・テーブル</text>
+        <text x="24" y="448" class="t-s muted">Mapper XML / @Query / ログのSQL</text>
+        <rect x="330" y="98" width="160" height="272" rx="8" class="box-ok"/>
+        <text x="342" y="122" class="t-b">逆向きは</text>
+        <text x="342" y="142" class="t-b">「呼び出し階層」</text>
+        <text x="342" y="168" class="t-s">このメソッドを</text>
+        <text x="342" y="186" class="t-s">誰が呼んでいる？</text>
+        <text x="342" y="212" class="t-s muted">影響範囲を調べる</text>
+        <text x="342" y="230" class="t-s muted">ときに使う</text>
+        <text x="342" y="262" class="t-s">例：calcOvertime</text>
+        <text x="342" y="280" class="t-s">を直したら、どの</text>
+        <text x="342" y="298" class="t-s">画面・バッチに</text>
+        <text x="342" y="316" class="t-s">影響する？</text>
+        <text x="342" y="348" class="t-s muted">（09章で使う）</text>
+      </svg>
+      <figcaption>図3　上から下へ「定義へ移動」でたどり、影響範囲は「呼び出し階層」で下から上へ確かめる</figcaption>
+    </figure>
+    <h3>IDE の3つの機能を使い倒す</h3>
+    <p>ソースを読むときに、テキストエディタで目で探すのは大変です。IDE（IntelliJ IDEA、Eclipse、VS Code など）の機能を使いましょう。キー操作は IDE や設定によって違うので、メニューの名前で覚えておくと安心です。</p>
+    <div class="tbl"><table>
+      <thead><tr><th>機能</th><th>何がわかるか</th><th>操作の例</th></tr></thead>
+      <tbody>
+        <tr><td>定義へ移動</td><td>このメソッド・クラスの中身はどこ？</td><td>IntelliJ：<kbd>Ctrl</kbd>+クリック、<kbd>Ctrl</kbd>+<kbd>B</kbd>／Eclipse：<kbd>F3</kbd>／VS Code：<kbd>F12</kbd></td></tr>
+        <tr><td>実装へ移動</td><td>インタフェースの中身を書いたクラスはどれ？</td><td>IntelliJ：<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>B</kbd>／Eclipse：<kbd>Ctrl</kbd>+<kbd>T</kbd></td></tr>
+        <tr><td>呼び出し階層</td><td>このメソッドを誰が呼んでいる？</td><td>IntelliJ：<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd>／Eclipse：<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>H</kbd></td></tr>
+        <tr><td>全文検索</td><td>URL・メッセージ文言・テーブル名はどこに出てくる？</td><td>IntelliJ：<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd>／Eclipse：<kbd>Ctrl</kbd>+<kbd>H</kbd></td></tr>
+      </tbody>
+    </table></div>
+    <h3>ログ出力の位置を手がかりにする</h3>
+    <p>アプリのログに出ている文言（例：「出勤打刻を登録しました employeeId=1001」）をソース全体から検索すると、その行を出力している場所がすぐ見つかります。ログは「実際にその行まで処理が進んだ」証拠なので、<strong>ログに出ている最後のメッセージの次の処理あたりで何かが起きた</strong>、と範囲を絞れます。</p>
+    <div class="code-title">PunchService.java（一般的な例）</div>
+    <pre><code><span class="k">@Service</span>
+<span class="k">public class</span> PunchService {
+    <span class="k">private static final</span> Logger log = LoggerFactory.getLogger(PunchService.<span class="k">class</span>);
+    <span class="k">private final</span> AttendanceRepository attendanceRepository;
+
+    <span class="k">public</span> PunchService(AttendanceRepository attendanceRepository) {
+        <span class="k">this</span>.attendanceRepository = attendanceRepository;
+    }
+
+    <span class="k">@Transactional</span>
+    <span class="k">public void</span> punchIn(<span class="k">long</span> employeeId, LocalDateTime now) {
+        log.info(<span class="s">"出勤打刻 開始 employeeId={}"</span>, employeeId);
+        <span class="k">if</span> (attendanceRepository.existsByEmployeeIdAndWorkDate(employeeId, now.toLocalDate())) {
+            <span class="k">throw new</span> AlreadyPunchedException(employeeId);
+        }
+        attendanceRepository.save(<span class="k">new</span> AttendanceRecord(employeeId, now.toLocalDate(), now));
+        log.info(<span class="s">"出勤打刻を登録しました employeeId={}"</span>, employeeId);
+    }
+}</code></pre>
+    <p><code>{}</code> はログの埋め込み位置で、後ろの引数の値が入ります。「開始」は出ているのに「登録しました」が出ていなければ、その間（存在チェックか save）で何かが起きた、と読めます。</p>
+  </section>
+
+  <section id="stack">
+    <h2>スタックトレースの読み方・入門</h2>
+    <p>例外が起きると、ログに何十行もの <code>at ...</code> が並んだ<strong>スタックトレース</strong>が出ます。これは「例外が起きた場所」と「そこに至るまでの呼び出しの道のり」の記録です。全部読む必要はありません。まず見るのは3か所です。</p>
+    <div class="code-title">アプリログに出たスタックトレース（一般的な例・一部省略）</div>
+    <pre><code><span class="hl">org.springframework.dao.DataIntegrityViolationException: could not execute statement; constraint [attendance_record_uk]</span>
+	at org.springframework.orm.jpa.vendor.HibernateJpaDialect.convertHibernateAccessException(HibernateJpaDialect.java:276)
+	at org.springframework.orm.jpa.vendor.HibernateJpaDialect.translateExceptionIfPossible(HibernateJpaDialect.java:233)
+	...
+<span class="hl">	at com.example.kintai.service.PunchService.punchIn(PunchService.java:24)</span>
+	at com.example.kintai.controller.PunchController.punchIn(PunchController.java:31)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at org.springframework.web.servlet.DispatcherServlet.doDispatch(DispatcherServlet.java:1067)
+	at org.apache.catalina.core.ApplicationFilterChain.doFilter(ApplicationFilterChain.java:166)
+	...
+<span class="hl">Caused by: org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint "attendance_record_uk"</span>
+  Detail: Key (employee_id, work_date)=(1001, 2026-10-31) already exists.
+	at org.postgresql.core.v3.QueryExecutorImpl.receiveErrorResponse(QueryExecutorImpl.java:2675)
+	...</code></pre>
+    <ol class="steps">
+      <li><b>一番上の行：例外の名前とメッセージ</b><code>DataIntegrityViolationException</code>（データの整合性違反）と、<code>constraint [attendance_record_uk]</code>（制約名）。何が起きたかの「見出し」です。</li>
+      <li><b>自社パッケージの最初の行：どこで起きたか</b>上から見ていき、<code>com.example.kintai</code> で始まる最初の行を探します。<code>PunchService.java:24</code>、つまり PunchService の 24 行目です。その下の行が「誰が呼んだか」（PunchController の 31 行目）です。Spring や Tomcat の行は、ふだんは読み飛ばして構いません。</li>
+      <li><b>Caused by：本当の原因</b>例外が別の例外に包まれていると、<code>Caused by:</code> が続きます。複数あるときは<strong>一番下の Caused by</strong> が根本原因であることが多いです。ここでは PostgreSQL が「同じ社員・同じ日の行がすでにある」と言っています。</li>
+    </ol>
+    <p>この3か所から、「田中さん（1001）の 10/31 の出勤が二重に登録されようとして、DB の一意制約で止まった」とわかります。次に考えるのは、なぜ PunchService の存在チェックをすり抜けたのか（ボタンの連打で同時に2リクエスト来た？）です。ログの読み方と障害調査の進め方は <a href="07-logs-incident.html">07 ログと障害調査</a> でくわしく扱います。</p>
+    <div class="flow" aria-label="スタックトレースを読む順番">
+      <div class="node"><b>1. 先頭行</b>例外名＋メッセージで「何が」</div>
+      <div class="arrow"></div>
+      <div class="node"><b>2. 自社の最初の at</b>ファイル名:行番号で「どこで」</div>
+      <div class="arrow"></div>
+      <div class="node hot"><b>3. 最後の Caused by</b>根本原因「なぜ」</div>
+      <div class="arrow"></div>
+      <div class="node alt"><b>4. ソースを開く</b>その行と前後を読む</div>
+    </div>
+  </section>
+
+  <section id="pitfall">
+    <h2>よくあるつまずき</h2>
+    <div class="compare">
+      <div class="bad"><b>文字列を == で比べる</b>
+<pre><code><span class="k">if</span> (kind == <span class="s">"OVERTIME"</span>) { ... }</code></pre>
+      <p>見た目が同じ文字列でも、別々に作られたオブジェクトだと false になることがあります。</p></div>
+      <div class="good"><b>equals で比べる</b>
+<pre><code><span class="k">if</span> (<span class="s">"OVERTIME"</span>.equals(kind)) { ... }</code></pre>
+      <p>定数を左に書くと、<code>kind</code> が null でも NPE になりません。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>整数の割り算で時間を求める</b>
+<pre><code><span class="k">int</span> minutes = 90;
+<span class="k">double</span> hours = minutes / 60;   <span class="c">// 1.0</span></code></pre>
+      <p>int 同士の割り算で先に小数が切り捨てられ、その後で double になります。</p></div>
+      <div class="good"><b>どちらかを小数にする</b>
+<pre><code><span class="k">double</span> hours = minutes / 60.0; <span class="c">// 1.5</span></code></pre>
+      <p>勤怠の丸め（15分単位切り捨てなど）が意図的に書かれていることもあるので、仕様と照らします。</p></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>BigDecimal を equals で比べる</b>
+<pre><code><span class="k">new</span> BigDecimal(<span class="s">"1.0"</span>).equals(<span class="k">new</span> BigDecimal(<span class="s">"1.00"</span>)) <span class="c">// false</span></code></pre>
+      <p>equals は小数点以下の桁数（スケール）まで比べます。</p></div>
+      <div class="good"><b>compareTo で比べる</b>
+<pre><code><span class="k">new</span> BigDecimal(<span class="s">"1.0"</span>).compareTo(<span class="k">new</span> BigDecimal(<span class="s">"1.00"</span>)) == 0 <span class="c">// true</span></code></pre></div>
+    </div>
+    <div class="compare">
+      <div class="bad"><b>スタックトレースの1行目だけ見て判断する</b><p>「DataIntegrityViolationException だからアプリのバグ」と決めつける。</p></div>
+      <div class="good"><b>Caused by まで読む</b><p>根本原因は DB の一意制約違反で、二重送信が引き金かもしれません。最後の Caused by と、自社コードの行をセットで見ます。</p></div>
+    </div>
+    <div class="callout tip"><b>わからない行に出会ったら</b>
+      <p>1行ずつ AI に「この行は何をしていますか」と聞くのは良い使い方です。ただし、答えを読んだら「自分の言葉で、業務の意味に言い換える」（例：「退勤が null なら残業 0 として返している」）ところまでやると、知識が残ります。</p>
+    </div>
+  </section>
+
+  <section id="quiz">
+    <h2>練習問題：コードを読んで結果を当てる</h2>
+    <details class="quiz">
+      <summary>Q1. 次のコードを実行すると、何が表示されますか？</summary>
+<pre><code><span class="k">int</span> worked = 530;         <span class="c">// 実労働（分）</span>
+<span class="k">int</span> standard = 480;
+<span class="k">int</span> over = worked - standard;
+System.out.println(over / 60 + <span class="s">"時間"</span> + over % 60 + <span class="s">"分"</span>);</code></pre>
+      <div class="ans"><p><strong>0時間50分</strong> です。<code>over</code> は 50。<code>50 / 60</code> は整数の割り算なので 0、<code>50 % 60</code>（余り）は 50 です。<code>+</code> は文字列とつなぐと文字列の連結になります。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q2. 次のメソッドに、退勤打刻のない（clockOut が null の）記録を渡すとどうなりますか？</summary>
+<pre><code><span class="k">public boolean</span> isLateNight(AttendanceRecord rec) {
+    LocalTime t = rec.getClockOut().toLocalTime();
+    <span class="k">return</span> t.isAfter(LocalTime.of(22, 0));
+}</code></pre>
+      <div class="ans"><p><strong>NullPointerException</strong> が発生します。<code>rec.getClockOut()</code> が null を返し、その null に対して <code>.toLocalTime()</code> を呼んでいるためです。呼び出し元で catch されなければ、画面なら 500 エラー、バッチなら処理が異常終了します。防ぐには、先に <code>if (rec.getClockOut() == null) return false;</code> のようなチェックを入れます（null のときに何を返すべきかは業務仕様で決めます）。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q3. 次の Stream の結果 <code>names</code> には何が入りますか？</summary>
+<pre><code><span class="c">// members: 田中(残業30h), 佐藤(5h), 鈴木(50h), 高橋(46h)</span>
+List&lt;String&gt; names = members.stream()
+    .filter(m -&gt; m.getOvertimeHours() &gt;= 45)
+    .map(m -&gt; m.getName())
+    .collect(Collectors.toList());</code></pre>
+      <div class="ans"><p><strong>["鈴木", "高橋"]</strong> です。<code>filter</code> で残業 45 時間以上の人だけ残し、<code>map</code> で名前に変換し、リストにまとめています。for 文に直すと「残業が45以上なら名前をリストに追加する」繰り返しです。</p></div>
+    </details>
+    <details class="quiz">
+      <summary>Q4. スタックトレースに次の3行がありました。最初に開くべきソースはどれで、何行目ですか？</summary>
+<pre><code>java.lang.IllegalArgumentException: breakMinutes must be &gt;= 0
+	at com.example.kintai.domain.AttendanceRecord.setBreakMinutes(AttendanceRecord.java:58)
+	at com.example.kintai.service.CorrectionService.apply(CorrectionService.java:41)</code></pre>
+      <div class="ans"><p>例外が投げられたのは <strong>AttendanceRecord.java の 58 行目</strong>（休憩がマイナスなら例外を投げるチェック）です。ただし、それは「おかしな値を見つけて止めた」場所なので、実際に調べたいのは<strong>その値を渡した CorrectionService.java の 41 行目</strong>、つまり「打刻修正で休憩時間をどう計算したか」です。両方を開き、下（呼び出し元）から値の出どころをたどります。</p></div>
+    </details>
+  </section>
+
+  <section id="terms">
+    <h2>用語まとめ</h2>
+    <dl class="terms">
+      <dt>クラス</dt><dd>データ（フィールド）と手順（メソッド）をまとめた設計図・書式。</dd>
+      <dt>オブジェクト</dt><dd>クラスから <code>new</code> で作られた1つ1つの実体。インスタンスとも呼ぶ。</dd>
+      <dt>フィールド</dt><dd>クラスが持つデータ。メソッドの外に「型 名前;」で書く。</dd>
+      <dt>メソッド</dt><dd>名前の付いた処理のまとまり。「戻り値の型 名前(引数)」。</dd>
+      <dt>コンストラクタ</dt><dd>new したときに呼ばれる初期化処理。クラスと同名で戻り値の型がない。</dd>
+      <dt>型</dt><dd>値の種類。プリミティブ型（int など、null にならない）と参照型（String など、null になりうる）。</dd>
+      <dt>null</dt><dd>参照型の変数が何も指していない状態。</dd>
+      <dt>NullPointerException</dt><dd>null に対してメソッドを呼んだときなどに起きる例外。</dd>
+      <dt>例外</dt><dd>処理を続けられないことを呼び出し元へ知らせる仕組み。try-catch で受け止める。</dd>
+      <dt>チェック例外</dt><dd>catch か throws 宣言が必須の例外。IOException など。</dd>
+      <dt>非チェック例外</dt><dd>RuntimeException の子孫。宣言なしで投げられる。</dd>
+      <dt>インタフェース</dt><dd>メソッドの形だけを決めた約束。implements したクラスが中身を書く。</dd>
+      <dt>継承</dt><dd>extends で親クラスの機能を引き継ぐこと。</dd>
+      <dt>アノテーション</dt><dd>@ から始まる目印。コンパイラやフレームワークに意味を伝える。</dd>
+      <dt>パッケージ</dt><dd>クラスを整理する名前空間。フォルダ階層と対応する。</dd>
+      <dt>ラムダ式</dt><dd><code>x -&gt; 式</code> の形の小さな関数。</dd>
+      <dt>Stream</dt><dd>filter・map などでデータの流れを処理する書き方。</dd>
+      <dt>Optional</dt><dd>値が「あるかもしれない・ないかもしれない」ことを表す箱。</dd>
+      <dt>スタックトレース</dt><dd>例外が起きた場所と、そこまでの呼び出しの道のりの記録。</dd>
+      <dt>JVM / JRE / JDK</dt><dd>実行エンジン / それ＋標準ライブラリ / それ＋開発ツール。</dd>
+    </dl>
+  </section>
+
+  <section id="todo">
+    <h2>明日からやること</h2>
+    <ul class="check">
+      <li><input type="checkbox" id="c03-1"><label for="c03-1">現場のソースで、勤怠記録や申請を表すクラスを1つ開き、フィールド・コンストラクタ・メソッドに色ペン（または心の中）で印を付ける</label></li>
+      <li><input type="checkbox" id="c03-2"><label for="c03-2">打刻か残業申請の画面の URL を1つ選び、全文検索で Controller を見つけ、「定義へ移動」で Repository までたどってメモに書く</label></li>
+      <li><input type="checkbox" id="c03-3"><label for="c03-3">IDE の「定義へ移動」「実装へ移動」「呼び出し階層」のキー操作を、自分の IDE で確かめて付箋に書く</label></li>
+      <li><input type="checkbox" id="c03-4"><label for="c03-4">過去のエラーログからスタックトレースを1つ選び、「先頭行」「自社の最初の at」「最後の Caused by」の3つを抜き出す</label></li>
+      <li><input type="checkbox" id="c03-5"><label for="c03-5">ソース中の Stream を1つ見つけ、同じ意味の for 文に日本語で書き直してみる</label></li>
+      <li><input type="checkbox" id="c03-6"><label for="c03-6"><code>java -version</code> の結果と、現場のシステムが使っている Java のバージョンを確認する</label></li>
+    </ul>
+    <p class="note">チェック状態はこのページには保存されません。印刷するか、メモに写して使ってください。</p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="02-system-map.html"><span>← 前の章</span>02 システムの全体像</a><a class="next" href="04-spring-boot.html"><span>次の章 →</span>04 Spring Bootの正体</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド ・ 勤怠システム / Web申請担当のための学習ノート</footer>
+</body>
+</html>
