@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>05 開発環境をつくる</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">05 開発環境をつくる</span><a href="v1/05-build-env.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">05</div>
+  <div><div class="eyebrow">CHAPTER 05</div><h1>開発環境をつくる</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-search"/></svg>エラーは「止まった場所」の手がかり</div>
+    <div><svg class="ic"><use href="#i-route"/></svg>settings.xml＝社内倉庫への地図</div>
+    <div><svg class="ic"><use href="#i-target"/></svg>1回に1か所だけ変えて確かめる</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：道具の全体像 -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-wrench"/></svg><div><span class="tag">SCENE 1</span><h2>道具は6つ、役割は1つずつ</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-code"/></svg><b>JDK</b><span class="eq">翻訳機と実行機（土台）</span></div>
+      <div><svg class="ic"><use href="#i-box"/></svg><b>Maven</b><span class="eq">ビルド係・部品の取り寄せ係</span></div>
+      <div><svg class="ic"><use href="#i-pen"/></svg><b>IDE</b><span class="eq">作業机</span></div>
+      <div><svg class="ic"><use href="#i-folder"/></svg><b>Git</b><span class="eq">セーブ付きの書類保管庫</span></div>
+      <div><svg class="ic"><use href="#i-db"/></svg><b>PostgreSQL</b><span class="eq">練習用の台帳</span></div>
+      <div><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b><span class="eq">アプリを載せる建物</span></div>
+    </div>
+    <p class="say">社外とつながるのは<span class="mark">MavenとGit</span>。失敗の多くは通信の問題。</p>
+    <p class="say">社内での環境構築は、ベテランでも数日かかる。</p>
+  </section>
+
+  <!-- SCENE 2：JAVA_HOME / PATH 紙芝居 -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 2</span><h2>JAVA_HOMEとPATH</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big">PATH は<em>受付の座席表</em></div>
+        <div class="like">
+          <div><svg class="ic"><use href="#i-list"/></svg><b>PATH</b><span class="eq">コマンドを上から探す一覧</span></div>
+          <div><svg class="ic"><use href="#i-code"/></svg><b>JAVA_HOME</b><span class="eq">どのJDKを使うかのメモ</span></div>
+        </div>
+        <p class="cap">座席表に無いと「'mvn' は認識されていません」。</p>
+      </div>
+      <div class="frame">
+        <div class="big">① 設定画面を<em>開く</em></div>
+        <div class="pipe">
+          <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>スタート</b>「環境変数」で検索</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>環境変数の編集</b>システム／アカウント</div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-hand"/></svg><b>［環境変数］</b>ボタン</div>
+        </div>
+        <p class="cap">ここで JAVA_HOME と Path を触る。</p>
+      </div>
+      <div class="frame">
+        <div class="big">② JAVA_HOME を<em>新規作成</em></div>
+        <div class="vs">
+          <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>ダメ</b><code>C:\Program Files\Java\jdk-17\bin</code></div>
+          <div class="mid">→</div>
+          <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>OK</b><code>C:\Program Files\Java\jdk-17</code></div>
+        </div>
+        <p class="cap">JDKのフォルダそのもの。\bin は付けない。JREは不可。</p>
+      </div>
+      <div class="frame">
+        <div class="big">③ Path に<em>bin を追加</em></div>
+<pre><code><span class="hl">%JAVA_HOME%\bin      <span class="c">← 新規で追加</span></span>
+<span class="hl">%MAVEN_HOME%\bin     <span class="c">← Mavenの展開先\bin</span></span>
+C:\old\java8\bin     <span class="c">← 古いJavaは下へ</span></code></pre>
+        <p class="cap">上にある方が使われる。［上へ］で新しい方を上に。</p>
+      </div>
+      <div class="frame">
+        <div class="big">④ 窓を<em>開き直す</em></div>
+        <div class="tiles">
+          <div class="tile warn"><svg class="ic"><use href="#i-terminal"/></svg><b>コマンドプロンプト</b><span>開いていた窓には反映されない</span></div>
+          <div class="tile warn"><svg class="ic"><use href="#i-pen"/></svg><b>IDE も再起動</b><span>古い設定のまま動く</span></div>
+        </div>
+        <p class="cap">setx より画面で編集する方が安全。</p>
+      </div>
+      <div class="frame">
+        <div class="big">⑤ <em>mvn -v</em> で確認</div>
+<pre><code>&gt; mvn -v
+Apache Maven 3.9.x
+<span class="hl">Java version: 17.0.x, runtime: C:\Program Files\Java\jdk-17<span class="tag">①</span></span></code></pre>
+        <div class="anno"><div><span class="num">1</span>Mavenが使うJDKはここ。想定どおりか見る</div></div>
+        <p class="cap">java -version が17でも、Mavenは8のことがある。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 3：Mavenが部品を探す順番 -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 3</span><h2>部品を探す順番</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 760 280" style="min-width:570px;max-width:800px" role="img" aria-label="Mavenはpom.xmlを読み、手元の倉庫、社内Nexus、Maven Centralの順に部品を探す">
+      <defs>
+        <marker id="m5a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-accent" d="M0 0L10 5L0 10z"/></marker>
+        <marker id="m5m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-muted" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <rect class="box-bg" x="4" y="40" width="346" height="150" rx="14"/>
+      <text x="16" y="62" font-size="13" class="t-muted">あなたのPC</text>
+      <text x="420" y="32" font-size="13" class="t-muted">社内</text>
+      <text x="610" y="32" font-size="13" class="t-muted">社外（インターネット）</text>
+      <rect class="box" x="18" y="80" width="130" height="80" rx="10"/>
+      <text x="83" y="114" text-anchor="middle" font-size="15" font-weight="700">pom.xml</text>
+      <text x="83" y="138" text-anchor="middle" font-size="13" class="t-muted">部品の注文書</text>
+      <path class="line-accent flowing" d="M150 120H180" marker-end="url(#m5a)"/>
+      <rect class="box" x="186" y="80" width="152" height="80" rx="10"/>
+      <text x="262" y="110" text-anchor="middle" font-size="15" font-weight="700">① 手元の倉庫</text>
+      <text x="262" y="134" text-anchor="middle" font-size="13">~/.m2/repository</text>
+      <path class="line-accent flowing" d="M340 120H392" marker-end="url(#m5a)"/>
+      <text x="366" y="108" text-anchor="middle" font-size="13" class="t-accent">無ければ</text>
+      <rect class="box" x="398" y="80" width="150" height="80" rx="10"/>
+      <text x="473" y="110" text-anchor="middle" font-size="15" font-weight="700">② 社内Nexus</text>
+      <text x="473" y="134" text-anchor="middle" font-size="13" class="t-ng">失敗 → 401 / 403</text>
+      <line class="line dash" x1="580" y1="20" x2="580" y2="270"/>
+      <text x="580" y="262" text-anchor="middle" font-size="13" class="t-ng">門（プロキシ）407</text>
+      <path class="line-accent flowing" d="M550 120H602" marker-end="url(#m5a)"/>
+      <rect class="box" x="608" y="80" width="144" height="80" rx="10"/>
+      <text x="680" y="110" text-anchor="middle" font-size="15" font-weight="700">③ Central</text>
+      <text x="680" y="134" text-anchor="middle" font-size="13" class="t-muted">世界の公式倉庫</text>
+      <path class="line dash" d="M473 162C473 222 262 222 262 166" marker-end="url(#m5m)"/>
+      <text x="368" y="238" text-anchor="middle" font-size="13" class="t-muted">取れた部品は①に保存 → 次回は再利用</text>
+    </svg></div>
+    <p class="say">エラーに <code>repo.maven.apache.org</code> ＝Nexusを通らず直接外へ出ている。</p>
+  </section>
+
+  <!-- SCENE 4：settings.xml -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-xml"/></svg><div><span class="tag">SCENE 4</span><h2>settings.xmlの3か所</h2></div></div>
+    <p class="say" style="margin:0 0 6px">置き場所：<code>C:\Users\名前\.m2\settings.xml</code>（自分で作る）</p>
+<pre><code><span class="c">&lt;!-- URL・ID はダミー。実際の値は社内で確認 --&gt;</span>
+<span class="hl">&lt;mirror&gt;&lt;id&gt;company-nexus&lt;/id&gt;<span class="tag">①</span></span>
+  &lt;url&gt;https://nexus.example.co.jp/repository/maven-public/&lt;/url&gt;
+  &lt;mirrorOf&gt;*&lt;/mirrorOf&gt;&lt;/mirror&gt;
+<span class="hl">&lt;server&gt;&lt;id&gt;company-nexus&lt;/id&gt;<span class="tag">②</span></span>
+  &lt;username&gt;…&lt;/username&gt;&lt;password&gt;…&lt;/password&gt;&lt;/server&gt;
+&lt;proxy&gt;&lt;host&gt;proxy.example.co.jp&lt;/host&gt;&lt;port&gt;8080&lt;/port&gt;<span class="tag">③</span>
+  &lt;nonProxyHosts&gt;localhost|*.example.co.jp&lt;/nonProxyHosts&gt;&lt;/proxy&gt;</code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>mirrors：行き先を社内Nexusへ振り替え</div>
+      <div><span class="num">2</span>servers：入館証。id を①と同じに</div>
+      <div><span class="num">3</span>proxies：外へ出る門。社内は門を通さない</div>
+    </div>
+    <div class="fig"><svg viewBox="0 0 640 230" style="min-width:480px;max-width:680px" role="img" aria-label="mirrorsは行き先、serversは入館証、proxiesは外への門">
+      <defs>
+        <marker id="m5b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-accent" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <rect class="box-soft" x="8" y="64" width="160" height="104" rx="12"/>
+      <text x="88" y="98" text-anchor="middle" font-size="15" font-weight="700">あなたのPC</text>
+      <text x="88" y="124" text-anchor="middle" font-size="13">settings.xml</text>
+      <text x="88" y="146" text-anchor="middle" font-size="13" class="t-muted">.m2 フォルダ</text>
+      <path class="line-accent flowing" d="M170 96C250 96 260 64 352 64" marker-end="url(#m5b)"/>
+      <text x="262" y="60" text-anchor="middle" font-size="14" font-weight="700" class="t-accent">① mirrors＝行き先</text>
+      <rect class="box" x="358" y="24" width="150" height="80" rx="10"/>
+      <text x="433" y="58" text-anchor="middle" font-size="15" font-weight="700">社内Nexus</text>
+      <text x="433" y="82" text-anchor="middle" font-size="13" class="t-muted">社内の倉庫</text>
+      <rect class="box-ok" x="512" y="36" width="122" height="56" rx="10"/>
+      <text x="573" y="60" text-anchor="middle" font-size="13" font-weight="700" class="t-ok">② servers</text>
+      <text x="573" y="80" text-anchor="middle" font-size="13">＝入館証</text>
+      <path class="line dash" d="M170 140C250 140 260 176 352 176" marker-end="url(#m5b)"/>
+      <rect class="box-warn" x="358" y="142" width="150" height="70" rx="10"/>
+      <text x="433" y="172" text-anchor="middle" font-size="14" font-weight="700">③ proxies</text>
+      <text x="433" y="194" text-anchor="middle" font-size="13">＝外への門</text>
+      <path class="line dash" d="M510 177H560" marker-end="url(#m5b)"/>
+      <text x="598" y="182" text-anchor="middle" font-size="14" class="t-muted">社外</text>
+    </svg></div>
+    <div class="tiles" style="margin-top:12px">
+      <div class="tile ng"><svg class="ic"><use href="#i-key"/></svg><b>id が1文字違うと 401</b><span>大文字・ハイフンも区別される</span></div>
+      <div class="tile ok"><svg class="ic"><use href="#i-eye"/></svg><b>読めたか確認</b><span><code>mvn help:effective-settings</code></span></div>
+    </div>
+  </section>
+
+  <!-- SCENE 5：PKIX -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-lock"/></svg><div><span class="tag">SCENE 5</span><h2>証明書エラー（PKIX）</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 640 240" style="min-width:480px;max-width:680px" role="img" aria-label="社内プロキシが社内CAで証明書を掛け替え、Javaのcacertsに社内CAが無いとPKIXエラーになる">
+      <defs>
+        <marker id="m5c" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-accent" d="M0 0L10 5L0 10z"/></marker>
+        <marker id="m5n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-ng" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <rect class="box" x="8" y="30" width="150" height="76" rx="10"/>
+      <text x="83" y="62" text-anchor="middle" font-size="15" font-weight="700">Central</text>
+      <text x="83" y="86" text-anchor="middle" font-size="13" class="t-muted">本物の証明書</text>
+      <path class="line-accent flowing" d="M160 68H232" marker-end="url(#m5c)"/>
+      <rect class="box-warn" x="238" y="30" width="170" height="76" rx="10"/>
+      <text x="323" y="62" text-anchor="middle" font-size="15" font-weight="700">社内プロキシ</text>
+      <text x="323" y="86" text-anchor="middle" font-size="13">社内CAで掛け替え</text>
+      <path class="line-accent flowing" d="M410 68H472" marker-end="url(#m5c)"/>
+      <rect class="box" x="478" y="30" width="154" height="76" rx="10"/>
+      <text x="555" y="62" text-anchor="middle" font-size="15" font-weight="700">Maven（Java）</text>
+      <text x="555" y="86" text-anchor="middle" font-size="13" class="t-muted">証明書を照合</text>
+      <path class="line-ng" d="M555 108V146" marker-end="url(#m5n)"/>
+      <rect class="box-ng" x="478" y="152" width="154" height="70" rx="10"/>
+      <text x="555" y="182" text-anchor="middle" font-size="15" font-weight="700">cacerts</text>
+      <text x="555" y="204" text-anchor="middle" font-size="13">信頼する発行元の一覧</text>
+      <text x="460" y="182" text-anchor="end" font-size="14" font-weight="700" class="t-ng">社内CAが載っていない</text>
+      <text x="460" y="206" text-anchor="end" font-size="14" class="t-ng">→ PKIX path building failed</text>
+    </svg></div>
+<pre><code><span class="c"># 管理者で実行（JDK 9以降）。社内CAのファイルは社内で入手</span>
+<span class="hl">keytool -importcert -cacerts -alias corp-root-ca -file C:\certs\corp-root-ca.cer -storepass changeit</span></code></pre>
+    <p class="say">登録先は <code>mvn -v</code> の runtime のJDK（JDKごとに別）。</p>
+  </section>
+
+  <!-- SCENE 6：よくあるエラー explore -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-bug"/></svg><div><span class="tag">SCENE 6</span><h2>エラーを押して調べる</h2></div></div>
+    <div class="explore">
+      <div class="spots" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <button class="spot" data-show="p5-mvn"><svg class="ic"><use href="#i-terminal"/></svg><span>'mvn' は認識…<small>PATH</small></span></button>
+        <button class="spot" data-show="p5-jh"><svg class="ic"><use href="#i-code"/></svg><span>JAVA_HOME …<small>JDKの場所</small></span></button>
+        <button class="spot" data-show="p5-dep"><svg class="ic"><use href="#i-box"/></svg><span>Could not resolve<small>部品が揃わない</small></span></button>
+        <button class="spot" data-show="p5-401"><svg class="ic"><use href="#i-key"/></svg><span>401<small>Nexusの入口</small></span></button>
+        <button class="spot" data-show="p5-403"><svg class="ic"><use href="#i-lock"/></svg><span>403<small>Nexusの権限</small></span></button>
+        <button class="spot" data-show="p5-407"><svg class="ic"><use href="#i-shield"/></svg><span>407<small>門（プロキシ）</small></span></button>
+        <button class="spot" data-show="p5-pkix"><svg class="ic"><use href="#i-lock"/></svg><span>PKIX<small>証明書</small></span></button>
+        <button class="spot" data-show="p5-rel"><svg class="ic"><use href="#i-warn"/></svg><span>invalid target<small>JDKの版</small></span></button>
+        <button class="spot" data-show="p5-to"><svg class="ic"><use href="#i-clock"/></svg><span>timed out<small>届かない</small></span></button>
+      </div>
+      <div class="panel" id="p5-mvn"><h3><svg class="ic"><use href="#i-terminal"/></svg>'mvn' は認識されていません</h3><ul>
+        <li>意味：OSがmvnを見つけられない</li>
+        <li>原因：PathにMavenのbinが無い</li>
+        <li class="c-ok">直し方：Pathに追加→窓を開き直す</li></ul></div>
+      <div class="panel" id="p5-jh" hidden><h3><svg class="ic"><use href="#i-code"/></svg>JAVA_HOME … not defined correctly</h3><ul>
+        <li>意味：Mavenが使うJDKが無い</li>
+        <li>原因：未設定・末尾に\bin・JREを指す</li>
+        <li class="c-ok">直し方：JDKのフォルダそのものを指す</li></ul></div>
+      <div class="panel" id="p5-dep" hidden><h3><svg class="ic"><use href="#i-box"/></svg>Could not resolve dependencies</h3><ul>
+        <li>意味：必要な部品を取れなかった</li>
+        <li>原因：下に本当の理由（401等）が続く</li>
+        <li class="c-ok">直し方：続きと Caused by を読む</li></ul></div>
+      <div class="panel" id="p5-401" hidden><h3><svg class="ic"><use href="#i-key"/></svg>401 Unauthorized</h3><ul>
+        <li>意味：Nexusに入れてもらえない</li>
+        <li>原因：パスワード誤り・id不一致</li>
+        <li class="c-ok">直し方：serverとmirrorのidを揃える</li></ul></div>
+      <div class="panel" id="p5-403" hidden><h3><svg class="ic"><use href="#i-lock"/></svg>403 Forbidden</h3><ul>
+        <li>意味：入れたが見る権限がない</li>
+        <li>原因：閲覧権限なし・URL違い</li>
+        <li class="c-ok">直し方：URL確認→管理者に権限依頼</li></ul></div>
+      <div class="panel" id="p5-407" hidden><h3><svg class="ic"><use href="#i-shield"/></svg>407 Proxy Authentication Required</h3><ul>
+        <li>意味：プロキシの認証に失敗</li>
+        <li>原因：proxiesのユーザー名等が無い</li>
+        <li class="c-ok">直し方：proxiesの認証を確認</li></ul></div>
+      <div class="panel" id="p5-pkix" hidden><h3><svg class="ic"><use href="#i-lock"/></svg>PKIX path building failed</h3><ul>
+        <li>意味：接続先の証明書を信用できない</li>
+        <li>原因：社内CAがcacertsに無い</li>
+        <li class="c-ok">直し方：mvn -v のJDKにkeytoolで登録</li></ul></div>
+      <div class="panel" id="p5-rel" hidden><h3><svg class="ic"><use href="#i-warn"/></svg>invalid target release</h3><ul>
+        <li>意味：指定の版でコンパイルできない</li>
+        <li>原因：Mavenが古いJDKで動いている</li>
+        <li class="c-ok">直し方：JAVA_HOMEを指定JDKへ</li></ul></div>
+      <div class="panel" id="p5-to" hidden><h3><svg class="ic"><use href="#i-clock"/></svg>Connection timed out</h3><ul>
+        <li>意味：相手に届かない</li>
+        <li>原因：mirror未設定でCentralへ直行</li>
+        <li class="c-ok">直し方：ホスト名を見てmirror確認</li></ul></div>
+    </div>
+  </section>
+
+  <!-- SCENE 7：切り分け手順 -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-search"/></svg><div><span class="tag">SCENE 7</span><h2>下から1段ずつ確かめる</h2></div></div>
+    <div class="pipe v">
+      <div class="n"><svg class="ic"><use href="#i-code"/></svg><span><b>JDKは合ってる？</b><br><code>mvn -v</code></span></div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-xml"/></svg><span><b>設定は読めてる？</b><br><code>mvn help:effective-settings</code></span></div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-box"/></svg><span><b>部品だけ取れる？</b><br><code>mvn dependency:resolve</code></span></div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-log"/></svg><span><b>どこへ接続してる？</b><br><code>mvn -X clean package &gt; build.log 2&gt;&amp;1</code></span></div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-fire"/></svg><span><b>失敗の記憶を消して再挑戦</b><br><code>mvn -U clean package</code></span></div>
+    </div>
+    <p class="say">1回に1か所だけ変え、同じコマンドで確かめる。</p>
+  </section>
+
+  <!-- SCENE 8：ゴール3段階 -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-mountain"/></svg><div><span class="tag">SCENE 8</span><h2>ゴールは3段階</h2></div></div>
+    <div class="pipe">
+      <div class="n on"><svg class="ic"><use href="#i-box"/></svg><b>① ビルド</b>mvn clean package → BUILD SUCCESS</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>② 起動</b>ローカルDBにつなぎ画面が開く</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-bug"/></svg><b>③ デバッグ</b>ブレークポイントで止まる</div>
+    </div>
+    <p class="say">①が通れば、残りはぐっと楽になる。</p>
+  </section>
+
+  <!-- SCENE 9：先輩に聞く -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 9</span><h2>社内の値は聞いてOK</h2></div></div>
+    <div class="talk">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>mirrorに設定するNexusのURLと、アカウントの取り方は？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>プロキシのホスト・ポートと、認証の有無は？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>cacertsに入れる社内CA証明書はどこにありますか？</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-users"/></svg><p>会社ごとに違う値だから、聞くのが正解。</p></div>
+    </div>
+    <p class="say">質問は4点：やりたいこと・エラー全文・試したこと・環境。</p>
+    <p class="say">ログを送る前にパスワードは伏せ字に。</p>
+  </section>
+
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>JAVA_HOME に …\jdk-17\bin。何がダメ？</summary><div class="a">\bin は不要。bin まで書くのは Path の方。</div></details>
+      <details class="flip"><summary>repo.maven.apache.org でタイムアウト。まず疑うのは？</summary><div class="a">mirrorが効いていない。settings.xml が読めているか確認。</div></details>
+      <details class="flip"><summary>401 と 407 の違いは？</summary><div class="a">401＝Nexusで拒否（servers）。407＝門のプロキシで拒否（proxies）。</div></details>
+      <details class="flip"><summary>keytoolで登録したのにPKIXが消えない</summary><div class="a">別のJDKに入れた可能性大。mvn -v の runtime のJDKに登録する。</div></details>
+    </div>
+  </section>
+
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>環境構築チェックリスト</h2></div></div>
+    <ul class="check" data-key="ch05">
+      <li><input type="checkbox" id="ch05-1"><label for="ch05-1">NexusのURLとプロキシ値を先輩に聞く</label></li>
+      <li><input type="checkbox" id="ch05-2"><label for="ch05-2">mvn -v で指定のJDKが出る</label></li>
+      <li><input type="checkbox" id="ch05-3"><label for="ch05-3">settings.xml の id を揃えて確認</label></li>
+      <li><input type="checkbox" id="ch05-4"><label for="ch05-4">mvn clean package が成功する</label></li>
+      <li><input type="checkbox" id="ch05-5"><label for="ch05-5">デバッグで処理を止めてみる</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/05-build-env.html">文字版（v1）の05章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="04-spring-boot.html"><span>← 前の章</span>04 Spring Bootの正体</a><a class="next" href="06-sql-postgres.html"><span>次の章 →</span>06 自分で書くSQL</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>04 Spring Bootの正体</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">04 Spring Bootの正体</span><a href="v1/04-spring-boot.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">04</div>
+  <div><div class="eyebrow">CHAPTER 04</div><h1>Spring Bootの正体</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-hand"/></svg>自分のコードは「呼ばれる側」</div>
+    <div><svg class="ic"><use href="#i-box"/></svg>部品は備品係が机に置く（DI）</div>
+    <div><svg class="ic"><use href="#i-layers"/></svg>受付→判断→書庫の3層で分担</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：フレームワーク＝呼ばれる側 -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 1</span><h2>呼ぶ側？呼ばれる側？</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-wrench"/></svg>ライブラリ</b>自分が呼ぶ。<br><code>LocalDate.now()</code></div>
+      <div class="mid">vs</div>
+      <div class="good"><b><svg class="ic"><use href="#i-app"/></svg>フレームワーク</b>Springに呼ばれる。<br>URLが来たら打刻メソッドを実行</div>
+    </div>
+    <p class="say">どこからも呼ばれないのに動く＝<span class="mark">Springが呼んでいる</span>。</p>
+    <div class="like" style="margin-top:14px">
+      <div><svg class="ic"><use href="#i-web"/></svg><b>URLが来た</b><span class="eq">@GetMapping</span></div>
+      <div><svg class="ic"><use href="#i-clock"/></svg><b>時刻になった</b><span class="eq">@Scheduled</span></div>
+      <div><svg class="ic"><use href="#i-play"/></svg><b>起動した</b><span class="eq">@PostConstruct</span></div>
+    </div>
+    <p class="say">探すのは「誰が呼ぶか」より「呼ばれる条件」。</p>
+  </section>
+
+  <!-- SCENE 2：DI 紙芝居 -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 2</span><h2>DIは「備品係」</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big">部品を<em>自分で new</em> すると…</div>
+        <div class="fig"><svg viewBox="0 0 540 190" style="min-width:400px;max-width:600px" role="img" aria-label="Serviceの中で自分でMapperをnewすると問題が起きる">
+          <rect class="box" x="16" y="20" width="240" height="150" rx="12"/>
+          <text x="136" y="52" text-anchor="middle" font-size="16" font-weight="700">OvertimeService</text>
+          <rect class="box-ng" x="36" y="76" width="200" height="70" rx="8"/>
+          <text x="136" y="106" text-anchor="middle" font-size="14">new OvertimeMapper()</text>
+          <text x="136" y="130" text-anchor="middle" font-size="13" class="t-muted">DB接続まで自分で用意</text>
+          <text x="290" y="68" font-size="15" class="t-ng">✕ 設定が入らず null に</text>
+          <text x="290" y="104" font-size="15" class="t-ng">✕ 部品を差し替えにくい</text>
+          <text x="290" y="140" font-size="15" class="t-ng">✕ テストで偽物にできない</text>
+        </svg></div>
+        <p class="cap">自分で作ると、Springの管理から外れる。</p>
+      </div>
+      <div class="frame">
+        <div class="big">備品係が<em>机に置いてくれる</em></div>
+        <div class="fig"><svg viewBox="0 0 560 220" style="min-width:420px;max-width:620px" role="img" aria-label="IoCコンテナが部品を作ってServiceに注入する">
+          <defs><marker id="m4a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-accent" d="M0 0L10 5L0 10z"/></marker></defs>
+          <rect class="box-soft" x="16" y="16" width="226" height="188" rx="14"/>
+          <text x="129" y="44" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">IoCコンテナ（備品係）</text>
+          <rect class="box" x="40" y="60" width="178" height="36" rx="8"/><text x="129" y="83" text-anchor="middle" font-size="14">OvertimeMapper</text>
+          <rect class="box" x="40" y="106" width="178" height="36" rx="8"/><text x="129" y="129" text-anchor="middle" font-size="14">DataSource</text>
+          <rect class="box" x="40" y="152" width="178" height="36" rx="8"/><text x="129" y="175" text-anchor="middle" font-size="14">MailSender</text>
+          <path class="line-accent flowing" d="M246 110H336" marker-end="url(#m4a)"/>
+          <text x="290" y="98" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">注入</text>
+          <rect class="box-ok" x="348" y="54" width="196" height="112" rx="12"/>
+          <text x="446" y="92" text-anchor="middle" font-size="16" font-weight="700">OvertimeService</text>
+          <text x="446" y="120" text-anchor="middle" font-size="13" class="t-muted">コンストラクタで</text>
+          <text x="446" y="142" text-anchor="middle" font-size="13" class="t-muted">受け取るだけ</text>
+        </svg></div>
+        <p class="cap">起動時にコンテナが部品（Bean）を作って渡す。</p>
+      </div>
+      <div class="frame">
+        <div class="big">書き方は<em>コンストラクタ</em>で</div>
+<pre><code><span class="k">@Service</span>
+<span class="k">public class</span> OvertimeService {
+<span class="hl">  <span class="k">private final</span> OvertimeMapper mapper;<span class="tag">①</span></span>
+  <span class="k">public</span> OvertimeService(OvertimeMapper mapper) {<span class="tag">②</span>
+    <span class="k">this</span>.mapper = mapper;
+  }
+}</code></pre>
+        <div class="anno">
+          <div><span class="num">1</span>final＝途中で入れ替わらない</div>
+          <div><span class="num">2</span>引数＝欲しい部品の一覧。newは書かない</div>
+        </div>
+        <p class="cap">@RequiredArgsConstructor があれば、この形を自動で作る。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 3：3層 explore -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 3</span><h2>3層を押して確かめる</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p4-ctl"><svg class="ic"><use href="#i-browser"/></svg><span>Controller<small>受付窓口</small></span></button>
+        <button class="spot" data-show="p4-svc"><svg class="ic"><use href="#i-stamp"/></svg><span>Service<small>担当課（判断する）</small></span></button>
+        <button class="spot" data-show="p4-map"><svg class="ic"><use href="#i-book"/></svg><span>Repository / Mapper<small>書庫係（SQLだけ）</small></span></button>
+        <button class="spot" data-show="p4-db"><svg class="ic"><use href="#i-db"/></svg><span>DB<small>台帳</small></span></button>
+      </div>
+      <div class="panel" id="p4-ctl"><h3><svg class="ic"><use href="#i-browser"/></svg>Controller</h3><ul>
+        <li>役目：URLを受け、入力の形をチェック</li>
+        <li>目印：<code>@RestController</code></li>
+        <li class="c-ng">バグ：引数名違いでnull・GET/POST違い</li></ul></div>
+      <div class="panel" id="p4-svc" hidden><h3><svg class="ic"><use href="#i-stamp"/></svg>Service</h3><ul>
+        <li>役目：業務ルールで判断する</li>
+        <li>目印：<code>@Service</code> <code>@Transactional</code></li>
+        <li class="c-ng">バグ：条件漏れ・例外の握りつぶし</li></ul></div>
+      <div class="panel" id="p4-map" hidden><h3><svg class="ic"><use href="#i-book"/></svg>Repository / Mapper</h3><ul>
+        <li>役目：SQLを実行して返すだけ</li>
+        <li>目印：<code>@Mapper</code>＋XMLのSQL</li>
+        <li class="c-ng">バグ：WHERE条件・NULL・&lt; と &lt;=</li></ul></div>
+      <div class="panel" id="p4-db" hidden><h3><svg class="ic"><use href="#i-db"/></svg>DB（PostgreSQL）</h3><ul>
+        <li>役目：データを保存し、制約で守る</li>
+        <li>目印：timecard などのテーブル</li>
+        <li class="c-ng">バグ：一意制約違反・桁あふれ・遅い</li></ul></div>
+    </div>
+    <p class="say">ログのクラス名の末尾（…Service）で、どの層か見当がつく。</p>
+  </section>
+
+  <!-- SCENE 4：@ラベル辞典 -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-search"/></svg><div><span class="tag">SCENE 4</span><h2>@ラベル辞典</h2></div></div>
+    <p class="say" style="margin:0 0 14px">@は「こう扱ってね」とSpringに伝える付箋。</p>
+    <div class="tiles">
+      <div class="tile"><svg class="ic"><use href="#i-flag"/></svg><b><code>@SpringBootApplication</code></b><span>起動クラス。この下をスキャン</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-browser"/></svg><b><code>@RestController</code></b><span>JSONを返す入口</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-route"/></svg><b><code>@GetMapping</code> <code>@PostMapping</code></b><span>URLとメソッドを結ぶ（取得／操作）</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-link"/></svg><b><code>@PathVariable</code></b><span>URLの {id} を受け取る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b><code>@RequestParam</code></b><span>?month=… の値を受け取る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-mail"/></svg><b><code>@RequestBody</code></b><span>JSON本文をオブジェクトで受け取る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-stamp"/></svg><b><code>@Service</code></b><span>業務ロジックの部品（Bean）にする</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-xml"/></svg><b><code>@Mapper</code></b><span>MyBatisのSQL（XML）とつなぐ</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-shield"/></svg><b><code>@Transactional</code></b><span>DB更新をひとまとめ。失敗で取り消し</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-gear"/></svg><b><code>@Value</code></b><span>設定ファイルの値を入れる</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-clock"/></svg><b><code>@Scheduled</code></b><span>決まった時刻に実行。cronは秒からの6項目</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-box"/></svg><b><code>@Autowired</code></b><span>ここに部品を注入して</span></div>
+    </div>
+  </section>
+
+  <!-- SCENE 5：@Transactional -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-shield"/></svg><div><span class="tag">SCENE 5</span><h2>全部か、ゼロか</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 660 250" style="min-width:495px;max-width:700px" role="img" aria-label="Transactionalの中で正常ならCOMMIT、例外ならROLLBACK">
+      <defs>
+        <marker id="m4m" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-muted" d="M0 0L10 5L0 10z"/></marker>
+        <marker id="m4o" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-ok" d="M0 0L10 5L0 10z"/></marker>
+        <marker id="m4n" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path class="f-ng" d="M0 0L10 5L0 10z"/></marker>
+      </defs>
+      <rect class="box-bg" x="8" y="96" width="92" height="60" rx="10"/>
+      <text x="54" y="122" text-anchor="middle" font-size="15" font-weight="700">BEGIN</text>
+      <text x="54" y="143" text-anchor="middle" font-size="13" class="t-muted">開始</text>
+      <path class="line" d="M100 126H126" marker-end="url(#m4m)"/>
+      <rect class="box" x="130" y="96" width="126" height="60" rx="10"/>
+      <text x="193" y="122" text-anchor="middle" font-size="15" font-weight="700">① UPDATE</text>
+      <text x="193" y="143" text-anchor="middle" font-size="13" class="t-muted">申請→承認済み</text>
+      <path class="line" d="M256 126H282" marker-end="url(#m4m)"/>
+      <rect class="box" x="286" y="96" width="126" height="60" rx="10"/>
+      <text x="349" y="122" text-anchor="middle" font-size="15" font-weight="700">② INSERT</text>
+      <text x="349" y="143" text-anchor="middle" font-size="13" class="t-muted">承認履歴を追加</text>
+      <path class="line-accent" d="M412 126C450 126 450 58 486 58" marker-end="url(#m4o)" style="stroke:var(--ok)"/>
+      <path class="line-ng" d="M412 126C450 126 450 194 486 194" marker-end="url(#m4n)"/>
+      <text x="440" y="48" text-anchor="middle" font-size="13" class="t-ok">正常終了</text>
+      <text x="440" y="222" text-anchor="middle" font-size="13" class="t-ng">例外発生</text>
+      <rect class="box-ok" x="492" y="22" width="156" height="72" rx="12"/>
+      <text x="570" y="52" text-anchor="middle" font-size="16" font-weight="700" class="t-ok">COMMIT</text>
+      <text x="570" y="76" text-anchor="middle" font-size="13">①②とも確定</text>
+      <rect class="box-ng" x="492" y="158" width="156" height="72" rx="12"/>
+      <text x="570" y="188" text-anchor="middle" font-size="16" font-weight="700" class="t-ng">ROLLBACK</text>
+      <text x="570" y="212" text-anchor="middle" font-size="13">①②とも取り消し</text>
+    </svg></div>
+    <p class="say">付けないと「承認済みなのに履歴なし」が残る。</p>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>チェック例外は戻らない</b><span>IOException等は rollbackFor が必要</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>catchで握りつぶすと確定</b><span>外へ投げないとCOMMITされる</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-warn"/></svg><b>同じクラス内呼び出し</b><span>this.xxx() だと効かない</span></div>
+    </div>
+  </section>
+
+  <!-- SCENE 6：起動の流れ -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 6</span><h2>起動の流れ</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-play"/></svg><b>main</b>@SpringBoot&#8203;Application</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>設定を読む</b>properties・プロファイル</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-box"/></svg><b>Bean生成</b>スキャン→注入</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat起動</b>8080で待つ</div>
+    </div>
+<pre><code>INFO The following 1 profile is active: "local"
+INFO Tomcat started on port 8080 (http)
+<span class="hl">INFO Started KintaiApplication in 6.2 seconds</span></code></pre>
+    <p class="say">止まったら、エラーの一番下の <code>Caused by:</code> を見る。</p>
+  </section>
+
+  <!-- SCENE 7：DBアクセス方式 tabs -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-db"/></svg><div><span class="tag">SCENE 7</span><h2>SQLはどこにある？</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="JPA">
+        <div class="tiles">
+          <div class="tile"><svg class="ic"><use href="#i-box"/></svg><b>pom.xml</b><span><code>spring-boot-starter-data-jpa</code></span></div>
+          <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>目印</b><span><code>@Entity</code>・JpaRepository</span></div>
+          <div class="tile"><svg class="ic"><use href="#i-code"/></svg><b>SQLの場所</b><span>基本なし。自動生成→ログで見る</span></div>
+        </div>
+      </div>
+      <div class="tab" data-label="MyBatis">
+        <div class="tiles">
+          <div class="tile"><svg class="ic"><use href="#i-box"/></svg><b>pom.xml</b><span><code>mybatis-spring-boot-starter</code></span></div>
+          <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>目印</b><span><code>@Mapper</code> のインターフェース</span></div>
+          <div class="tile ok"><svg class="ic"><use href="#i-xml"/></svg><b>SQLの場所</b><span>resources 配下の Mapper XML</span></div>
+        </div>
+<pre><code><span class="c">&lt;!-- TimecardMapper.xml --&gt;</span>
+<span class="hl">&lt;mapper namespace="…mapper.TimecardMapper"&gt;<span class="tag">①</span></span>
+<span class="hl">  &lt;select id="countToday" resultType="int"&gt;<span class="tag">②</span></span>
+    SELECT COUNT(*) FROM timecard
+     WHERE employee_id = #{employeeId}
+  &lt;/select&gt;
+&lt;/mapper&gt;</code></pre>
+        <div class="anno">
+          <div><span class="num">1</span>インターフェースの完全名と一致</div>
+          <div><span class="num">2</span>メソッド名と一致。値は #{} で安全に</div>
+        </div>
+      </div>
+      <div class="tab" data-label="JdbcTemplate">
+        <div class="tiles">
+          <div class="tile"><svg class="ic"><use href="#i-box"/></svg><b>pom.xml</b><span><code>spring-boot-starter-jdbc</code></span></div>
+          <div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>目印</b><span>JdbcTemplate のフィールド</span></div>
+          <div class="tile"><svg class="ic"><use href="#i-code"/></svg><b>SQLの場所</b><span>Javaコードの中の文字列</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say"><code>@Mapper</code> や <code>@Entity</code> を全文検索すれば数分でわかる。</p>
+  </section>
+
+  <!-- SCENE 8：設定ファイルとプロファイル -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-gear"/></svg><div><span class="tag">SCENE 8</span><h2>設定は環境で上書き</h2></div></div>
+    <div class="stack">
+      <div><svg class="ic"><use href="#i-log"/></svg>application.properties<span>共通の土台</span></div>
+      <div><svg class="ic"><use href="#i-pen"/></svg>application-local.properties<span>localで上書き</span></div>
+    </div>
+<pre><code><span class="hl">spring.profiles.active=local<span class="tag">①</span></span>
+spring.datasource.url=jdbc:postgresql://localhost:5432/kintai
+server.port=8080</code></pre>
+    <div class="anno"><div><span class="num">1</span>local なら -local の方で同じキーを上書き</div></div>
+    <p class="say">本番だけ動かない時は「どのプロファイルで起動？」から。</p>
+  </section>
+
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>誰も呼んでいないControllerが動くのはなぜ？</summary><div class="a">Springが URL を見て呼ぶから。「呼ばれる側」がフレームワーク。</div></details>
+      <details class="flip"><summary>Serviceで Mapper を new するとダメな理由は？</summary><div class="a">コンテナ管理外になり設定が入らない。コンストラクタで受け取る。</div></details>
+      <details class="flip"><summary>@Transactional内で②が例外。①の更新は？</summary><div class="a">取り消し（ROLLBACK）。ただし catch で握りつぶすと確定する。</div></details>
+      <details class="flip"><summary>現場がMyBatisか5分で確かめるには？</summary><div class="a">pom.xml で mybatis-spring-boot-starter を探す／@Mapper を検索。</div></details>
+    </div>
+  </section>
+
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch04">
+      <li><input type="checkbox" id="ch04-1"><label for="ch04-1">pom.xml でバージョンを見る</label></li>
+      <li><input type="checkbox" id="ch04-2"><label for="ch04-2">起動クラスを検索で探す</label></li>
+      <li><input type="checkbox" id="ch04-3"><label for="ch04-3">設定ファイルのプロファイル名を見る</label></li>
+      <li><input type="checkbox" id="ch04-4"><label for="ch04-4">打刻のURL→SQLを1枚に描く</label></li>
+      <li><input type="checkbox" id="ch04-5"><label for="ch04-5">@Transactional を3つ探して読む</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/04-spring-boot.html">文字版（v1）の04章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="03-java.html"><span>← 前の章</span>03 読めるJava</a><a class="next" href="05-build-env.html"><span>次の章 →</span>05 開発環境をつくる</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
