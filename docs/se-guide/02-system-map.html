@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>02 システムの全体像</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">02 システムの全体像</span><a href="v1/02-system-map.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">02</div>
+  <div><div class="eyebrow">CHAPTER 02</div><h1>システムの全体像</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-layers"/></svg>5つの層がリレーしている</div>
+    <div><svg class="ic"><use href="#i-log"/></svg>ログは層ごとに別の場所</div>
+    <div><svg class="ic"><use href="#i-search"/></svg>症状から「どの層か」を絞る</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：レストランのたとえ -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-coffee"/></svg><div><span class="tag">SCENE 1</span><h2>レストランで考える</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-user"/></svg><b>お客さん</b><span class="eq">ブラウザ</span></div>
+      <div><svg class="ic"><use href="#i-web"/></svg><b>受付係</b><span class="eq">Apache</span></div>
+      <div><svg class="ic"><use href="#i-server"/></svg><b>厨房</b><span class="eq">Tomcat</span></div>
+      <div><svg class="ic"><use href="#i-book"/></svg><b>料理人とレシピ</b><span class="eq">Spring Boot</span></div>
+      <div><svg class="ic"><use href="#i-db"/></svg><b>食料庫</b><span class="eq">PostgreSQL</span></div>
+    </div>
+    <p class="say">お客さんに厨房は見えない。「料理が来ない」の原因はどこにでもある。</p>
+  </section>
+
+  <!-- SCENE 2：5つの層を押す -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 2</span><h2>5つの層を押してみる</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-browser"><svg class="ic"><use href="#i-browser"/></svg><span>ブラウザ<small>お客さん</small></span></button>
+        <button class="spot" data-show="p-apache"><svg class="ic"><use href="#i-web"/></svg><span>Apache<small>受付係（Webサーバ）</small></span></button>
+        <button class="spot" data-show="p-tomcat"><svg class="ic"><use href="#i-server"/></svg><span>Tomcat<small>厨房（APサーバ）</small></span></button>
+        <button class="spot" data-show="p-spring"><svg class="ic"><use href="#i-app"/></svg><span>Spring Boot アプリ<small>料理人とレシピ</small></span></button>
+        <button class="spot" data-show="p-pg"><svg class="ic"><use href="#i-db"/></svg><span>PostgreSQL<small>食料庫（DB）</small></span></button>
+      </div>
+      <div class="panel" id="p-browser"><h3><svg class="ic"><use href="#i-browser"/></svg>ブラウザ</h3><ul><li>画面を描き、ボタンで送信</li><li>見る所：F12 の Network</li></ul></div>
+      <div class="panel" id="p-apache" hidden><h3><svg class="ic"><use href="#i-web"/></svg>Apache</h3><ul><li>https を受ける・画像を返す</li><li>アプリ宛ては Tomcat へ</li><li>ログ：<code>access_log</code> <code>error_log</code></li></ul></div>
+      <div class="panel" id="p-tomcat" hidden><h3><svg class="ic"><use href="#i-server"/></svg>Tomcat</h3><ul><li>Java アプリを動かす入れ物</li><li>1件ごとにスレッドを割当</li><li>ログ：<code>catalina.out</code></li></ul></div>
+      <div class="panel" id="p-spring" hidden><h3><svg class="ic"><use href="#i-app"/></svg>Spring Boot</h3><ul><li>会社の業務ルールそのもの</li><li>Controller→Service→DB</li><li>ログ：<code>kintai.log</code> など</li></ul></div>
+      <div class="panel" id="p-pg" hidden><h3><svg class="ic"><use href="#i-db"/></svg>PostgreSQL</h3><ul><li>打刻・社員データを保存</li><li>SQL で出し入れする</li><li>ログ：<code>postgresql-*.log</code></li></ul></div>
+    </div>
+    <p class="say">ログのパスは一般例。自分の現場の場所は先輩に確認。</p>
+  </section>
+
+  <!-- SCENE 3：紙芝居 打刻の一生 -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 3</span><h2>打刻ボタンの一生</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big">朝9:00、<em>出勤</em>ボタンを押す</div>
+        <div class="pipe v">
+          <div class="n on"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b>送信</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="cap"><code>POST /kintai/punch/in</code> が飛ぶ</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b>受付</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="cap">画像じゃない → 奥の Tomcat へ回す</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b>担当決め</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="cap">スレッド（作業員）を1人割り当てる</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b>判定</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="cap">「今日もう出勤済み？」を業務ルールで確認</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-db"/></svg><b>DB</b>保存</div>
+        </div>
+        <pre><code><span class="k">INSERT INTO</span> attendance_record ...;
+<span class="hl"><span class="k">COMMIT</span>;   <span class="c">-- ここでデータが確定</span></span></code></pre>
+        <p class="cap">打刻データを書き込み、確定する</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n ok"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b>完了画面</div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="cap">同じ道を逆にたどって、画面が変わる</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 4：データの流れ（動く破線） -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 4</span><h2>行きと帰りは同じ道</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 700 236" style="min-width:525px;max-width:860px" role="img" aria-label="ブラウザからPostgreSQLまでリクエストが流れ、同じ道でレスポンスが戻る図">
+        <text x="60" y="20" font-size="14" font-weight="700" class="t-accent">リクエスト（注文）→</text>
+        <path class="line-accent flowing" d="M60 32 H636"/>
+        <path class="f-accent" d="M648 32 l-12 -7 v14 z"/>
+
+        <rect class="box" x="8" y="52" width="104" height="120" rx="12"/>
+        <use href="#i-browser" x="46" y="66" width="28" height="28" class="c-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="60" y="122" font-size="14" font-weight="700" text-anchor="middle">ブラウザ</text>
+        <text x="60" y="146" font-size="13" text-anchor="middle" class="t-muted">利用者のPC</text>
+
+        <rect class="box" x="154" y="52" width="104" height="120" rx="12"/>
+        <use href="#i-web" x="192" y="66" width="28" height="28" class="c-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="206" y="122" font-size="14" font-weight="700" text-anchor="middle">Apache</text>
+        <text x="206" y="146" font-size="13" text-anchor="middle" class="t-muted">受付</text>
+
+        <rect class="box" x="300" y="52" width="104" height="120" rx="12"/>
+        <use href="#i-server" x="338" y="66" width="28" height="28" class="c-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="352" y="122" font-size="14" font-weight="700" text-anchor="middle">Tomcat</text>
+        <text x="352" y="146" font-size="13" text-anchor="middle" class="t-muted">厨房</text>
+
+        <rect class="box" x="446" y="52" width="104" height="120" rx="12"/>
+        <use href="#i-app" x="484" y="66" width="28" height="28" class="c-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="498" y="122" font-size="14" font-weight="700" text-anchor="middle">Spring Boot</text>
+        <text x="498" y="146" font-size="13" text-anchor="middle" class="t-muted">レシピ</text>
+
+        <rect class="box" x="592" y="52" width="104" height="120" rx="12"/>
+        <use href="#i-db" x="630" y="66" width="28" height="28" class="c-accent" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="644" y="122" font-size="14" font-weight="700" text-anchor="middle">PostgreSQL</text>
+        <text x="644" y="146" font-size="13" text-anchor="middle" class="t-muted">食料庫</text>
+
+        <text x="133" y="104" font-size="13" text-anchor="middle" class="t-muted">443</text>
+        <text x="279" y="104" font-size="13" text-anchor="middle" class="t-muted">8009</text>
+        <text x="571" y="104" font-size="13" text-anchor="middle" class="t-muted">5432</text>
+
+        <path class="line-accent flowing" d="M640 194 H64"/>
+        <path class="f-accent" d="M52 194 l12 -7 v14 z"/>
+        <text x="640" y="222" font-size="14" font-weight="700" text-anchor="end" class="t-accent">← レスポンス（画面）</text>
+      </svg>
+    </div>
+    <p class="say">数字はポート番号（窓口の番号）の一般例。</p>
+  </section>
+
+  <!-- SCENE 5：HTTPステータス -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">SCENE 5</span><h2>返事の番号を色で見る</h2></div></div>
+    <div class="tiles">
+      <div class="tile ok"><svg class="ic"><use href="#i-check"/></svg><b>200 OK</b><span>成功。一覧が出た</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-arrow"/></svg><b>302 移動</b><span>打刻後に完了画面へ</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-search"/></svg><b>404 ない</b><span>URLの打ち間違い・未配備</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-lock"/></svg><b>403 権限なし</b><span>一般社員が承認画面へ</span></div>
+      <div class="tile ng"><svg class="ic"><use href="#i-bug"/></svg><b>500 内部エラー</b><span>アプリの例外。アプリログへ</span></div>
+      <div class="tile ng"><svg class="ic"><use href="#i-server"/></svg><b>503 / 502 / 504</b><span>Apache が奥と話せない</span></div>
+    </div>
+    <p class="say">緑＝成功、黄＝頼み方の問題、赤＝サーバ側の問題。</p>
+  </section>
+
+  <!-- SCENE 6：症状 → 疑う層（tabs） -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-search"/></svg><div><span class="tag">SCENE 6</span><h2>症状から層を当てる</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="503が出る">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b>error_log</div><div class="to"></div>
+          <div class="n ng"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b>止まってる？</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="say">Tomcat 停止・起動中を疑う。<code>catalina.out</code> を見る。</p>
+      </div>
+      <div class="tab" data-label="500が出る">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n ng"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b>例外</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="say">アプリログのスタックトレースを探す（03章）。</p>
+      </div>
+      <div class="tab" data-label="遅い">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b>2番目</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n ng"><svg class="ic"><use href="#i-db"/></svg><b>DB</b>最有力</div>
+        </div>
+        <p class="say">遅いSQL・ロック待ちが最有力。次にスレッド不足。</p>
+      </div>
+      <div class="tab" data-label="真っ白">
+        <div class="pipe v">
+          <div class="n ng"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b>F12</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>DB</b></div>
+        </div>
+        <p class="say">F12 の Console と Network で番号を見てから奥へ。</p>
+      </div>
+      <div class="tab" data-label="数字が変">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>ブラウザ</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-web"/></svg><b>Apache</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div>
+          <div class="n ng"><svg class="ic"><use href="#i-app"/></svg><b>アプリ</b>計算・バッチ</div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-db"/></svg><b>DB</b>実データ</div>
+        </div>
+        <p class="say">計算ロジックと夜間バッチを疑い、DBの実データを確認。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 7：ログが無いのも手がかり（talk） -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 7</span><h2>ログが無いのも手がかり</h2></div></div>
+    <div class="talk">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>アプリのログ、エラー無いです。正常ですね！</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-users"/></svg><p>無い＝そこまで届いてないかも。手前の層は？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>Apache の access_log を同じ時刻で探します</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-users"/></svg><p>サーバが2台なら両方ね。再起動で直っても原因は残るよ</p></div>
+    </div>
+  </section>
+
+  <!-- SCENE 8：JAR と WAR -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 8</span><h2>WARとJARは入れ子が逆</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="WAR（Tomcatの中にアプリ）">
+        <div class="fig">
+          <svg viewBox="0 0 420 240" style="min-width:315px;max-width:500px" role="img" aria-label="外部のTomcatの中にkintai.warのアプリが入っている図">
+            <rect class="box" x="10" y="10" width="400" height="190" rx="14"/>
+            <text x="30" y="40" font-size="15" font-weight="700">Tomcat（サーバに導入）</text>
+            <text x="30" y="62" font-size="13" class="t-muted">/opt/tomcat/webapps/</text>
+            <rect class="box-ok" x="30" y="80" width="200" height="100" rx="10"/>
+            <text x="130" y="112" font-size="15" font-weight="700" text-anchor="middle">kintai.war</text>
+            <text x="130" y="140" font-size="13" text-anchor="middle" class="t-ok">Spring Boot アプリ</text>
+            <text x="130" y="162" font-size="13" text-anchor="middle" class="t-muted">Tomcat は入ってない</text>
+            <rect class="box-bg dash" x="250" y="80" width="140" height="100" rx="10"/>
+            <text x="320" y="135" font-size="13" text-anchor="middle" class="t-muted">他のアプリも同居OK</text>
+            <text x="210" y="226" font-size="14" text-anchor="middle" class="t-accent">起動：systemctl / startup.sh</text>
+          </svg>
+        </div>
+        <pre><code>$ ps -ef | grep java
+... <span class="hl">org.apache.catalina.startup.Bootstrap start</span></code></pre>
+        <p class="say">これが見えたら WAR の可能性大。設定は <code>server.xml</code>。</p>
+      </div>
+      <div class="tab" data-label="JAR（アプリの中にTomcat）">
+        <div class="fig">
+          <svg viewBox="0 0 420 240" style="min-width:315px;max-width:500px" role="img" aria-label="kintai.jarの中にアプリと組み込みTomcatが入っている図">
+            <rect class="box-ok" x="10" y="10" width="400" height="190" rx="14"/>
+            <text x="30" y="40" font-size="15" font-weight="700">kintai.jar（1ファイルで完結）</text>
+            <text x="30" y="62" font-size="13" class="t-muted">どこに置いてもよい</text>
+            <rect class="box" x="30" y="80" width="200" height="100" rx="10"/>
+            <text x="130" y="122" font-size="15" font-weight="700" text-anchor="middle">アプリ本体</text>
+            <text x="130" y="148" font-size="13" text-anchor="middle" class="t-muted">Controller など</text>
+            <rect class="box-warn" x="250" y="80" width="140" height="100" rx="10"/>
+            <text x="320" y="122" font-size="14" font-weight="700" text-anchor="middle">組み込み</text>
+            <text x="320" y="146" font-size="14" font-weight="700" text-anchor="middle">Tomcat</text>
+            <text x="210" y="226" font-size="14" text-anchor="middle" class="t-accent">起動：java -jar kintai.jar</text>
+          </svg>
+        </div>
+        <pre><code>$ ps -ef | grep java
+... <span class="hl">java -Xmx2g -jar /opt/kintai/kintai.jar</span></code></pre>
+        <p class="say">これなら JAR。設定は <code>application.properties</code>。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>朝9時、全員の画面に 503。まず疑う層は？</summary><div class="a">Tomcat。止まっていないか、起動完了したかを catalina.out で見る。</div></details>
+      <details class="flip"><summary>1人だけ打刻で 500。どこを見る？</summary><div class="a">アプリログのスタックトレース。その人のデータ特有の状態を疑う。</div></details>
+      <details class="flip"><summary>ロゴ画像 logo.png を返すのは誰？</summary><div class="a">Apache。誰が見ても同じ「静的ファイル」は受付が直接返す。</div></details>
+      <details class="flip"><summary>ps に Bootstrap start が出た。WAR？JAR？</summary><div class="a">WAR。外部の Tomcat が動いている印。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch02">
+      <li><input type="checkbox" id="ch02-1"><label for="ch02-1">5層の図を手で写し、ログの場所を書き込む</label></li>
+      <li><input type="checkbox" id="ch02-2"><label for="ch02-2">F12 の Network で打刻のステータスを見る</label></li>
+      <li><input type="checkbox" id="ch02-3"><label for="ch02-3">access_log で自分の1行を探す（許可を得て）</label></li>
+      <li><input type="checkbox" id="ch02-4"><label for="ch02-4">現場が WAR か JAR か先輩に聞く</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/02-system-map.html">文字版（v1）の02章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="01-mindset.html"><span>← 前の章</span>01 このままでいいのか</a><a class="next" href="03-java.html"><span>次の章 →</span>03 読めるJava</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

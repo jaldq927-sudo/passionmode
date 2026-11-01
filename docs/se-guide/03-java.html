@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>03 読めるJava</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">03 読めるJava</span><a href="v1/03-java.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">03</div>
+  <div><div class="eyebrow">CHAPTER 03</div><h1>読めるJava</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-eye"/></svg>書くより先に「読める」</div>
+    <div><svg class="ic"><use href="#i-layers"/></svg>クラスは3つの部品でできている</div>
+    <div><svg class="ic"><use href="#i-bug"/></svg>エラーは3か所だけ見る</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：業務マニュアルのたとえ -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-book"/></svg><div><span class="tag">SCENE 1</span><h2>コードは業務マニュアル</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-class"><svg class="ic"><use href="#i-table"/></svg><span>クラス<small>＝勤怠記録票の書式</small></span></button>
+        <button class="spot" data-show="p-field"><svg class="ic"><use href="#i-pen"/></svg><span>フィールド<small>＝出勤時刻の欄</small></span></button>
+        <button class="spot" data-show="p-method"><svg class="ic"><use href="#i-list"/></svg><span>メソッド<small>＝残業の求め方（手順）</small></span></button>
+        <button class="spot" data-show="p-obj"><svg class="ic"><use href="#i-user"/></svg><span>オブジェクト<small>＝田中さんの1枚</small></span></button>
+        <button class="spot" data-show="p-anno"><svg class="ic"><use href="#i-stamp"/></svg><span>アノテーション<small>＝@ で始まる付箋</small></span></button>
+      </div>
+      <div class="panel" id="p-class"><h3><svg class="ic"><use href="#i-table"/></svg>クラス</h3><ul><li>例：<code>AttendanceRecord</code></li><li>欄と手順をまとめた書式</li><li>ファイル名と同じ名前</li></ul></div>
+      <div class="panel" id="p-field" hidden><h3><svg class="ic"><use href="#i-pen"/></svg>フィールド</h3><ul><li>例：<code>clockIn</code></li><li>データを入れておく欄</li></ul></div>
+      <div class="panel" id="p-method" hidden><h3><svg class="ic"><use href="#i-list"/></svg>メソッド</h3><ul><li>例：<code>calcOvertimeMinutes()</code></li><li>名前の付いた手順</li></ul></div>
+      <div class="panel" id="p-obj" hidden><h3><svg class="ic"><use href="#i-user"/></svg>オブジェクト</h3><ul><li>例：<code>new AttendanceRecord(…)</code></li><li>書式から作った実物の1枚</li></ul></div>
+      <div class="panel" id="p-anno" hidden><h3><svg class="ic"><use href="#i-stamp"/></svg>アノテーション</h3><ul><li>例：<code>@Override</code> <code>@Service</code></li><li>処理ではなく「目印」</li><li>Spring で多用（04章）</li></ul></div>
+    </div>
+    <p class="say">全部は読まない。目次から関係ある所へ飛ぶ。</p>
+  </section>
+
+  <!-- SCENE 2：.java が動くまで -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 2</span><h2>.java が動くまで</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-code"/></svg><b>Punch.java</b>人が読む</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-wrench"/></svg><b>javac</b>翻訳する</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-box"/></svg><b>Punch.class</b>機械向け</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-gear"/></svg><b>JVM</b>実行する</div>
+    </div>
+    <p class="say">javac は Maven や Gradle が自動で動かす。</p>
+  </section>
+
+  <!-- SCENE 3：JDK ⊃ JRE ⊃ JVM -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 3</span><h2>JDK・JRE・JVMは入れ子</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 520 270" style="min-width:390px;max-width:620px" role="img" aria-label="JDKの中にJRE、JREの中にJVMが入っている入れ子の図">
+        <rect class="box-bg" x="10" y="10" width="500" height="250" rx="16"/>
+        <text x="30" y="40" font-size="16" font-weight="700">JDK（開発キット）</text>
+        <text x="30" y="62" font-size="13" class="t-muted">＋ javac などの開発ツール</text>
+        <rect class="box-soft" x="30" y="78" width="460" height="166" rx="14"/>
+        <text x="50" y="106" font-size="16" font-weight="700">JRE（実行環境）</text>
+        <text x="50" y="128" font-size="13" class="t-muted">＋ 標準ライブラリ（String・List…）</text>
+        <rect class="box" x="50" y="144" width="420" height="84" rx="12"/>
+        <text x="70" y="176" font-size="16" font-weight="700" class="t-accent">JVM（実行エンジン）</text>
+        <text x="70" y="204" font-size="14">.class を動かす。Tomcat もこの上</text>
+      </svg>
+    </div>
+    <p class="say">開発するなら JDK。<code>java -version</code> で版を確認。</p>
+  </section>
+
+  <!-- SCENE 4：クラスの形 -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-code"/></svg><div><span class="tag">SCENE 4</span><h2>クラスの形を見分ける</h2></div></div>
+<pre><code><span class="k">public class</span> AttendanceRecord {<span class="tag">①</span>
+    <span class="k">private</span> LocalDateTime clockIn;<span class="tag">②</span>
+    <span class="k">private</span> LocalDateTime clockOut;
+
+    <span class="k">public</span> AttendanceRecord(LocalDateTime in) {<span class="tag">③</span>
+        <span class="k">this</span>.clockIn = in;
+    }
+    <span class="k">public long</span> calcOvertimeMinutes() {<span class="tag">④</span>
+        ...
+    }
+}</code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>クラス＝書式。ファイル名と同じ名前</div>
+      <div><span class="num">2</span>フィールド＝欄。「型 名前;」の形</div>
+      <div><span class="num">3</span>コンストラクタ＝new した時の準備。クラスと同名</div>
+      <div><span class="num">4</span>メソッド＝手順。「戻り値の型 名前()」</div>
+    </div>
+  </section>
+
+  <!-- SCENE 5：型 -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 5</span><h2>型＝入れ物の種類</h2></div></div>
+    <div class="tiles">
+      <div class="tile warn"><svg class="ic"><use href="#i-list"/></svg><b>int</b><span>整数。90/60 は 1（切り捨て）</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-key"/></svg><b>long</b><span>大きな整数。社員ID 1001L</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-check"/></svg><b>boolean</b><span>true / false。締め済み？</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-pen"/></svg><b>String</b><span>文字。比べるのは equals</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-yen"/></svg><b>BigDecimal</b><span>お金。double だと誤差が出る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-calendar"/></svg><b>LocalDate</b><span>日付だけ。勤務日</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-clock"/></svg><b>LocalDateTime</b><span>日付＋時刻。出勤時刻</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-arrow"/></svg><b>Duration</b><span>時間の長さ。実労働時間</span></div>
+    </div>
+    <p class="say">黄色はつまずきやすい型。小文字始まりは null にならない。</p>
+  </section>
+
+  <!-- SCENE 6：null と NPE -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-warn"/></svg><div><span class="tag">SCENE 6</span><h2>null は空っぽの箱</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 560 210" style="min-width:420px;max-width:660px" role="img" aria-label="退勤済みなら値が返り、打刻忘れならnullが返ってNullPointerExceptionになる図">
+        <text x="10" y="64" font-size="14" font-weight="700">退勤済み</text>
+        <rect class="box" x="96" y="34" width="170" height="48" rx="10"/>
+        <text x="181" y="64" font-size="14" text-anchor="middle">getClockOut()</text>
+        <path class="line-accent" d="M268 58 H306"/>
+        <path class="f-accent" d="M318 58 l-12 -7 v14 z"/>
+        <rect class="box-ok" x="322" y="34" width="120" height="48" rx="10"/>
+        <text x="382" y="64" font-size="14" text-anchor="middle">18:30</text>
+        <text x="456" y="64" font-size="14" font-weight="700" class="t-ok">使える</text>
+
+        <text x="10" y="154" font-size="14" font-weight="700">打刻忘れ</text>
+        <rect class="box" x="96" y="124" width="170" height="48" rx="10"/>
+        <text x="181" y="154" font-size="14" text-anchor="middle">getClockOut()</text>
+        <path class="line-ng" d="M268 148 H306"/>
+        <path class="f-ng" d="M318 148 l-12 -7 v14 z"/>
+        <rect class="box-ng dash" x="322" y="124" width="120" height="48" rx="10"/>
+        <text x="382" y="154" font-size="14" text-anchor="middle" class="t-ng">null（空）</text>
+        <text x="456" y="146" font-size="14" font-weight="700" class="t-ng">NPE で</text>
+        <text x="456" y="166" font-size="14" font-weight="700" class="t-ng">止まる</text>
+      </svg>
+    </div>
+<pre><code>LocalDateTime out = rec.getClockOut();
+<span class="hl"><span class="k">if</span> (out != <span class="k">null</span>) {   <span class="c">// 先に空っぽか確認</span></span>
+    out.isAfter(lateNight);
+}</code></pre>
+    <p class="say">「この値は null になりうる？」と思いながら読む。</p>
+  </section>
+
+  <!-- SCENE 7：紙芝居 呼び出しをたどる -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 7</span><h2>入口から呼び出しをたどる</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n on"><svg class="ic"><use href="#i-search"/></svg><b>URL</b>検索</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-hand"/></svg><b>Controller</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>Service</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-link"/></svg><b>Repository</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>SQL</b></div>
+        </div>
+        <div class="big">URL で<em>全文検索</em></div>
+        <p class="cap">"/punch/in" を検索（IntelliJ：Ctrl+Shift+F）</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>URL</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-hand"/></svg><b>Controller</b>入口</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>Service</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-link"/></svg><b>Repository</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>SQL</b></div>
+        </div>
+<pre><code><span class="k">@PostMapping</span>(<span class="s">"/punch/in"</span>)
+<span class="k">public</span> String punchIn(...) {
+<span class="hl">    punchService.punchIn(id, now);  <span class="c">// Ctrl+クリック</span></span>
+}</code></pre>
+        <p class="cap">呼んでいる先へ「定義へ移動」</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>URL</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-hand"/></svg><b>Controller</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-gear"/></svg><b>Service</b>ルール</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-link"/></svg><b>Repository</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>SQL</b></div>
+        </div>
+<pre><code><span class="k">public void</span> punchIn(<span class="k">long</span> id, LocalDateTime now) {
+<span class="hl">    <span class="k">if</span> (repo.existsBy...(id, today)) <span class="k">throw</span> ...;</span>
+    repo.save(<span class="k">new</span> AttendanceRecord(...));
+}</code></pre>
+        <p class="cap">if と計算＝業務ルール。ここをじっくり読む</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>URL</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-hand"/></svg><b>Controller</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>Service</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-link"/></svg><b>Repository</b>DB係</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>SQL</b></div>
+        </div>
+<pre><code><span class="k">public interface</span> AttendanceRepository ... {
+    <span class="k">boolean</span> existsBy...(...);   <span class="c">// 中身がない＝約束だけ</span>
+}</code></pre>
+        <p class="cap">interface は「実装へ移動」で中身へ</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>URL</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-hand"/></svg><b>Controller</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-gear"/></svg><b>Service</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-link"/></svg><b>Repository</b></div><div class="to"></div>
+          <div class="n ok"><svg class="ic"><use href="#i-db"/></svg><b>SQL</b>ゴール</div>
+        </div>
+<pre><code><span class="k">INSERT INTO</span> attendance_record (employee_id, work_date, clock_in) ...</code></pre>
+        <p class="cap">SQL とテーブルに着いたらゴール</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 8：スタックトレース -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-bug"/></svg><div><span class="tag">SCENE 8</span><h2>エラーは3か所だけ見る</h2></div></div>
+<pre><code><span class="hl">DataIntegrityViolationException: ... [attendance_record_uk]<span class="tag">①</span></span>
+  at org.springframework.orm.jpa...(HibernateJpaDialect.java:276)
+  ...
+<span class="hl">  at com.example.kintai.service.PunchService.punchIn(PunchService.java:24)<span class="tag">②</span></span>
+  at com.example.kintai.controller.PunchController.punchIn(...:31)
+  ...
+<span class="hl">Caused by: PSQLException: duplicate key value violates unique constraint<span class="tag">③</span></span>
+  Detail: Key (employee_id, work_date)=(1001, 2026-10-31) already exists.</code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>先頭行＝「何が」起きたか</div>
+      <div><span class="num">2</span>自社（com.example）の最初の at＝「どこで」</div>
+      <div><span class="num">3</span>最後の Caused by＝「なぜ」（本当の原因）</div>
+    </div>
+    <p class="say">答え：10/31 の出勤を二重に登録しようとした。</p>
+  </section>
+
+  <!-- SCENE 9：ラムダ・Stream の読み替え -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-spark"/></svg><div><span class="tag">SCENE 9</span><h2>Streamはfor文で読む</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-code"/></svg>こう書いてある</b>
+<pre><code>records.stream()
+  .filter(r -&gt; r.overtime() &gt; 45)
+  .map(r -&gt; r.getEmployeeId())
+  .collect(toList());</code></pre></div>
+      <div class="mid">＝</div>
+      <div class="good"><b><svg class="ic"><use href="#i-eye"/></svg>こう読む</b>
+<pre><code><span class="k">for</span> (r : records) {
+  <span class="k">if</span> (r.overtime() &gt; 45)
+    ids.add(r.getEmployeeId());
+}</code></pre></div>
+    </div>
+    <div class="like" style="margin-top:14px">
+      <div><svg class="ic"><use href="#i-user"/></svg><b><code>r -&gt;</code></b><span class="eq">1件ずつ r と呼ぶ</span></div>
+      <div><svg class="ic"><use href="#i-search"/></svg><b><code>.filter</code></b><span class="eq">if で残す</span></div>
+      <div><svg class="ic"><use href="#i-arrow"/></svg><b><code>.map</code></b><span class="eq">別の値に変える</span></div>
+      <div><svg class="ic"><use href="#i-box"/></svg><b><code>.collect</code></b><span class="eq">リストにまとめる</span></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>コードを読んで答える</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary><span><code>int over = 50;</code><br><code>over / 60 + "時間" + over % 60 + "分"</code> の表示は？</span></summary><div class="a">「0時間50分」。int の割り算は切り捨て、% は余り。</div></details>
+      <details class="flip"><summary><span>打刻忘れの rec で<br><code>rec.getClockOut().toLocalTime()</code> は？</span></summary><div class="a">NullPointerException。null に対して呼んだから。</div></details>
+      <details class="flip"><summary><span>残業 30h・5h・50h・46h の4人を<br><code>.filter(h -&gt; h &gt;= 45)</code> で残すと？</span></summary><div class="a">2人（50h と 46h）。filter は条件に合うものだけ残す。</div></details>
+      <details class="flip"><summary><span><code>kind == "OVERTIME"</code> と<br><code>"OVERTIME".equals(kind)</code>、安全なのは？</span></summary><div class="a">equals の方。== は別物扱いで false になることがある。</div></details>
+      <details class="flip"><summary><span>at が <code>AttendanceRecord.java:58</code> → <code>CorrectionService.java:41</code> の順。最初に開くのは？</span></summary><div class="a">AttendanceRecord.java の58行目。次に呼び元の41行目。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch03">
+      <li><input type="checkbox" id="ch03-1"><label for="ch03-1">勤怠のクラスを1つ開き、3つの部品を探す</label></li>
+      <li><input type="checkbox" id="ch03-2"><label for="ch03-2">URLから Controller→SQL までたどる</label></li>
+      <li><input type="checkbox" id="ch03-3"><label for="ch03-3">IDEの「定義へ移動」のキーを付箋に書く</label></li>
+      <li><input type="checkbox" id="ch03-4"><label for="ch03-4">過去のスタックトレースで3か所に印をつける</label></li>
+      <li><input type="checkbox" id="ch03-5"><label for="ch03-5"><code>java -version</code> で版を確かめる</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/03-java.html">文字版（v1）の03章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="02-system-map.html"><span>← 前の章</span>02 システムの全体像</a><a class="next" href="04-spring-boot.html"><span>次の章 →</span>04 Spring Bootの正体</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
