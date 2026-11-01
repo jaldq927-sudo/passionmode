@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>09 要望から改修まで</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">09 要望から改修まで</span><a href="v1/09-change-request.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">09</div>
+  <div><div class="eyebrow">CHAPTER 09</div><h1>要望から改修まで</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-chat"/></svg>すぐ作らず、まず聞き返す</div>
+    <div><svg class="ic"><use href="#i-search"/></svg>縦に追い、横に探す</div>
+    <div><svg class="ic"><use href="#i-calendar"/></svg>境目の日時でテストする</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- S1 たとえ -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-wrench"/></svg><div><span class="tag">SCENE 1</span><h2>改修は家のリフォーム</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-chat"/></svg><b>なぜ広くしたい？</b><span class="eq">目的を聞き返す</span></div>
+      <div><svg class="ic"><use href="#i-search"/></svg><b>壁の中の配管</b><span class="eq">影響調査</span></div>
+      <div><svg class="ic"><use href="#i-list"/></svg><b>プランと見積</b><span class="eq">方式比較</span></div>
+      <div><svg class="ic"><use href="#i-check"/></svg><b>水漏れ確認</b><span class="eq">回帰テスト</span></div>
+    </div>
+    <p class="say">いきなり壁を壊さない。事故の多くは「確認しなかった」から。</p>
+  </section>
+
+  <!-- S2 10ステップ -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 2</span><h2>要望→改修の10ステップ</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big"><em>考える</em>5つ → <em>作る</em>5つ</div>
+        <p class="cap">前半に全体の3〜4割の時間を使う。</p>
+      </div>
+      <div class="frame">
+        <div class="pipe">
+          <div class="n on"><svg class="ic"><use href="#i-chat"/></svg><b>1 要望確認</b>目的・期限</div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-eye"/></svg><b>2 現状調査</b>今どう動く？</div>
+        </div>
+        <p class="cap">まず「本当の困りごと」と「今の動き」。</p>
+      </div>
+      <div class="frame">
+        <div class="pipe">
+          <div class="n on"><svg class="ic"><use href="#i-search"/></svg><b>3 影響調査</b>どこに波及？</div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-layers"/></svg><b>4 方式検討</b>案を2つ以上</div>
+        </div>
+        <p class="cap">前提が崩れたら1に戻ってよい。</p>
+      </div>
+      <div class="frame">
+        <div class="pipe">
+          <div class="n on"><svg class="ic"><use href="#i-yen"/></svg><b>5 見積</b>工数・リスク</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>6 設計書</b>変更点を書く</div>
+        </div>
+        <p class="cap">ここから「作る・確かめる」。</p>
+      </div>
+      <div class="frame">
+        <div class="pipe">
+          <div class="n"><svg class="ic"><use href="#i-code"/></svg><b>7 実装</b>コード・SQL・XML</div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-bug"/></svg><b>8 テスト</b>単体・結合・回帰</div>
+        </div>
+        <p class="cap">不具合が出たら7に戻る。</p>
+      </div>
+      <div class="frame">
+        <div class="pipe">
+          <div class="n"><svg class="ic"><use href="#i-box"/></svg><b>9 リリース</b>戻し方も書く</div><div class="to"></div>
+          <div class="n ok"><svg class="ic"><use href="#i-check"/></svg><b>10 本番確認</b>実データで1件</div>
+        </div>
+        <p class="cap">本番で1件確かめて、やっと完了。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- S3 聞き返し -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 3</span><h2>作る前に聞き返す</h2></div></div>
+    <div class="talk">
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>深夜残業を別に集計したいんです。</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>何に使いますか？誰が見ますか？</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>給与担当がExcelで手計算してて大変で…</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>来月分から、過去分は対象外で合っていますか？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>パートや管理職も対象ですか？</p></div>
+    </div>
+    <div class="tiles" style="margin-top:16px">
+      <div class="tile warn"><svg class="ic"><use href="#i-lock"/></svg><b>締め済み月</b><span>変えると給与の再計算になる</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-clock"/></svg><b>端数・日またぎ</b><span>何分単位？翌日分はどちらの日？</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-book"/></svg><b>就業規則・法令</b><span>解釈は人事・社労士に確認</span></div>
+    </div>
+    <p class="say">推測を添えて聞くと、相手は「はい」で答えられる。</p>
+  </section>
+
+  <!-- S4 影響調査 -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-search"/></svg><div><span class="tag">SCENE 4</span><h2>縦に追い、横に探す</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 560 370" style="min-width:420px;max-width:640px" role="img" aria-label="画面からControllerとServiceとSQLを経てテーブルまで縦に追い、テーブルを使う他の処理をgrepで横に探す図">
+      <text x="105" y="24" font-size="15" text-anchor="middle" class="t-accent" font-weight="700">① 縦に追う</text>
+      <rect class="box" x="20" y="38" width="170" height="44" rx="8"/><text x="105" y="65" font-size="14" text-anchor="middle">画面</text>
+      <rect class="box" x="20" y="102" width="170" height="44" rx="8"/><text x="105" y="129" font-size="14" text-anchor="middle">Controller</text>
+      <rect class="box" x="20" y="166" width="170" height="44" rx="8"/><text x="105" y="193" font-size="14" text-anchor="middle">Service</text>
+      <rect class="box" x="20" y="230" width="170" height="44" rx="8"/><text x="105" y="257" font-size="14" text-anchor="middle">SQL</text>
+      <rect class="box-warn" x="20" y="294" width="170" height="44" rx="8"/><text x="105" y="321" font-size="14" text-anchor="middle" font-weight="700">テーブル・列</text>
+      <path class="line-accent" d="M105 82V96M105 146V160M105 210V224M105 274V288"/>
+      <path class="f-accent" d="M99 94h12l-6 8zM99 158h12l-6 8zM99 222h12l-6 8zM99 286h12l-6 8z"/>
+      <text x="440" y="24" font-size="15" text-anchor="middle" class="t-accent" font-weight="700">② 横に探す</text>
+      <rect class="box-bg" x="340" y="38" width="200" height="36" rx="8"/><text x="440" y="61" font-size="14" text-anchor="middle">夜間・月次バッチ</text>
+      <rect class="box-bg" x="340" y="84" width="200" height="36" rx="8"/><text x="440" y="107" font-size="14" text-anchor="middle">帳票（出勤簿など）</text>
+      <rect class="box-bg" x="340" y="130" width="200" height="36" rx="8"/><text x="440" y="153" font-size="14" text-anchor="middle">CSV出力・取込</text>
+      <rect class="box-bg" x="340" y="176" width="200" height="36" rx="8"/><text x="440" y="199" font-size="14" text-anchor="middle">給与システム連携</text>
+      <rect class="box-bg" x="340" y="222" width="200" height="36" rx="8"/><text x="440" y="245" font-size="14" text-anchor="middle">申請XMLの確定SQL</text>
+      <rect class="box-bg" x="340" y="268" width="200" height="36" rx="8"/><text x="440" y="291" font-size="14" text-anchor="middle">他の画面・API</text>
+      <path class="line-accent flowing" d="M190 316C270 316 270 56 340 56M190 316C275 316 275 102 340 102M190 316C280 316 280 148 340 148M190 316C285 316 285 194 340 194M190 316C290 316 290 240 340 240M190 316C295 316 295 286 340 286"/>
+      <text x="440" y="340" font-size="14" text-anchor="middle" class="t-muted">テーブル名・列名で grep</text>
+    </svg></div>
+<pre><code>grep -rni <span class="s">"late_night_minutes"</span> .<span class="tag">①</span>
+grep -rn  <span class="s">"lateNightMinutes"</span> src/<span class="tag">②</span></code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>DBの名前（大文字小文字を無視）</div>
+      <div><span class="num">2</span>Javaの名前。1つの物に名前が複数ある</div>
+    </div>
+  </section>
+
+  <!-- S5 チェック -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-list"/></svg><div><span class="tag">SCENE 5</span><h2>影響チェック8か所</h2></div></div>
+    <div class="tiles">
+      <div class="tile"><svg class="ic"><use href="#i-browser"/></svg><b>画面</b><span>一覧・入力・承認・スマホ</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-clock"/></svg><b>バッチ</b><span>夜間集計・締め・有給付与</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-log"/></svg><b>帳票</b><span>出勤簿・残業実績表</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-table"/></svg><b>CSV</b><span>列が増えると取込側が困る</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-link"/></svg><b>他システム連携</b><span>給与・人事・入退館</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-xml"/></svg><b>申請XML</b><span>選択肢SQL・確定SQL</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-key"/></svg><b>権限</b><span>誰が見られる・操作できる</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-lock"/></svg><b>過去データ</b><span>締め済み月を変えない？</span></div>
+    </div>
+    <p class="say">結果は「あり・なし・要確認」に分ける。「なし」には理由も。</p>
+  </section>
+
+  <!-- S6 方式比較 -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 6</span><h2>案は2つ以上で比べる</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="案A 列を追加">
+        <p class="say" style="margin:0 0 12px">打刻確定時に深夜時間を計算して保存。</p>
+        <div class="meter">
+          <div><span>工数</span><div class="track"><i style="width:85%"></i></div><span class="v">大</span></div>
+          <div><span>影響の広さ</span><div class="track"><i style="width:85%"></i></div><span class="v">大</span></div>
+          <div><span>目的に合う</span><div class="track"><i style="width:95%"></i></div><span class="v">◎</span></div>
+        </div>
+      </div>
+      <div class="tab" data-label="案B 集計時に計算">
+        <p class="say" style="margin:0 0 12px">帳票・CSVのSQLで打刻から計算。</p>
+        <div class="meter">
+          <div><span>工数</span><div class="track"><i style="width:55%"></i></div><span class="v">中</span></div>
+          <div><span>影響の広さ</span><div class="track"><i style="width:50%"></i></div><span class="v">中</span></div>
+          <div><span>目的に合う</span><div class="track"><i style="width:70%"></i></div><span class="v">○</span></div>
+        </div>
+      </div>
+      <div class="tab" data-label="案C CSVだけ">
+        <p class="say" style="margin:0 0 12px">給与担当向けCSVに深夜列を足すだけ。</p>
+        <div class="meter">
+          <div><span>工数</span><div class="track"><i style="width:20%"></i></div><span class="v">小</span></div>
+          <div><span>影響の広さ</span><div class="track"><i style="width:20%"></i></div><span class="v">小</span></div>
+          <div><span>目的に合う</span><div class="track"><i style="width:40%"></i></div><span class="v">△</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="say">決めるのは顧客や上司。SEは材料と「おすすめ＋理由」を出す。</p>
+    <p class="say muted">※評価は説明用の例です。</p>
+  </section>
+
+  <!-- S7 境界値 -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-calendar"/></svg><div><span class="tag">SCENE 7</span><h2>境目の日時を狙って試す</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 560 350" style="min-width:420px;max-width:640px" role="img" aria-label="時刻の境目は22時、0時、5時。日付の境目は締め日、2月29日、月末から翌月1日">
+      <text x="20" y="22" font-size="15" class="t-accent" font-weight="700">① 時刻の境目（深夜 22:00〜翌5:00）</text>
+      <rect class="box-soft" x="136" y="52" width="336" height="26" rx="6"/>
+      <path class="line" d="M40 65H520"/>
+      <path class="line-ng" d="M136 44V86M232 44V86M472 44V86"/>
+      <text x="40" y="104" font-size="13" class="t-muted" text-anchor="middle">20:00</text>
+      <text x="136" y="104" font-size="14" class="t-ng" text-anchor="middle" font-weight="700">22:00</text>
+      <text x="232" y="104" font-size="14" class="t-ng" text-anchor="middle" font-weight="700">0:00</text>
+      <text x="472" y="104" font-size="14" class="t-ng" text-anchor="middle" font-weight="700">5:00</text>
+      <text x="352" y="46" font-size="13" text-anchor="middle" class="t-accent">深夜</text>
+      <text x="280" y="128" font-size="13" class="t-muted" text-anchor="middle">前後1分（21:59・22:01）と「24:00」表記も試す</text>
+      <text x="20" y="162" font-size="15" class="t-accent" font-weight="700">② 日付の境目（例：うるう年の2月）</text>
+      <g font-size="13" text-anchor="middle" class="t-muted">
+        <text x="40" y="190">日</text><text x="80" y="190">月</text><text x="120" y="190">火</text><text x="160" y="190">水</text><text x="200" y="190">木</text><text x="240" y="190">金</text><text x="280" y="190">土</text>
+      </g>
+      <rect class="box-warn" x="102" y="256" width="36" height="26" rx="5"/>
+      <rect class="box-ng" x="62" y="316" width="36" height="26" rx="5"/>
+      <rect class="box-ng" x="102" y="316" width="36" height="26" rx="5"/>
+      <rect class="box-ok" x="142" y="316" width="36" height="26" rx="5"/>
+      <g font-size="13" text-anchor="middle">
+        <text x="120" y="214">1</text><text x="160" y="214">2</text><text x="200" y="214">3</text><text x="240" y="214">4</text><text x="280" y="214">5</text>
+        <text x="40" y="244">6</text><text x="80" y="244">7</text><text x="120" y="244">8</text><text x="160" y="244">9</text><text x="200" y="244">10</text><text x="240" y="244">11</text><text x="280" y="244">12</text>
+        <text x="40" y="274">13</text><text x="80" y="274">14</text><text x="120" y="274" font-weight="700">15</text><text x="160" y="274">16</text><text x="200" y="274">17</text><text x="240" y="274">18</text><text x="280" y="274">19</text>
+        <text x="40" y="304">20</text><text x="80" y="304">21</text><text x="120" y="304">22</text><text x="160" y="304">23</text><text x="200" y="304">24</text><text x="240" y="304">25</text><text x="280" y="304">26</text>
+        <text x="40" y="334">27</text><text x="80" y="334" font-weight="700">28</text><text x="120" y="334" font-weight="700">29</text><text x="160" y="334" font-weight="700">3/1</text>
+        <text x="200" y="334" class="t-muted">2</text><text x="240" y="334" class="t-muted">3</text><text x="280" y="334" class="t-muted">4</text>
+      </g>
+      <rect class="box-warn" x="330" y="200" width="22" height="18" rx="4"/>
+      <text x="362" y="214" font-size="14">締め日（例：15日）</text>
+      <rect class="box-ng" x="330" y="240" width="22" height="18" rx="4"/>
+      <text x="362" y="254" font-size="14">2/28・2/29 うるう年</text>
+      <rect class="box-ok" x="330" y="280" width="22" height="18" rx="4"/>
+      <text x="362" y="294" font-size="14">月末→翌月1日をまたぐ</text>
+    </svg></div>
+    <p class="say">不具合は境目に出る。条件が切り替わる日時を必ず入れる。</p>
+  </section>
+
+  <!-- S8 テスト3種 -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-bug"/></svg><div><span class="tag">SCENE 8</span><h2>テストは3段</h2></div></div>
+    <div class="stack">
+      <div><svg class="ic"><use href="#i-code"/></svg>単体<span>計算1つが正しいか</span></div>
+      <div><svg class="ic"><use href="#i-route"/></svg>結合<span>画面→保存→帳票まで</span></div>
+      <div><svg class="ic"><use href="#i-shield"/></svg>回帰<span>触っていない所が無事か</span></div>
+    </div>
+    <p class="say">回帰は、改修前後の帳票やCSVを diff で比べると早い。</p>
+  </section>
+
+  <!-- S9 AIの改修案 -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-spark"/></svg><div><span class="tag">SCENE 9</span><h2>AIの改修案は検証して使う</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>そのまま使う</b>貼る→画面で1回動いた→OK</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>検証して使う</b>列名は実在？呼び出し元は？テストは？</div>
+    </div>
+<pre><code>あなたが前提として<span class="hl">仮定したことを全部</span>挙げてください。
+私が grep で確認すべきキーワードも教えてください。</code></pre>
+    <p class="say">AIの仮定が自社の仕様と違えば、そこが事故の芽。</p>
+  </section>
+
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>「添付を必須に」と言われた。最初にすることは？</summary><div class="a">聞き返す。いつから？差戻し中は？徒歩の人は例外？</div></details>
+      <details class="flip"><summary>共通メソッドの端数処理を変えたい。まず何をする？</summary><div class="a">呼び出し元を全部洗い出す（IDEの呼び出し階層・grep）。</div></details>
+      <details class="flip"><summary>深夜集計で必ず試す時刻を4つ</summary><div class="a">21:59・22:00・4:59・5:00。0:00 もあると安心。</div></details>
+      <details class="flip"><summary>AIが「night_min 列を更新」と言った。次は？</summary><div class="a">その列が実在するか grep・DBで確認。AIは名前を作ることがある。</div></details>
+    </div>
+  </section>
+
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch09">
+      <li><input type="checkbox" id="ch09-1"><label for="ch09-1">今の要望の「目的・背景・期限」を1行ずつ書く</label></li>
+      <li><input type="checkbox" id="ch09-2"><label for="ch09-2">関係するテーブル名・列名で grep する</label></li>
+      <li><input type="checkbox" id="ch09-3"><label for="ch09-3">ヒットしたファイルを8か所に分類する</label></li>
+      <li><input type="checkbox" id="ch09-4"><label for="ch09-4">方式を2案出して比べてみる</label></li>
+      <li><input type="checkbox" id="ch09-5"><label for="ch09-5">テスト表に0時・22時・月末・締め日を入れる</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/09-change-request.html">文字版（v1）の09章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="08-xml-forms.html"><span>← 前の章</span>08 XMLのWeb申請</a><a class="next" href="10-ai-learning.html"><span>次の章 →</span>10 AIと一緒に強くなる</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

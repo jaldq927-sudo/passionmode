@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>08 XMLのWeb申請</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">08 XMLのWeb申請</span><a href="v1/08-xml-forms.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">08</div>
+  <div><div class="eyebrow">CHAPTER 08</div><h1>XMLのWeb申請</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-xml"/></svg>XMLは申請の設計図</div>
+    <div><svg class="ic"><use href="#i-layers"/></svg>画面・承認・DBの3つに分けて読む</div>
+    <div><svg class="ic"><use href="#i-shield"/></svg>SQLの &lt; はCDATAで守る</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- S1 たとえ -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-stamp"/></svg><div><span class="tag">SCENE 1</span><h2>XMLは「紙の届出」</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-pen"/></svg><b>届出用紙の書式</b><span class="eq">画面の項目定義</span></div>
+      <div><svg class="ic"><use href="#i-stamp"/></svg><b>回覧ハンコ欄</b><span class="eq">承認ルート</span></div>
+      <div><svg class="ic"><use href="#i-book"/></svg><b>台帳への転記メモ</b><span class="eq">確定時のSQL</span></div>
+    </div>
+    <p class="say">今読んでいるのは「書式・ハンコ・転記」のどれ？と考える。</p>
+    <p class="say muted">※この章のタグ名は一般的な例。製品ごとに違います。</p>
+  </section>
+
+  <!-- S2 入れ子 -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 2</span><h2>XMLは箱の入れ子</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 520 300" style="min-width:390px;max-width:600px" role="img" aria-label="form の中に sheet、その中に field、その中に label が入る入れ子の図">
+      <rect class="box" x="10" y="10" width="500" height="280" rx="14"/>
+      <text x="26" y="38" font-size="16" class="t-accent" font-weight="700">&lt;form&gt;</text>
+      <text x="96" y="38" font-size="14" class="t-muted">申請ぜんぶ（一番外は1つ）</text>
+      <rect class="box-soft" x="30" y="52" width="460" height="222" rx="12"/>
+      <text x="46" y="78" font-size="16" class="t-accent" font-weight="700">&lt;sheet&gt;</text>
+      <text x="124" y="78" font-size="14" class="t-muted">画面のタブなど</text>
+      <rect class="box-ok" x="48" y="92" width="206" height="166" rx="10"/>
+      <text x="62" y="116" font-size="15" class="t-ok" font-weight="700">&lt;field&gt;</text>
+      <text x="62" y="138" font-size="14">入力欄1つ</text>
+      <rect class="box-warn" x="64" y="152" width="174" height="88" rx="8"/>
+      <text x="78" y="180" font-size="15" font-weight="700">&lt;label&gt;</text>
+      <text x="78" y="214" font-size="16">「経路」</text>
+      <rect class="box-ok" x="268" y="92" width="206" height="166" rx="10"/>
+      <text x="282" y="116" font-size="15" class="t-ok" font-weight="700">&lt;field&gt;</text>
+      <text x="282" y="138" font-size="14">入力欄1つ</text>
+      <rect class="box-warn" x="284" y="152" width="174" height="88" rx="8"/>
+      <text x="298" y="180" font-size="15" font-weight="700">&lt;label&gt;</text>
+      <text x="298" y="214" font-size="16">「定期代」</text>
+    </svg></div>
+    <p class="say">開けたら閉じる。<b>内側から順に</b>閉じれば壊れない。</p>
+  </section>
+
+  <!-- S3 タグ・属性・値 -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-code"/></svg><div><span class="tag">SCENE 3</span><h2>タグ・属性・値を見分ける</h2></div></div>
+<pre><code><span class="k">&lt;field</span><span class="tag">①</span>
+  id=<span class="s">"route"</span><span class="tag">②</span><span class="tag">③</span>
+  required=<span class="s">"true"</span><span class="k">&gt;</span>
+  経路<span class="tag">④</span>
+<span class="k">&lt;/field&gt;</span></code></pre>
+    <div class="anno">
+      <div><span class="num">1</span>青＝タグ。箱の名前</div>
+      <div><span class="num">2</span>白＝属性。箱に貼るラベル</div>
+      <div><span class="num">3</span>緑＝値。必ず "" で囲む</div>
+      <div><span class="num">4</span>中身。画面に出る文字</div>
+    </div>
+  </section>
+
+  <!-- S4 申請の流れ -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 4</span><h2>申請はこう流れる</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-user"/></svg><b>申請者</b>送信</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-stamp"/></svg><b>上長</b>承認</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-users"/></svg><b>人事</b>最終承認</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-db"/></svg><b>DB反映</b>本番が変わる</div>
+    </div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="big">送信しても<em>本番はまだ</em></div>
+        <div class="pipe">
+          <div class="n on"><svg class="ic"><use href="#i-user"/></svg><b>申請者</b>送信</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-table"/></svg><b>申請データ</b>一時保存</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>社員マスタ</b>変わらない</div>
+        </div>
+        <p class="cap">申請中のデータと本番データは別の場所。</p>
+      </div>
+      <div class="frame">
+        <div class="big">上長が<em>差戻し</em>したら</div>
+        <div class="pipe">
+          <div class="n on"><svg class="ic"><use href="#i-user"/></svg><b>申請者</b>直して再送</div><div class="to"></div>
+          <div class="n ng"><svg class="ic"><use href="#i-stamp"/></svg><b>上長</b>差戻し</div>
+        </div>
+        <p class="cap">申請者に戻るだけ。本番には何も起きない。</p>
+      </div>
+      <div class="frame">
+        <div class="big">人事が<em>最終承認</em></div>
+        <div class="pipe">
+          <div class="n ok"><svg class="ic"><use href="#i-stamp"/></svg><b>上長</b>承認済</div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-users"/></svg><b>人事</b>最終承認</div>
+        </div>
+        <p class="cap">ここが「確定」の合図。</p>
+      </div>
+      <div class="frame">
+        <div class="big">確定SQLが<em>本番を書き換え</em></div>
+        <div class="pipe">
+          <div class="n"><svg class="ic"><use href="#i-xml"/></svg><b>確定SQL</b>UPDATE</div><div class="to"></div>
+          <div class="n ok"><svg class="ic"><use href="#i-db"/></svg><b>通勤手当</b>更新された</div>
+        </div>
+        <p class="cap">変わらない時は確定SQLとログを見る。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- S5 三者対応 -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 5</span><h2>XML↔画面↔DBをつなぐ</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p8-field"><svg class="ic"><use href="#i-pen"/></svg><span>(A) field<small>入力欄の定義</small></span></button>
+        <button class="spot" data-show="p8-opt"><svg class="ic"><use href="#i-list"/></svg><span>(B) options の SQL<small>選択肢を取ってくる</small></span></button>
+        <button class="spot" data-show="p8-check"><svg class="ic"><use href="#i-warn"/></svg><span>(A) check<small>入力チェック</small></span></button>
+        <button class="spot" data-show="p8-route"><svg class="ic"><use href="#i-users"/></svg><span>(C) route<small>承認ルート</small></span></button>
+        <button class="spot" data-show="p8-done"><svg class="ic"><use href="#i-db"/></svg><span>(D) onComplete<small>確定時のSQL</small></span></button>
+      </div>
+      <div class="panel" id="p8-field"><h3><svg class="ic"><use href="#i-pen"/></svg>(A) field</h3>
+<pre><code><span class="k">&lt;field</span> id=<span class="s">"route"</span> required=<span class="s">"true"</span><span class="k">/&gt;</span></code></pre>
+        <ul><li>画面：入力欄「経路」＊必須</li><li>DB：通勤手当の route 列</li></ul></div>
+      <div class="panel" id="p8-opt" hidden><h3><svg class="ic"><use href="#i-list"/></svg>(B) options</h3>
+<pre><code>SELECT transport_nm
+  FROM <span class="hl">m_transport</span></code></pre>
+        <ul><li>画面：プルダウン「交通手段」</li><li>DB：交通手段マスタを読むだけ</li></ul></div>
+      <div class="panel" id="p8-check" hidden><h3><svg class="ic"><use href="#i-warn"/></svg>(A) check</h3>
+<pre><code><span class="k">&lt;check</span> min=<span class="s">"1"</span> max=<span class="s">"100000"</span><span class="k">/&gt;</span></code></pre>
+        <ul><li>画面：赤いエラー表示</li><li>DB：なし（保存前に止める）</li></ul></div>
+      <div class="panel" id="p8-route" hidden><h3><svg class="ic"><use href="#i-users"/></svg>(C) route</h3>
+<pre><code><span class="k">&lt;step</span> name=<span class="s">"上長承認"</span><span class="k">/&gt;</span>
+<span class="k">&lt;step</span> name=<span class="s">"人事承認"</span><span class="k">/&gt;</span></code></pre>
+        <ul><li>画面：承認者の受信一覧</li><li>DB：組織・権限マスタ</li></ul></div>
+      <div class="panel" id="p8-done" hidden><h3><svg class="ic"><use href="#i-db"/></svg>(D) onComplete</h3>
+<pre><code>UPDATE t_commute_allowance
+   SET route = <span class="hl">#{route}</span></code></pre>
+        <ul><li>画面：なし（裏で動く）</li><li>DB：通勤手当テーブルを更新</li><li>#{route}＝画面の route の値</li></ul></div>
+    </div>
+  </section>
+
+  <!-- S6 CDATA -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-shield"/></svg><div><span class="tag">SCENE 6</span><h2>SQLの &lt; はCDATAで守る</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>そのまま書く</b>
+<pre><code><span class="k">&lt;sql&gt;</span>
+ WHERE a <span class="hl">&lt;=</span> b
+<span class="k">&lt;/sql&gt;</span></code></pre>
+        &lt; をタグと勘違い→画面ごと開かない</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>CDATAで囲む</b>
+<pre><code><span class="k">&lt;sql&gt;</span><span class="hl">&lt;![CDATA[</span>
+ WHERE a &lt;= b
+<span class="hl">]]&gt;</span><span class="k">&lt;/sql&gt;</span></code></pre>
+        中は「ただの文字」になる</div>
+    </div>
+    <div class="like" style="margin-top:14px">
+      <div><b><code>&lt;</code></b><span class="eq"><code>&amp;lt;</code></span></div>
+      <div><b><code>&gt;</code></b><span class="eq"><code>&amp;gt;</code></span></div>
+      <div><b><code>&amp;</code></b><span class="eq"><code>&amp;amp;</code></span></div>
+    </div>
+    <p class="say">CDATAの外ではこの書き方（エスケープ）に置き換える。</p>
+  </section>
+
+  <!-- S7 改修時の注意 -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-wrench"/></svg><div><span class="tag">SCENE 7</span><h2>直すときの注意</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 540 190" style="min-width:405px;max-width:620px" role="img" aria-label="項目を足すときは DB列、XMLのfield、確定SQL、帳票やCSVの4点をセットで変える">
+      <text x="270" y="28" font-size="16" text-anchor="middle" font-weight="700">「駐車場代」欄を足すなら4点セット</text>
+      <rect class="box" x="10" y="56" width="114" height="76" rx="10"/>
+      <text x="67" y="88" font-size="15" text-anchor="middle" font-weight="700">① DB列</text>
+      <text x="67" y="112" font-size="13" text-anchor="middle" class="t-muted">列を追加</text>
+      <rect class="box" x="148" y="56" width="114" height="76" rx="10"/>
+      <text x="205" y="88" font-size="15" text-anchor="middle" font-weight="700">② field</text>
+      <text x="205" y="112" font-size="13" text-anchor="middle" class="t-muted">XMLに欄</text>
+      <rect class="box" x="286" y="56" width="114" height="76" rx="10"/>
+      <text x="343" y="88" font-size="15" text-anchor="middle" font-weight="700">③ 確定SQL</text>
+      <text x="343" y="112" font-size="13" text-anchor="middle" class="t-muted">UPDATEに列</text>
+      <rect class="box" x="424" y="56" width="106" height="76" rx="10"/>
+      <text x="477" y="88" font-size="15" text-anchor="middle" font-weight="700">④ 帳票</text>
+      <text x="477" y="112" font-size="13" text-anchor="middle" class="t-muted">CSV・連携</text>
+      <path class="line-accent flowing" d="M124 94H148M262 94H286M400 94H424"/>
+      <text x="270" y="170" font-size="14" text-anchor="middle" class="t-ng">1つ抜けると、承認後に値が入らない</text>
+    </svg></div>
+    <div class="tiles">
+      <div class="tile warn"><svg class="ic"><use href="#i-clock"/></svg><b>申請中のデータ</b><span>差戻し中の申請が残っていないか先に数える</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-terminal"/></svg><b>構文チェック</b><span>xmllint やエディタの赤い波線で確認</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-eye"/></svg><b>差分を見る</b><span>WinMerge・git diff で変えた所だけか確認</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-gear"/></svg><b>文字コード・改行</b><span>宣言の文字コードに合わせて保存</span></div>
+      <div class="tile ok"><svg class="ic"><use href="#i-leaf"/></svg><b>まずテスト環境</b><span>ラベル1文字の変更から試す</span></div>
+    </div>
+  </section>
+
+  <!-- S8 先輩に聞く -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 8</span><h2>先輩に聞くこと</h2></div></div>
+    <div class="talk">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>「シート」は画面のタブ単位、で合っていますか？</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>推測つきだと答えやすい！うちは合ってるよ。</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>XMLを変えたら、申請中のものは新旧どちらで動きますか？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>反映は再起動ですか？管理画面から取り込みですか？</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>いい質問。手順書の場所を教えるね。</p></div>
+    </div>
+    <p class="say">「シート」の意味は会社ごとに違う。推測を添えて聞く。</p>
+  </section>
+
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>&lt;a&gt;&lt;b&gt;&lt;/a&gt;&lt;/b&gt; はOK？</summary><div class="a">NG。箱が交差している。内側の &lt;/b&gt; を先に閉じる。</div></details>
+      <details class="flip"><summary>申請を送信。社員マスタはもう変わった？</summary><div class="a">まだ。最終承認で確定SQLが動いたときに変わる。</div></details>
+      <details class="flip"><summary>SQLに &lt; を足したら画面が開かない。なぜ？</summary><div class="a">CDATAの外に書いたから。CDATAで囲むか &amp;lt; に。</div></details>
+      <details class="flip"><summary>#{route} には何が入る？</summary><div class="a">画面で入力された id="route" の値。</div></details>
+    </div>
+  </section>
+
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch08">
+      <li><input type="checkbox" id="ch08-1"><label for="ch08-1">申請XMLを1本、全部折りたたんで大きな塊を見る</label></li>
+      <li><input type="checkbox" id="ch08-2"><label for="ch08-2">塊に「画面・承認・確定」のラベルを付ける</label></li>
+      <li><input type="checkbox" id="ch08-3"><label for="ch08-3">VS CodeにXML拡張を入れる</label></li>
+      <li><input type="checkbox" id="ch08-4"><label for="ch08-4">承認ルートを紙に矢印で描く（差戻しも）</label></li>
+      <li><input type="checkbox" id="ch08-5"><label for="ch08-5">「シート」の意味を推測つきで先輩に聞く</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/08-xml-forms.html">文字版（v1）の08章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="07-logs-incident.html"><span>← 前の章</span>07 ログと障害調査</a><a class="next" href="09-change-request.html"><span>次の章 →</span>09 要望から改修まで</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
