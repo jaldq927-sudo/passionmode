@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>01 このままでいいのか</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">01 このままでいいのか</span><a href="v1/01-mindset.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">01</div>
+  <div><div class="eyebrow">CHAPTER 01</div><h1>このままでいいのか</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-target"/></svg>「解決できる」≠「わかる」</div>
+    <div><svg class="ic"><use href="#i-search"/></svg>AIの答えは仮説として確かめる</div>
+    <div><svg class="ic"><use href="#i-clock"/></svg>1日15分、手を動かす</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：いまの自分と目指す姿 -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-eye"/></svg><div><span class="tag">SCENE 1</span><h2>その不安は正しい</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 600 270" style="min-width:450px;max-width:680px" role="img" aria-label="いまの自分と目指す姿">
+      <rect class="box-ok" x="15" y="20" width="250" height="200" rx="14"/>
+      <text x="140" y="56" text-anchor="middle" font-size="16" font-weight="700">いま：回す力</text>
+      <text x="40" y="100" font-size="14">✓ 問い合わせに動ける</text>
+      <text x="40" y="135" font-size="14">✓ ログを探して出せる</text>
+      <text x="40" y="170" font-size="14">✓ AIで原因候補を出す</text>
+      <text x="140" y="250" text-anchor="middle" font-size="14" class="t-ok">もう積めている</text>
+      <path class="line-accent flowing" d="M272 120 H322"/>
+      <polygon class="f-accent" points="322,111 336,120 322,129"/>
+      <rect class="box" x="340" y="20" width="250" height="200" rx="14"/>
+      <text x="465" y="56" text-anchor="middle" font-size="16" font-weight="700">目指す：わかる力</text>
+      <text x="365" y="100" font-size="14">＋ なぜか説明できる</text>
+      <text x="365" y="135" font-size="14">＋ 再現して確かめる</text>
+      <text x="365" y="170" font-size="14">＋ AIの誤りに気づく</text>
+      <text x="465" y="250" text-anchor="middle" font-size="14" class="t-accent">ここだけ足せばいい</text>
+    </svg></div>
+    <p class="say">「全部だめ」ではない。<span class="mark">右側を足すだけ</span>。</p>
+  </section>
+
+  <!-- SCENE 2：カーナビと地図 -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 2</span><h2>カーナビと地図</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-route"/></svg><b>カーナビだけ</b><span class="eq">AIに丸投げ</span></div>
+      <div><svg class="ic"><use href="#i-book"/></svg><b>地図＋カーナビ</b><span class="eq">理解してAIを使う</span></div>
+      <div><svg class="ic"><use href="#i-pen"/></svg><b>道を1本描く</b><span class="eq">今日の案件を理解</span></div>
+    </div>
+    <p class="say">ナビは捨てない。頭の中に<span class="mark">地図を描き足す</span>。</p>
+  </section>
+
+  <!-- SCENE 3：プロとの差（explore） -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 3</span><h2>プロとの差は3つ</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-why"><svg class="ic"><use href="#i-chat"/></svg><span>説明できる？<small>なぜそうなるか</small></span></button>
+        <button class="spot" data-show="p-rep"><svg class="ic"><use href="#i-play"/></svg><span>再現できる？<small>直ったと確かめる</small></span></button>
+        <button class="spot" data-show="p-ai"><svg class="ic"><use href="#i-warn"/></svg><span>誤りに気づける？<small>AIの自信満々な間違い</small></span></button>
+      </div>
+      <div class="panel" id="p-why"><h3><svg class="ic"><use href="#i-chat"/></svg>説明できる</h3><ul><li>ログのこの行 → だからnull</li><li>原因を根拠とセットで言う</li></ul></div>
+      <div class="panel" id="p-rep" hidden><h3><svg class="ic"><use href="#i-play"/></svg>再現できる</h3><ul><li>同じ条件で現象を起こす</li><li>直した後、他を壊してない</li></ul></div>
+      <div class="panel" id="p-ai" hidden><h3><svg class="ic"><use href="#i-warn"/></svg>誤りに気づける</h3><ul><li>ない設定名に「変だ」と思う</li><li>答えは結論でなく仮説</li></ul></div>
+    </div>
+    <p class="say">差は才能ではなく、<span class="mark">確かめる1手</span>があるか。</p>
+  </section>
+
+  <!-- SCENE 4：スキルの層（stack） -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 4</span><h2>AI時代のスキルの層</h2></div></div>
+    <div class="stack">
+      <div><svg class="ic c-violet"><use href="#i-chat"/></svg>伝える力<span>人の仕事</span></div>
+      <div><svg class="ic c-violet"><use href="#i-search"/></svg>調査力<span>人の仕事</span></div>
+      <div><svg class="ic c-ok"><use href="#i-code"/></svg>Java・SQLを読む<span>AIが得意</span></div>
+      <div><svg class="ic c-warn"><use href="#i-server"/></svg>システム構造<span>AIは知らない</span></div>
+      <div><svg class="ic c-warn"><use href="#i-calendar"/></svg>勤怠の業務知識<span>AIは知らない</span></div>
+    </div>
+    <p class="say">書くのはAIでも、<span class="mark">読めないと正しいか判断できない</span>。</p>
+    <p class="say">締め・有給・36協定の知識は武器になる。</p>
+  </section>
+
+  <!-- SCENE 5：わかったつもり→わかる（紙芝居） -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 5</span><h2>「わかる」の4段階</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="fig"><svg viewBox="0 0 560 250" style="min-width:420px;max-width:640px" role="img" aria-label="理解の4段階の階段">
+          <rect class="box-bg" x="20" y="190" width="125" height="45" rx="6"/>
+          <rect class="box-ng" x="150" y="160" width="125" height="75" rx="6"/>
+          <rect class="box-ok" x="280" y="90" width="125" height="145" rx="6"/>
+          <rect class="box-ok" x="410" y="50" width="125" height="185" rx="6"/>
+          <text x="82" y="180" text-anchor="middle" font-size="13">①聞いたことある</text>
+          <text x="212" y="150" text-anchor="middle" font-size="13">②読めばわかる</text>
+          <text x="342" y="80" text-anchor="middle" font-size="13">③説明できる</text>
+          <text x="472" y="40" text-anchor="middle" font-size="13">④再現できる</text>
+          <text x="212" y="205" text-anchor="middle" font-size="13" class="t-ng">わかったつもり</text>
+          <path class="line-ng dash" d="M278 160 V92"/>
+          <text x="342" y="165" text-anchor="middle" font-size="13" class="t-ok">書く・話す</text>
+          <text x="472" y="145" text-anchor="middle" font-size="13" class="t-ok">手を動かす</text>
+        </svg></div>
+        <p class="cap">②と③の間に、大きな段差がある。</p>
+      </div>
+      <div class="frame"><div class="big"><svg class="ic xl c-muted"><use href="#i-question"/></svg><br>① 聞いたことある</div><p class="cap">「Spring Boot、名前は知ってる」</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-ng"><use href="#i-eye"/></svg><br>② 読めば<em>わかる</em></div><p class="cap">AIの説明に「なるほど」。翌週は答えられない。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-ok"><use href="#i-pen"/></svg><br>③ 何も見ずに<em>説明できる</em></div><p class="cap">画面を閉じて3行で書く。詰まった所が穴。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-ok"><use href="#i-terminal"/></svg><br>④ <em>再現・応用</em>できる</div><p class="cap">条件を1つ変えて実行。予想どおりか確かめる。</p></div>
+    </div>
+  </section>
+
+  <!-- SCENE 6：動画だけ vs 手を動かす -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-terminal"/></svg><div><span class="tag">SCENE 6</span><h2>見るより、手を動かす</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>動画を眺めるだけ</b>ソファで1.5倍速を1時間。翌日、何も残らない。</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>手を動かしながら</b>PCで同じコードを打つ。最後に3行メモ。</div>
+    </div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-eye"/></svg><b>見る</b>動画・AI</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-terminal"/></svg><b>動かす</b>SQLを1行変える</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-pen"/></svg><b>説明する</b>3行メモ</div><div class="to"></div>
+      <div class="n warn"><svg class="ic"><use href="#i-search"/></svg><b>ずれに気づく</b>次に調べる所</div>
+    </div>
+    <p class="say">説明できなかった1点が、次に見るものになる。</p>
+  </section>
+
+  <!-- SCENE 7：振り返りメモ（tabs） -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-pen"/></svg><div><span class="tag">SCENE 7</span><h2>AIの答えを自分のものに</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="AIの答え">
+        <div class="talk">
+          <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>打刻登録でDuplicateKeyException。原因は？</p></div>
+          <div class="msg"><svg class="ic"><use href="#i-spark"/></svg><p>同じ社員・日・種別が既にあります。二重打刻です。</p></div>
+        </div>
+        <p class="say">ここで終わると、何も残らない。</p>
+      </div>
+      <div class="tab" data-label="10分メモ">
+<pre><code><span class="c"># 10/14 打刻登録エラー</span>
+■ 事実：社員10234 の出勤打刻が重複
+■ 根拠：ログの Detail 行<span class="tag">①</span>
+<span class="hl">■ 確かめた：SELECT で09:01の行を発見</span><span class="tag">②</span>
+<span class="hl">■ まだ謎：二重押し防止はない？</span><span class="tag">③</span>
+■ 3行で：1社員1日1種別しか登録不可…</code></pre>
+        <div class="anno">
+          <div><span class="num">1</span>どの行が証拠かを書く</div>
+          <div><span class="num">2</span>自分で確かめた＝③→④への一歩</div>
+          <div><span class="num">3</span>空欄でもOK。次に調べる所</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENE 8：1日15分（tiles） -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-clock"/></svg><div><span class="tag">SCENE 8</span><h2>小さく始める15分</h2></div></div>
+    <div class="tiles">
+      <div class="tile ok"><svg class="ic"><use href="#i-pen"/></svg><b>15分</b><span>今日AIに聞いたことを、見ずに3行</span></div>
+      <div class="tile ok"><svg class="ic"><use href="#i-db"/></svg><b>15分</b><span>今日のSQLに日本語コメント</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-log"/></svg><b>30分</b><span>ログ1件からソースを追う</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-wrench"/></svg><b>30分</b><span>05章の手順を1歩だけ進める</span></div>
+    </div>
+    <p class="say">1日15分 ＝ 1年で<span class="mark">90時間</span>。量より続くこと。</p>
+  </section>
+
+  <!-- SCENE 9：このガイドの歩き方（pipe） -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-book"/></svg><div><span class="tag">SCENE 9</span><h2>このガイドの歩き方</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-route"/></svg><b>地図を描く</b><a href="02-system-map.html">02</a> <a href="03-java.html">03</a> <a href="04-spring-boot.html">04</a></div><div class="to"></div>
+      <div class="n warn"><svg class="ic"><use href="#i-wrench"/></svg><b>動かす</b><a href="05-build-env.html">05 最優先</a></div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>実務</b><a href="06-sql-postgres.html">06</a>〜<a href="09-change-request.html">09</a> 辞書に</div><div class="to"></div>
+      <div class="n on"><svg class="ic"><use href="#i-spark"/></svg><b>伸ばす</b><a href="10-ai-learning.html">10</a> <a href="11-communication.html">11</a> <a href="12-roadmap.html">12</a></div>
+    </div>
+    <p class="say">まず02で地図、05は読むだけでなく<span class="mark">実際にやる</span>。</p>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>AIが「原因はA」。次の一手は？</summary><div class="a">仮説として扱い、ログやSQLで根拠を自分で確かめる。</div></details>
+      <details class="flip"><summary>「わかったつもり」の見分け方は？</summary><div class="a">何も見ずに3行で説明を書く。詰まったら②の段階。</div></details>
+      <details class="flip"><summary>AIが知らない層はどれ？</summary><div class="a">勤怠の業務知識と、自社のシステム構造。</div></details>
+      <details class="flip"><summary>動画学習を続けるなら？</summary><div class="a">PCの前で同じコードを打ちながら見て、最後に3行メモ。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch01">
+      <li><input type="checkbox" id="ch01-1"><label for="ch01-1">できること・まだのことを書き出す</label></li>
+      <li><input type="checkbox" id="ch01-2"><label for="ch01-2">AIの答えを1つ、自分で確かめる</label></li>
+      <li><input type="checkbox" id="ch01-3"><label for="ch01-3">振り返りメモを1回書く</label></li>
+      <li><input type="checkbox" id="ch01-4"><label for="ch01-4">毎日15分の時間帯を決める</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/01-mindset.html">文字版（v1）の01章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="00-index.html"><span>← 目次</span>00 目次</a><a class="next" href="02-system-map.html"><span>次の章 →</span>02 システムの全体像</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>11 伝える技術</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">11 伝える技術</span><a href="v1/11-communication.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">11</div>
+  <div><div class="eyebrow">CHAPTER 11</div><h1>伝える技術</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-target"/></svg>結論を1行目に書く</div>
+    <div><svg class="ic"><use href="#i-eye"/></svg>事実と推測を分ける</div>
+    <div><svg class="ic"><use href="#i-shield"/></svg>送る前に3つの関門</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：伝わらないのは順番 -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-chat"/></svg><div><span class="tag">SCENE 1</span><h2>苦手でも、型で伝わる</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>経緯から話す</b>ログを見たら9時ごろからエラーで、AIに聞いたら…今いろいろ見ています。</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>結論から話す</b>9:02から打刻が一部失敗（37件）。10:30に再報告します。</div>
+    </div>
+    <p class="say">必要なのは文章力でなく、<span class="mark">順番と中身</span>。</p>
+  </section>
+
+  <!-- SCENE 2：天気予報（SVG） -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-cloud"/></svg><div><span class="tag">SCENE 2</span><h2>天気予報は結論から</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 620 200" style="min-width:465px;max-width:720px" role="img" aria-label="天気予報と障害報告は同じ順番">
+      <text x="176" y="30" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">結論</text>
+      <text x="300" y="30" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">理由</text>
+      <text x="424" y="30" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">影響</text>
+      <text x="548" y="30" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">依頼</text>
+      <path class="line-accent flowing" d="M120 44 H600"/>
+      <text x="60" y="92" text-anchor="middle" font-size="15" font-weight="700">天気予報</text>
+      <rect class="box-bg" x="120" y="62" width="112" height="48" rx="8"/>
+      <rect class="box-bg" x="244" y="62" width="112" height="48" rx="8"/>
+      <rect class="box-bg" x="368" y="62" width="112" height="48" rx="8"/>
+      <rect class="box-bg" x="492" y="62" width="112" height="48" rx="8"/>
+      <text x="176" y="91" text-anchor="middle" font-size="14">明日は雨</text>
+      <text x="300" y="91" text-anchor="middle" font-size="14">低気圧</text>
+      <text x="424" y="91" text-anchor="middle" font-size="14">通勤時に強い</text>
+      <text x="548" y="91" text-anchor="middle" font-size="14">傘を持って</text>
+      <text x="60" y="162" text-anchor="middle" font-size="15" font-weight="700">障害報告</text>
+      <rect class="box-soft" x="120" y="132" width="112" height="48" rx="8"/>
+      <rect class="box-soft" x="244" y="132" width="112" height="48" rx="8"/>
+      <rect class="box-soft" x="368" y="132" width="112" height="48" rx="8"/>
+      <rect class="box-soft" x="492" y="132" width="112" height="48" rx="8"/>
+      <text x="176" y="161" text-anchor="middle" font-size="14">打刻が失敗</text>
+      <text x="300" y="161" text-anchor="middle" font-size="14">DB接続を疑う</text>
+      <text x="424" y="161" text-anchor="middle" font-size="14">37件</text>
+      <text x="548" y="161" text-anchor="middle" font-size="14">再打刻の案内</text>
+    </svg></div>
+    <p class="say">相手は最初の1〜2行で「自分は何をする？」を決める。</p>
+  </section>
+
+  <!-- SCENE 3：基本の型（pipe） -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-route"/></svg><div><span class="tag">SCENE 3</span><h2>基本の型は5つ</h2></div></div>
+    <div class="pipe">
+      <div class="n on"><svg class="ic"><use href="#i-target"/></svg><b>結論</b>何が起きた</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-search"/></svg><b>理由</b>根拠は？</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-users"/></svg><b>影響</b>誰に・何件</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-wrench"/></svg><b>対応</b>何をいつまで</div><div class="to"></div>
+      <div class="n warn"><svg class="ic"><use href="#i-hand"/></svg><b>依頼</b>してほしいこと</div>
+    </div>
+    <p class="say"><span class="mark">依頼</span>は忘れやすい。ないと相手が止まる。</p>
+  </section>
+
+  <!-- SCENE 4：事実と推測（SVG） -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 4</span><h2>事実と推測を仕分ける</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 600 260" style="min-width:450px;max-width:680px" role="img" aria-label="調べた結果を事実と推測に仕分ける">
+      <rect class="box" x="15" y="95" width="140" height="74" rx="12"/>
+      <text x="85" y="126" text-anchor="middle" font-size="15" font-weight="700">調べた結果</text>
+      <text x="85" y="150" text-anchor="middle" font-size="13" class="t-muted">ログ・SQL・AI</text>
+      <path class="line-accent flowing" d="M158 120 C200 120 200 70 236 70"/>
+      <path class="line-accent flowing" d="M158 145 C200 145 200 195 236 195"/>
+      <rect class="box-ok" x="240" y="15" width="345" height="108" rx="12"/>
+      <text x="262" y="45" font-size="15" font-weight="700" class="t-ok">事実（確認済み）</text>
+      <text x="262" y="75" font-size="14">・9:02からエラーログ</text>
+      <text x="262" y="102" font-size="14">・10:00時点で37件失敗</text>
+      <rect class="box-warn" x="240" y="140" width="345" height="108" rx="12"/>
+      <text x="262" y="170" font-size="15" font-weight="700">推測（未確認）</text>
+      <text x="262" y="200" font-size="14">・DB接続の上限かも／AIの答え</text>
+      <text x="262" y="227" font-size="14" class="t-accent">→ 確かめ方と期限を添える</text>
+    </svg></div>
+    <p class="say">推測には「〜を疑っています」と書く。断定しない。</p>
+  </section>
+
+  <!-- SCENE 5：数字で書く（like） -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-clock"/></svg><div><span class="tag">SCENE 5</span><h2>あいまい語を数字に</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-clock"/></svg><b>朝から</b><span class="eq">10/14 9:02から</span></div>
+      <div><svg class="ic"><use href="#i-users"/></svg><b>一部の社員</b><span class="eq">営業部の5名</span></div>
+      <div><svg class="ic"><use href="#i-list"/></svg><b>結構な件数</b><span class="eq">128件（11時時点）</span></div>
+      <div><svg class="ic"><use href="#i-calendar"/></svg><b>もうすぐ</b><span class="eq">15:00までに</span></div>
+    </div>
+    <p class="say">未確定なら「集計中、11:00に報告」でOK。</p>
+  </section>
+
+  <!-- SCENE 6：障害の一次報告（tabs） -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-mail"/></svg><div><span class="tag">SCENE 6</span><h2>障害の一次報告メール</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="悪いメール">
+        <div class="vs">
+          <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>件名：エラーについて</b>朝からエラーが出ているようです。わかり次第ご連絡します。</div>
+          <div class="mid">？</div>
+          <div class="bad"><b><svg class="ic"><use href="#i-question"/></svg>読んだ人</b>何件？いつまで待つ？私は何をすれば？</div>
+        </div>
+      </div>
+      <div class="tab" data-label="良いメール">
+<pre><code><span class="hl">件名：【障害・一次報告】打刻登録の一部失敗（10/14 9:02〜）</span>
+■ 現象　打刻で「登録に失敗しました」
+■ 影響　10:00時点で37件。参照・申請は正常
+■ 原因　調査中。DB接続上限を疑う<span class="tag">①</span>
+■ お願い　失敗者へ再打刻のご案内を
+<span class="hl">■ 次回報告　10:30（未判明でも報告）</span><span class="tag">②</span></code></pre>
+        <div class="anno">
+          <div><span class="num">1</span>推測は「疑う」と明記</div>
+          <div><span class="num">2</span>次の報告時刻を必ず書く</div>
+        </div>
+      </div>
+    </div>
+    <p class="say">一次報告は完璧より<span class="mark">早さ</span>。原因不明でも送る。</p>
+  </section>
+
+  <!-- SCENE 7：相手で書き分ける（explore） -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 7</span><h2>相手で書き分ける</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-hr"><svg class="ic"><use href="#i-users"/></svg><span>人事の担当者<small>影響調査の回答</small></span></button>
+        <button class="spot" data-show="p-cust"><svg class="ic"><use href="#i-mail"/></svg><span>顧客の要望<small>見積の前に確認</small></span></button>
+        <button class="spot" data-show="p-chat"><svg class="ic"><use href="#i-chat"/></svg><span>チャットの進捗<small>聞かれる前に</small></span></button>
+      </div>
+      <div class="panel" id="p-hr"><h3><svg class="ic"><use href="#i-users"/></svg>人事の担当者</h3><ul><li>誰の・どのデータかを表で</li><li>専門用語を言い換える</li><li>「影響なし」の範囲も書く</li></ul></div>
+      <div class="panel" id="p-cust" hidden><h3><svg class="ic"><use href="#i-mail"/></svg>顧客の要望</h3><ul><li>すぐ「できます」と言わない</li><li>自分の理解を書いて確かめる</li><li>確認事項に番号を振る</li></ul></div>
+      <div class="panel" id="p-chat" hidden><h3><svg class="ic"><use href="#i-chat"/></svg>チャットの進捗</h3>
+<pre><code>【氏名変更届】60%、11/8完了見込み
+済：XML項目追加
+次：更新SQLの確認（11/6まで）
+相談：旧姓併記の仕様が未確定</code></pre></div>
+    </div>
+    <p class="say">遅れの報告ほど早く。3日前なら周りが動ける。</p>
+  </section>
+
+  <!-- SCENE 8：先輩への質問（talk） -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-users"/></svg><div><span class="tag">SCENE 8</span><h2>先輩への質問は4要素</h2></div></div>
+    <div class="talk">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>Mavenで質問です（5分ほど）。①mvn packageを実行</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>②「PKIX path building failed」で停止（全文↓）</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>③jarができるはず ④プロキシ証明書が原因かと</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-user"/></svg><p>仮説あってるよ。社内Wikiに手順があるよ。</p></div>
+    </div>
+    <p class="say">④<span class="mark">自分の仮説</span>があると、先輩は答え合わせだけで済む。</p>
+    <p class="say">15〜30分調べて進まなければ聞く。</p>
+  </section>
+
+  <!-- SCENE 9：送る前のチェック（紙芝居） -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-shield"/></svg><div><span class="tag">SCENE 9</span><h2>AIの下書きは関門を通す</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="pipe">
+          <div class="n"><svg class="ic"><use href="#i-spark"/></svg><b>AIの下書き</b></div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-chat"/></svg><b>関門1</b>説明できる</div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-log"/></svg><b>関門2</b>根拠がある</div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-eye"/></svg><b>関門3</b>断定しすぎない</div><div class="to"></div>
+          <div class="n ok"><svg class="ic"><use href="#i-mail"/></svg><b>送信</b></div>
+        </div>
+        <p class="cap">送るのはあなたの名前。3つの関門を通す。</p>
+      </div>
+      <div class="frame"><div class="big"><svg class="ic xl c-warn"><use href="#i-chat"/></svg><br>関門1：<em>画面を閉じて</em>説明できる？</div><p class="cap">口で言えないなら、まだ送らない。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-warn"><use href="#i-log"/></svg><br>関門2：<em>根拠</em>を指させる？</div><p class="cap">ログの行・SQL結果・設定値。ない名前はAIの創作かも。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-warn"><use href="#i-eye"/></svg><br>関門3：<em>断定</em>しすぎてない？</div><p class="cap">確かめていない所は「推測」と書く。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-ok"><use href="#i-check"/></svg><br>通ったら<em>送信</em></div><p class="cap">数字・宛先・依頼と期限・個人情報も最後に確認。</p></div>
+    </div>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>報告の1行目に書くのは？</summary><div class="a">結論。何が起きたか、答えは何か。</div></details>
+      <details class="flip"><summary>「何人かいると思います」を直すと？</summary><div class="a">「確認できた範囲で8名（15時時点）」と数字と時点で。</div></details>
+      <details class="flip"><summary>AIが「原因はmax_connections不足」。送る？</summary><div class="a">根拠のログ行を確認。確かめられなければ「疑っています」と書く。</div></details>
+      <details class="flip"><summary>良い質問の4要素は？</summary><div class="a">やったこと・起きたこと・期待・自分の仮説。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch11">
+      <li><input type="checkbox" id="ch11-1"><label for="ch11-1">次の報告の1行目を結論にする</label></li>
+      <li><input type="checkbox" id="ch11-2"><label for="ch11-2">推測に「推測」と書き添える</label></li>
+      <li><input type="checkbox" id="ch11-3"><label for="ch11-3">あいまい語を数字に置き換える</label></li>
+      <li><input type="checkbox" id="ch11-4"><label for="ch11-4">4要素で先輩に1つ質問する</label></li>
+      <li><input type="checkbox" id="ch11-5"><label for="ch11-5">相談の前にメモ3行を書く</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/11-communication.html">文字版（v1）の11章（テンプレート全文あり）</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="10-ai-learning.html"><span>← 前の章</span>10 AIと一緒に強くなる</a><a class="next" href="12-roadmap.html"><span>次の章 →</span>12 12か月ロードマップ</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>

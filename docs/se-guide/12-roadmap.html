@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>12 12か月ロードマップ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">12 12か月ロードマップ</span><a href="v1/12-roadmap.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">12</div>
+  <div><div class="eyebrow">CHAPTER 12</div><h1>12か月ロードマップ</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-wrench"/></svg>最初に開発環境（装備）</div>
+    <div><svg class="ic"><use href="#i-clock"/></svg>毎日30分を3つに分ける</div>
+    <div><svg class="ic"><use href="#i-calendar"/></svg>週1回15分ふりかえる</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <!-- SCENE 1：山登り（SVG） -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-mountain"/></svg><div><span class="tag">SCENE 1</span><h2>1年は4つのキャンプ地</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 640 320" style="min-width:480px;max-width:760px" role="img" aria-label="12か月を4つのフェーズに分けた山登りの図">
+      <path class="box-soft" d="M10 290 L500 60 L630 290 Z"/>
+      <path class="line-accent flowing" d="M40 282 L120 246 L230 195 L340 143 L430 101 L500 64"/>
+      <path class="line" d="M500 64 V24"/>
+      <polygon class="f-ok" points="500,24 528,32 500,40"/>
+      <text x="536" y="38" font-size="15" font-weight="700" class="t-ok">1年後</text>
+      <circle class="f-accent" cx="120" cy="246" r="9"/>
+      <circle class="f-accent" cx="230" cy="195" r="9"/>
+      <circle class="f-accent" cx="340" cy="143" r="9"/>
+      <circle class="f-accent" cx="430" cy="101" r="9"/>
+      <text x="136" y="266" font-size="14" font-weight="700" class="t-accent">① 1〜3か月</text>
+      <text x="136" y="284" font-size="14">装備を整える</text>
+      <text x="246" y="215" font-size="14" font-weight="700" class="t-accent">② 4〜6か月</text>
+      <text x="246" y="233" font-size="14">読めるようになる</text>
+      <text x="356" y="163" font-size="14" font-weight="700" class="t-accent">③ 7〜9か月</text>
+      <text x="356" y="181" font-size="14">調べて直す</text>
+      <text x="446" y="121" font-size="14" font-weight="700" class="t-accent">④ 10〜12か月</text>
+      <text x="446" y="139" font-size="14">説明し任される</text>
+      <text x="20" y="312" font-size="13" class="t-muted">いまここ</text>
+    </svg></div>
+    <p class="say">山頂ではなく、<span class="mark">次のキャンプ地</span>だけ見て歩く。</p>
+  </section>
+
+  <!-- SCENE 2：各フェーズ（explore） -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-hand"/></svg><div><span class="tag">SCENE 2</span><h2>押してフェーズを見る</h2></div></div>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="p-ph1"><svg class="ic"><use href="#i-wrench"/></svg><span>① 装備を整える<small>1〜3か月・最優先</small></span></button>
+        <button class="spot" data-show="p-ph2"><svg class="ic"><use href="#i-eye"/></svg><span>② 読めるようになる<small>4〜6か月</small></span></button>
+        <button class="spot" data-show="p-ph3"><svg class="ic"><use href="#i-search"/></svg><span>③ 調べて直す<small>7〜9か月</small></span></button>
+        <button class="spot" data-show="p-ph4"><svg class="ic"><use href="#i-chat"/></svg><span>④ 説明し任される<small>10〜12か月</small></span></button>
+      </div>
+      <div class="panel" id="p-ph1"><h3><svg class="ic"><use href="#i-target"/></svg>手元で動かして確かめられる</h3><ul><li><a href="05-build-env.html">05 開発環境</a>：起動・デバッグまで</li><li><a href="02-system-map.html">02 全体像</a>：地図を描く</li><li>振り返りメモを習慣に</li></ul></div>
+      <div class="panel" id="p-ph2" hidden><h3><svg class="ic"><use href="#i-target"/></svg>画面からDBまで追える</h3><ul><li><a href="03-java.html">03 Java</a>をデバッガで読む</li><li><a href="04-spring-boot.html">04 Spring Boot</a>の流れを追う</li><li><a href="06-sql-postgres.html">06 SQL</a>を自分で書く</li></ul></div>
+      <div class="panel" id="p-ph3" hidden><h3><svg class="ic"><use href="#i-target"/></svg>小さな改修を一人で通す</h3><ul><li><a href="07-logs-incident.html">07 ログ調査</a>：仮説は自分で</li><li><a href="08-xml-forms.html">08 XML申請</a>の流れを追う</li><li><a href="09-change-request.html">09 改修</a>を再現〜検証まで</li></ul></div>
+      <div class="panel" id="p-ph4" hidden><h3><svg class="ic"><use href="#i-target"/></svg>調査〜報告を任される</h3><ul><li><a href="11-communication.html">11 伝える技術</a>で報告</li><li><a href="10-ai-learning.html">10 AI</a>は確認役として使う</li><li>手順書を書いて人に説明</li></ul></div>
+    </div>
+    <p class="say">10・11章は最初から毎日使う。④は仕上げの時期。</p>
+  </section>
+
+  <!-- SCENE 3：装備のゴール（pipe） -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-wrench"/></svg><div><span class="tag">SCENE 3</span><h2>最優先は開発環境</h2></div></div>
+    <div class="pipe">
+      <div class="n"><svg class="ic"><use href="#i-folder"/></svg><b>ソース取得</b>手元に持つ</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-box"/></svg><b>ビルド</b>mvn package</div><div class="to"></div>
+      <div class="n"><svg class="ic"><use href="#i-browser"/></svg><b>起動</b>画面が出る</div><div class="to"></div>
+      <div class="n ok"><svg class="ic"><use href="#i-bug"/></svg><b>デバッグ</b>止めて見る</div>
+    </div>
+    <p class="say">靴なしで山は登れない。ここまで来ると<span class="mark">確かめる学び</span>に変わる。</p>
+  </section>
+
+  <!-- SCENE 4：詰まりを動かす（紙芝居） -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 4</span><h2>止まった環境構築を動かす</h2></div></div>
+    <div class="stepper">
+      <div class="frame"><div class="big"><svg class="ic xl c-accent"><use href="#i-pen"/></svg><br>詰まりを<em>1行</em>で書く</div><p class="cap">例：依存ライブラリDLで証明書エラー</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-accent"><use href="#i-log"/></svg><br>エラーを<em>全文</em>保存</div><p class="cap">スクショより文字。AIにも先輩にも渡せる。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-accent"><use href="#i-users"/></svg><br>社内の<em>確認項目</em>を聞く</div><p class="cap">JDK版・settings.xml・DB接続先・手順書の有無</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-accent"><use href="#i-leaf"/></svg><br>1日<em>1ステップ</em>だけ</div><p class="cap">「今日はJDKの版を確認」だけでも前進。</p></div>
+      <div class="frame"><div class="big"><svg class="ic xl c-ok"><use href="#i-book"/></svg><br>できたら<em>手順書</em>に</div><p class="cap">詰まった点と解決策。後輩の役にも立つ。</p></div>
+    </div>
+  </section>
+
+  <!-- SCENE 5：毎日30分（meter + tabs） -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-clock"/></svg><div><span class="tag">SCENE 5</span><h2>毎日30分の内訳</h2></div></div>
+    <div class="meter">
+      <div><span>振り返り</span><div class="track"><i style="width:33%"></i></div><span class="v">10分</span></div>
+      <div><span>手を動かす</span><div class="track"><i style="width:50%"></i></div><span class="v">15分</span></div>
+      <div><span>次の一手</span><div class="track"><i style="width:17%"></i></div><span class="v">5分</span></div>
+    </div>
+    <p class="say">時間帯は固定。取れない日は最初の10分だけでOK。</p>
+    <div class="tabs" style="margin-top:18px">
+      <div class="tab" data-label="①装備"><div class="tiles"><div class="tile"><svg class="ic"><use href="#i-wrench"/></svg><b>手を動かす15分</b><span>05章を1ステップ進める</span></div></div></div>
+      <div class="tab" data-label="②読む"><div class="tiles"><div class="tile"><svg class="ic"><use href="#i-bug"/></svg><b>手を動かす15分</b><span>打刻登録で止めてService→Mapperを追う</span></div></div></div>
+      <div class="tab" data-label="③直す"><div class="tiles"><div class="tile"><svg class="ic"><use href="#i-search"/></svg><b>手を動かす15分</b><span>過去ログ1件、AIの前に仮説を3つ</span></div></div></div>
+      <div class="tab" data-label="④説明"><div class="tiles"><div class="tile"><svg class="ic"><use href="#i-pen"/></svg><b>手を動かす15分</b><span>今週の調査を報告文に書く</span></div></div></div>
+    </div>
+  </section>
+
+  <!-- SCENE 6：週次の振り返り（SVG） -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-calendar"/></svg><div><span class="tag">SCENE 6</span><h2>週1回15分の振り返り</h2></div></div>
+    <div class="fig"><svg viewBox="0 0 560 300" style="min-width:420px;max-width:640px" role="img" aria-label="週次の振り返りサイクル">
+      <rect class="box" x="205" y="22" width="150" height="56" rx="12"/>
+      <text x="280" y="46" text-anchor="middle" font-size="15" font-weight="700">毎日30分</text>
+      <text x="280" y="66" text-anchor="middle" font-size="13" class="t-muted">メモが5日分</text>
+      <rect class="box-warn" x="385" y="122" width="150" height="56" rx="12"/>
+      <text x="460" y="146" text-anchor="middle" font-size="15" font-weight="700">金曜15分</text>
+      <text x="460" y="166" text-anchor="middle" font-size="13" class="t-muted">メモを読み返す</text>
+      <rect class="box" x="205" y="222" width="150" height="56" rx="12"/>
+      <text x="280" y="246" text-anchor="middle" font-size="15" font-weight="700">仕分ける</text>
+      <text x="280" y="266" text-anchor="middle" font-size="13" class="t-muted">わかった／まだ</text>
+      <rect class="box-ok" x="25" y="122" width="150" height="56" rx="12"/>
+      <text x="100" y="146" text-anchor="middle" font-size="15" font-weight="700">来週の3つ</text>
+      <text x="100" y="166" text-anchor="middle" font-size="13" class="t-muted">やることを決める</text>
+      <path class="line-accent flowing" d="M358 50 Q460 50 460 112"/>
+      <polygon class="f-accent" points="453,110 467,110 460,121"/>
+      <path class="line-accent flowing" d="M460 181 Q460 250 368 250"/>
+      <polygon class="f-accent" points="369,243 369,257 358,250"/>
+      <path class="line-accent flowing" d="M202 250 Q100 250 100 190"/>
+      <polygon class="f-accent" points="93,192 107,192 100,181"/>
+      <path class="line-accent flowing" d="M100 119 Q100 50 192 50"/>
+      <polygon class="f-accent" points="191,43 191,57 202,50"/>
+      <text x="280" y="148" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">毎週</text>
+      <text x="280" y="168" text-anchor="middle" font-size="15" font-weight="700" class="t-accent">くり返す</text>
+    </svg></div>
+    <p class="say">「まだわからない」が毎週出るのは前進の証拠。</p>
+  </section>
+
+  <!-- SCENE 7：月ごとのチェック（tabs + check） -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-list"/></svg><div><span class="tag">SCENE 7</span><h2>月ごとのチェック</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="①1〜3か月">
+        <p><b>1か月目</b> <span class="muted">詰まりを特定する</span></p>
+        <ul class="check" data-key="ch12-m1">
+          <li><input type="checkbox" id="ch12-m1-1"><label for="ch12-m1-1">01・02章を読み構成図を描いた</label></li>
+          <li><input type="checkbox" id="ch12-m1-2"><label for="ch12-m1-2">詰まりを1行で書き質問した</label></li>
+          <li><input type="checkbox" id="ch12-m1-3"><label for="ch12-m1-3">振り返りメモを週3日書いた</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>2か月目</b> <span class="muted">ビルドと起動</span></p>
+        <ul class="check" data-key="ch12-m2">
+          <li><input type="checkbox" id="ch12-m2-1"><label for="ch12-m2-1">JDKとMavenの版を合わせた</label></li>
+          <li><input type="checkbox" id="ch12-m2-2"><label for="ch12-m2-2">ローカルでビルドが成功した</label></li>
+          <li><input type="checkbox" id="ch12-m2-3"><label for="ch12-m2-3">起動して画面が出た</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>3か月目</b> <span class="muted">デバッガで止める</span></p>
+        <ul class="check" data-key="ch12-m3">
+          <li><input type="checkbox" id="ch12-m3-1"><label for="ch12-m3-1">ブレークポイントで変数を見た</label></li>
+          <li><input type="checkbox" id="ch12-m3-2"><label for="ch12-m3-2">自分用の環境構築手順書を書いた</label></li>
+          <li><input type="checkbox" id="ch12-m3-3"><label for="ch12-m3-3">10章と11章を読んだ</label></li>
+        </ul>
+      </div>
+      <div class="tab" data-label="②4〜6か月">
+        <p><b>4か月目</b> <span class="muted">Javaを読む</span></p>
+        <ul class="check" data-key="ch12-m4">
+          <li><input type="checkbox" id="ch12-m4-1"><label for="ch12-m4-1">スタックトレースからソースを開けた</label></li>
+          <li><input type="checkbox" id="ch12-m4-2"><label for="ch12-m4-2">1クラスにコメントをつけて読んだ</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>5か月目</b> <span class="muted">Spring Bootを説明</span></p>
+        <ul class="check" data-key="ch12-m5">
+          <li><input type="checkbox" id="ch12-m5-1"><label for="ch12-m5-1">URL→Controllerを追えた</label></li>
+          <li><input type="checkbox" id="ch12-m5-2"><label for="ch12-m5-2">DB接続先の設定場所を確かめた</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>6か月目</b> <span class="muted">SQLを自分で書く</span></p>
+        <ul class="check" data-key="ch12-m6">
+          <li><input type="checkbox" id="ch12-m6-1"><label for="ch12-m6-1">AIの前に自分で書いて比べた×5</label></li>
+          <li><input type="checkbox" id="ch12-m6-2"><label for="ch12-m6-2">更新の前に同条件でSELECTした</label></li>
+        </ul>
+      </div>
+      <div class="tab" data-label="③7〜9か月">
+        <p><b>7か月目</b> <span class="muted">仮説を自分で立てる</span></p>
+        <ul class="check" data-key="ch12-m7">
+          <li><input type="checkbox" id="ch12-m7-1"><label for="ch12-m7-1">AIの前に仮説を3つ書いた×3</label></li>
+          <li><input type="checkbox" id="ch12-m7-2"><label for="ch12-m7-2">障害をローカルで再現できた</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>8か月目</b> <span class="muted">申請とSQLをつなぐ</span></p>
+        <ul class="check" data-key="ch12-m8">
+          <li><input type="checkbox" id="ch12-m8-1"><label for="ch12-m8-1">申請1つのXMLとSQLを追った</label></li>
+          <li><input type="checkbox" id="ch12-m8-2"><label for="ch12-m8-2">申請→承認→反映を図にした</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>9か月目</b> <span class="muted">改修を通しで</span></p>
+        <ul class="check" data-key="ch12-m9">
+          <li><input type="checkbox" id="ch12-m9-1"><label for="ch12-m9-1">影響範囲を自分で洗い出した</label></li>
+          <li><input type="checkbox" id="ch12-m9-2"><label for="ch12-m9-2">直ったこと・壊してないことを確認</label></li>
+        </ul>
+      </div>
+      <div class="tab" data-label="④10〜12か月">
+        <p><b>10か月目</b> <span class="muted">型どおりに報告</span></p>
+        <ul class="check" data-key="ch12-m10">
+          <li><input type="checkbox" id="ch12-m10-1"><label for="ch12-m10-1">11章のテンプレで報告を書いた</label></li>
+          <li><input type="checkbox" id="ch12-m10-2"><label for="ch12-m10-2">AIの文を送信前チェックに通した</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>11か月目</b> <span class="muted">説明して残す</span></p>
+        <ul class="check" data-key="ch12-m11">
+          <li><input type="checkbox" id="ch12-m11-1"><label for="ch12-m11-1">調査内容を口頭で説明した</label></li>
+          <li><input type="checkbox" id="ch12-m11-2"><label for="ch12-m11-2">調査手順書を1本書いた</label></li>
+        </ul>
+        <p style="margin-top:16px"><b>12か月目</b> <span class="muted">次の1年を決める</span></p>
+        <ul class="check" data-key="ch12-m12">
+          <li><input type="checkbox" id="ch12-m12-1"><label for="ch12-m12-1">わかるようになったことを10個書いた</label></li>
+          <li><input type="checkbox" id="ch12-m12-2"><label for="ch12-m12-2">次に伸ばすことを3つ決めた</label></li>
+        </ul>
+      </div>
+    </div>
+    <p class="say">全部埋まらなくても次の月へ。チェック前に「説明できる？」。</p>
+  </section>
+
+  <!-- SCENE 8：資格は道具（vs + tiles） -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-stamp"/></svg><div><span class="tag">SCENE 8</span><h2>資格は目的でなく道具</h2></div></div>
+    <div class="tiles">
+      <div class="tile"><svg class="ic"><use href="#i-layers"/></svg><b>基本情報技術者</b><span>全体の土台。②〜③と並行</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-code"/></svg><b>Java Silver</b><span>Javaを読む力。②以降</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-db"/></svg><b>OSS-DB Silver</b><span>Postgresに直結。06章の後</span></div>
+    </div>
+    <div class="vs" style="margin-top:14px">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>丸暗記で合格</b>業務のSQLは相変わらずAI任せ。</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>学んで確かめる</b>習ったインデックスを社内DBで見てみる。</div>
+    </div>
+    <p class="say">ずれたら計画を書き直すだけ。止まらないことが大事。</p>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>タップで答え合わせ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>なぜJavaより先に環境構築？</summary><div class="a">動かせないと「本当にそう動くか」を確かめられないから。</div></details>
+      <details class="flip"><summary>障害対応で30分が0日。どうする？</summary><div class="a">責めない。週次の振り返りだけやり、来週の3つを小さく。</div></details>
+      <details class="flip"><summary>OSS-DB Silverはいつ始める？</summary><div class="a">フェーズ1の後、06章と並行。学んだことを社内DBで確認。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch12">
+      <li><input type="checkbox" id="ch12-1"><label for="ch12-1">毎日30分の時間帯と場所を決める</label></li>
+      <li><input type="checkbox" id="ch12-2"><label for="ch12-2">環境構築の詰まりを1行で書く</label></li>
+      <li><input type="checkbox" id="ch12-3"><label for="ch12-3">エラー全文を保存し、先輩に1つ聞く</label></li>
+      <li><input type="checkbox" id="ch12-4"><label for="ch12-4">週次振り返りをカレンダーに入れる</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>もっと詳しく：<a href="v1/12-roadmap.html">文字版（v1）の12章</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="11-communication.html"><span>← 前の章</span>11 伝える技術</a><a class="next" href="00-index.html"><span>次へ →</span>00 目次</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
