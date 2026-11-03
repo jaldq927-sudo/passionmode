@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>13 Java・Spring・WAR・JAR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Murecho:wght@600;800&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="visual.css">
+<style>
+/* この章だけの部品：3色の凡例、ファイルツリー、部品の仕分け棚 */
+.legend3{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:.85rem;margin-top:4px}
+.legend3 span{display:inline-flex;align-items:center;gap:6px}
+.legend3 i{width:14px;height:14px;border-radius:3px;display:inline-block}
+.lg-java{background:var(--code-key)} .lg-spring{background:var(--code-str)} .lg-biz{background:var(--warn)}
+pre .sp{color:var(--code-str);font-weight:600}
+pre .biz{background:rgba(255,200,80,.22);display:inline-block;width:100%}
+
+.part{display:flex;align-items:center;gap:14px;margin-top:12px}
+.part b{font-family:var(--f-display);font-weight:800;font-size:clamp(1.4rem,4vw,2rem);color:var(--accent)}
+.part span{font-weight:700;color:var(--muted)}
+.part::after{content:"";flex:1;height:2px;background:var(--rule)}
+
+.tree .spot{font-family:var(--f-mono);font-size:.86rem;padding:8px 12px}
+.tree .spot .ic{width:24px;height:24px}
+.tree .d1{margin-left:0} .tree .d2{margin-left:22px;width:calc(100% - 22px)} .tree .d3{margin-left:44px;width:calc(100% - 44px)}
+.tree .spot.mine{border-color:var(--ok)} .tree .spot.mine .ic{color:var(--ok)}
+.tree .spot.lib .ic{color:var(--violet)}
+.tree .spots{gap:6px}
+.tree{margin-top:14px}
+
+.shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.shelf > div{border-radius:12px;padding:14px;min-width:0}
+.shelf h3{font-size:1rem;display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.shelf .j{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:.8rem;background:var(--sheet);border-radius:8px;padding:6px 10px;margin-top:6px;overflow-wrap:anywhere}
+.shelf .j .ic{width:20px;height:20px;flex:none}
+.sh-mine{background:var(--ok-soft)} .sh-mine h3{color:var(--ok)}
+.sh-co{background:var(--accent-soft)} .sh-co h3{color:var(--accent)}
+.sh-oss{background:var(--violet-soft)} .sh-oss h3{color:var(--violet)}
+@media (max-width:720px){.shelf{grid-template-columns:1fr}}
+
+.compare3{overflow-x:auto}
+.compare3 table{border-collapse:collapse;width:100%;min-width:520px;font-size:.9rem}
+.compare3 th,.compare3 td{padding:10px 12px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top}
+.compare3 thead th{background:var(--accent-soft);color:var(--accent)}
+.compare3 tbody th{white-space:nowrap;color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="wrap"><a href="00-index.html">← 目次</a><span class="crumb">13 Java・Spring・WAR・JAR</span><a href="v1/04-spring-boot.html">文字で詳しく読む</a></div><div class="progress"></div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="no">13</div>
+  <div><div class="eyebrow">CHAPTER 13 ・ よくある疑問に答える</div><h1>Java・Spring・WAR・JAR</h1></div>
+  <div class="tldr">
+    <div><svg class="ic"><use href="#i-coffee"/></svg>Javaは言葉、Springは骨組み</div>
+    <div><svg class="ic"><use href="#i-target"/></svg>業務ルールは自社のJavaコード</div>
+    <div><svg class="ic"><use href="#i-box"/></svg>WARもJARも中身はzipの箱</div>
+  </div>
+</div></header>
+
+<main class="wrap">
+
+  <div class="part"><b>前半</b><span>業務ルールはどこにある？</span></div>
+
+  <!-- S1 -->
+  <section class="scene" id="s1">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">SCENE 1</span><h2>登場人物は3人いる</h2></div></div>
+    <p class="big">Java と Spring Boot と<br><em>自社のコード</em>は別もの</p>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-coffee"/></svg><b>Java</b><span class="eq">言葉（日本語のようなもの）</span></div>
+      <div><svg class="ic"><use href="#i-leaf"/></svg><b>Spring Boot</b><span class="eq">Javaで書かれた骨組み</span></div>
+      <div><svg class="ic"><use href="#i-pen"/></svg><b>自社のコード</b><span class="eq">Javaで書いた業務ルール</span></div>
+    </div>
+    <p class="say">業務ルールは3人目にあります。Spring Bootは、それを動かす土台です。</p>
+  </section>
+
+  <!-- S2 -->
+  <section class="scene" id="s2">
+    <div class="scene-h"><svg class="ic"><use href="#i-heart"/></svg><div><span class="tag">SCENE 2</span><h2>家づくりでたとえると</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 660 300" style="min-width:500px;max-width:660px" role="img" aria-label="家づくりのたとえ。材料がJava、骨組みと設備がSpring Boot、間取りと家具が自社コード">
+        <!-- house -->
+        <path class="box-bg" d="M40 130 L170 40 L300 130 Z"/>
+        <rect class="box" x="60" y="130" width="220" height="140" rx="4"/>
+        <rect class="box-ok" x="80" y="160" width="80" height="50" rx="4"/>
+        <rect class="box-ok" x="180" y="160" width="80" height="90" rx="4"/>
+        <text x="120" y="190" text-anchor="middle" font-size="13" font-weight="700">間取り</text>
+        <text x="220" y="210" text-anchor="middle" font-size="13" font-weight="700">家具</text>
+        <line class="line" x1="60" y1="270" x2="280" y2="270"/>
+        <!-- labels -->
+        <line class="line dash" x1="300" y1="95" x2="360" y2="70"/>
+        <line class="line dash" x1="280" y1="140" x2="360" y2="150"/>
+        <line class="line dash" x1="260" y1="230" x2="360" y2="230"/>
+        <rect class="box-soft" x="360" y="44" width="280" height="52" rx="8"/>
+        <text x="376" y="66" font-size="14" font-weight="700" class="t-accent">屋根・柱・電気・水道</text>
+        <text x="376" y="86" font-size="13">＝ Spring Boot（どの家にも必要）</text>
+        <rect class="box-bg" x="360" y="124" width="280" height="52" rx="8"/>
+        <text x="376" y="146" font-size="14" font-weight="700">木材・釘・ネジ</text>
+        <text x="376" y="166" font-size="13">＝ Java（全部これで作られる）</text>
+        <rect class="box-ok" x="360" y="204" width="280" height="52" rx="8"/>
+        <text x="376" y="226" font-size="14" font-weight="700" class="t-ok">間取り・家具</text>
+        <text x="376" y="246" font-size="13">＝ 自社コード（その家だけ）</text>
+      </svg>
+    </div>
+    <p class="say">骨組み（Spring Boot）はどの会社でも同じ。<span class="mark">勤怠らしさ</span>は間取りと家具（自社コード）にあります。</p>
+  </section>
+
+  <!-- S3 -->
+  <section class="scene" id="s3">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 3</span><h2>勤怠アプリの断面図</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 680 340" style="min-width:510px;max-width:680px" role="img" aria-label="勤怠アプリの層。上から自社コード、Spring、ライブラリ、JavaとJVM、OS">
+        <rect class="box-ok" x="20" y="16" width="470" height="54" rx="8"/>
+        <text x="40" y="40" font-size="15" font-weight="700" class="t-ok">自社コード（業務ルール）</text>
+        <text x="40" y="60" font-size="13">残業計算・締め処理・承認ルート・画面</text>
+        <rect class="box" x="20" y="80" width="470" height="54" rx="8"/>
+        <text x="40" y="104" font-size="15" font-weight="700" class="t-accent">Spring Boot / Spring Framework</text>
+        <text x="40" y="124" font-size="13">URLの受付・部品の用意・DB接続・トランザクション</text>
+        <rect class="box-bg" x="20" y="144" width="470" height="54" rx="8"/>
+        <text x="40" y="168" font-size="15" font-weight="700">ライブラリ（ほかの部品）</text>
+        <text x="40" y="188" font-size="13">PostgreSQLドライバ・MyBatis・ログ・JSON変換</text>
+        <rect class="box-warn" x="20" y="208" width="470" height="54" rx="8"/>
+        <text x="40" y="232" font-size="15" font-weight="700">Java（言語）＋ JVM（実行エンジン）</text>
+        <text x="40" y="252" font-size="13">全部の層がJavaで書かれ、JVMの上で動く</text>
+        <rect class="box-bg" x="20" y="272" width="470" height="54" rx="8"/>
+        <text x="40" y="304" font-size="15" font-weight="700">OS（Linux / Windows）</text>
+        <!-- brackets -->
+        <path class="line-accent" d="M505 20 h12 v46 h-12"/>
+        <text x="528" y="40" font-size="14" font-weight="700" class="t-ok">自分たちが書く</text>
+        <text x="528" y="58" font-size="12" class="t-muted">WARの中の classes</text>
+        <path class="line" d="M505 84 h12 v110 h-12"/>
+        <text x="528" y="132" font-size="14" font-weight="700">他人が作った部品</text>
+        <text x="528" y="150" font-size="12" class="t-muted">全部 .jar ファイル</text>
+        <text x="528" y="166" font-size="12" class="t-muted">Mavenが取ってくる</text>
+        <path class="line" d="M505 212 h12 v110 h-12"/>
+        <text x="528" y="262" font-size="14" font-weight="700">サーバに入っている</text>
+        <text x="528" y="280" font-size="12" class="t-muted">JDK・OS</text>
+      </svg>
+    </div>
+    <p class="say">緑の層だけが「あなたの会社の勤怠システム」。下は全部、借りてきた部品です。</p>
+  </section>
+
+  <!-- S4 -->
+  <section class="scene" id="s4">
+    <div class="scene-h"><svg class="ic"><use href="#i-code"/></svg><div><span class="tag">SCENE 4</span><h2>1つのクラスを3色に塗る</h2></div></div>
+    <p class="say">同じファイルの中に、3人の持ち物が混ざっています。</p>
+    <pre><code><span class="sp">@Service</span>                                   <span class="c">// Spring：「部品として用意して」</span>
+<span class="k">public class</span> OvertimeService {            <span class="c">// Java：クラスの書き方</span>
+
+  <span class="sp">@Transactional</span>                           <span class="c">// Spring：「全部成功か全部取消」</span>
+  <span class="k">public</span> Duration calc(AttendanceRecord r) { <span class="c">// Java：メソッド</span>
+    Duration work = Duration.between(r.getIn(), r.getOut());
+<span class="biz">    <span class="k">if</span> (work.compareTo(Duration.ofHours(8)) &gt; 0) {   // ルール：8時間を超えたら</span>
+<span class="biz">      <span class="k">return</span> work.minusHours(8);                    // ルール：超えた分が残業</span>
+<span class="biz">    }</span>
+    <span class="k">return</span> Duration.ZERO;
+  }
+}</code></pre>
+    <div class="legend3"><span><i class="lg-spring"></i>Spring（@で始まる印）</span><span><i class="lg-java"></i>Java（言葉そのもの）</span><span><i class="lg-biz"></i>業務ルール（自社が決めた中身）</span></div>
+    <div class="tiles" style="margin-top:14px">
+      <div class="tile"><svg class="ic"><use href="#i-leaf"/></svg><b>@ の行</b><span>Springへのお願い。消すと動かないが、ルールではない</span></div>
+      <div class="tile warn"><svg class="ic"><use href="#i-target"/></svg><b>黄色の行</b><span>就業規則がコードになった所。改修はここが多い</span></div>
+    </div>
+    <p class="note muted" style="margin-top:8px;font-size:.8rem">説明用に簡略化した例です。実際の残業計算は休憩・深夜・休日などがあり複雑です。</p>
+  </section>
+
+  <!-- S5 -->
+  <section class="scene" id="s5">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 5</span><h2>打刻したとき、誰が働く？</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n on"><svg class="ic"><use href="#i-leaf"/></svg><b>Spring</b>　URL「/punch」を受け取る</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Controller</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Service</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>Spring＋MyBatis → DB</b></div>
+        </div>
+        <p class="cap">① Springが受付。@PostMapping("/punch") の付いたメソッドを探す</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-leaf"/></svg><b>Spring</b></div><div class="to"></div>
+          <div class="n ok"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Controller</b>　入力をチェックして渡す</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Service</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>Spring＋MyBatis → DB</b></div>
+        </div>
+        <p class="cap">② 自社が書いたController。ここから「あなたの会社のコード」</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-leaf"/></svg><b>Spring</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Controller</b></div><div class="to"></div>
+          <div class="n warn"><svg class="ic"><use href="#i-target"/></svg><b>自社 Service</b>　残業・遅刻を計算＝業務ルール</div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-db"/></svg><b>Spring＋MyBatis → DB</b></div>
+        </div>
+        <p class="cap">③ 業務ルールの本体。黄色の行がたくさんある場所</p>
+      </div>
+      <div class="frame">
+        <div class="pipe v">
+          <div class="n"><svg class="ic"><use href="#i-leaf"/></svg><b>Spring</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Controller</b></div><div class="to"></div>
+          <div class="n"><svg class="ic"><use href="#i-pen"/></svg><b>自社 Service</b></div><div class="to"></div>
+          <div class="n on"><svg class="ic"><use href="#i-db"/></svg><b>Spring＋MyBatis → DB</b>　SQLを実行して保存</div>
+        </div>
+        <p class="cap">④ SQLの文は自社が書く。実行と接続はSpringとMyBatisが担当</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- S6 -->
+  <section class="scene" id="s6">
+    <div class="scene-h"><svg class="ic"><use href="#i-search"/></svg><div><span class="tag">SCENE 6</span><h2>業務ルールの置き場所は5つ</h2></div></div>
+    <p class="say">Javaだけではありません。押して、場所と探し方を見てください。</p>
+    <div class="explore">
+      <div class="spots">
+        <button class="spot" data-show="r1"><svg class="ic"><use href="#i-coffee"/></svg><span>Serviceクラス（Java）<small>計算・判定のif文</small></span></button>
+        <button class="spot" data-show="r2"><svg class="ic"><use href="#i-xml"/></svg><span>SQL（Mapper XML など）<small>集計条件・抽出条件</small></span></button>
+        <button class="spot" data-show="r3"><svg class="ic"><use href="#i-db"/></svg><span>DBのマスタ・設定テーブル<small>所定時間・締め日・区分</small></span></button>
+        <button class="spot" data-show="r4"><svg class="ic"><use href="#i-gear"/></svg><span>設定ファイル<small>application.properties など</small></span></button>
+        <button class="spot" data-show="r5"><svg class="ic"><use href="#i-stamp"/></svg><span>申請定義XML<small>入力チェック・承認ルート</small></span></button>
+      </div>
+      <div class="panel" id="r1"><h3><svg class="ic"><use href="#i-coffee"/></svg>Serviceクラス</h3>
+        <ul><li>例：8時間超は残業、22時以降は深夜</li><li>場所：…/service/〇〇Service.java</li><li>探す：grep -rn "深夜" src/</li></ul></div>
+      <div class="panel" id="r2" hidden><h3><svg class="ic"><use href="#i-xml"/></svg>SQL</h3>
+        <ul><li>例：締め済みの月は除く WHERE 条件</li><li>場所：resources/mapper/*.xml</li><li>探す：テーブル名や列名で grep</li></ul></div>
+      <div class="panel" id="r3" hidden><h3><svg class="ic"><use href="#i-db"/></svg>マスタ・設定テーブル</h3>
+        <ul><li>例：所定労働時間8時間、締め日15日</li><li>コードを変えずに値だけ変えられる</li><li>探す：SELECT で中身を見る</li></ul></div>
+      <div class="panel" id="r4" hidden><h3><svg class="ic"><use href="#i-gear"/></svg>設定ファイル</h3>
+        <ul><li>例：バッチの実行時刻、機能のON/OFF</li><li>環境ごと（本番・検証）に違う値</li><li>探す：*.properties / *.yml</li></ul></div>
+      <div class="panel" id="r5" hidden><h3><svg class="ic"><use href="#i-stamp"/></svg>申請定義XML</h3>
+        <ul><li>例：通勤費は課長→人事の順に承認</li><li>入力必須・文字数の制限</li><li>詳しくは <a href="08-xml-forms.html">08章</a></li></ul></div>
+    </div>
+  </section>
+
+  <!-- S7 -->
+  <section class="scene" id="s7">
+    <div class="scene-h"><svg class="ic"><use href="#i-warn"/></svg><div><span class="tag">SCENE 7</span><h2>よくある誤解を直す</h2></div></div>
+    <div class="vs">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>誤解</b>業務ルールは Spring Boot の中にある</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>正しくは</b>Spring Boot の上で、自社が Java で書いている</div>
+    </div>
+    <div class="vs" style="margin-top:12px">
+      <div class="bad"><b><svg class="ic"><use href="#i-x"/></svg>誤解</b>Spring Boot は Java とは別の言語</div>
+      <div class="mid">→</div>
+      <div class="good"><b><svg class="ic"><use href="#i-check"/></svg>正しくは</b>Spring Boot も Java で書かれた部品の集まり</div>
+    </div>
+  </section>
+
+  <!-- S8 -->
+  <section class="scene" id="s8">
+    <div class="scene-h"><svg class="ic"><use href="#i-table"/></svg><div><span class="tag">SCENE 8</span><h2>3つを並べて比べる</h2></div></div>
+    <div class="compare3"><table>
+      <thead><tr><th></th><th>Java</th><th>Spring Boot</th><th>自社のコード</th></tr></thead>
+      <tbody>
+        <tr><th>正体</th><td>プログラミング言語</td><td>フレームワーク（部品の集まり）</td><td>勤怠システム本体</td></tr>
+        <tr><th>作った人</th><td>Oracle などの開発者</td><td>Spring の開発チーム</td><td>自社・委託先の開発者</td></tr>
+        <tr><th>たとえ</th><td>木材・釘</td><td>柱・電気・水道</td><td>間取り・家具</td></tr>
+        <tr><th>見た目</th><td>class・if・for</td><td>@Service などの印</td><td>com.会社名.kintai…</td></tr>
+        <tr><th>改修で触る？</th><td>（書くのに使う）</td><td>ほぼ触らない</td><td><b>ここを直す</b></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <div class="part"><b>後半</b><span>WARとJARの正体</span></div>
+
+  <!-- S9 -->
+  <section class="scene" id="s9">
+    <div class="scene-h"><svg class="ic"><use href="#i-box"/></svg><div><span class="tag">SCENE 9</span><h2>WARもJARも、中身はzip</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 660 230" style="min-width:500px;max-width:660px" role="img" aria-label="kintai.warの名前をzipに変えて開くと、フォルダとファイルが入っている">
+        <rect class="box" x="20" y="60" width="150" height="100" rx="10"/>
+        <text x="95" y="105" text-anchor="middle" font-size="16" font-weight="700">kintai.war</text>
+        <text x="95" y="128" text-anchor="middle" font-size="12" class="t-muted">1つのファイル</text>
+        <path class="line-accent" d="M180 110 H250"/><path class="f-accent" d="M250 103 l12 7 -12 7z"/>
+        <text x="220" y="96" text-anchor="middle" font-size="12" class="t-muted">名前を</text>
+        <text x="220" y="140" text-anchor="middle" font-size="12" class="t-muted">.zipに</text>
+        <rect class="box-warn" x="270" y="60" width="130" height="100" rx="10"/>
+        <text x="335" y="105" text-anchor="middle" font-size="16" font-weight="700">kintai.zip</text>
+        <text x="335" y="128" text-anchor="middle" font-size="12" class="t-muted">普通に開ける</text>
+        <path class="line-accent" d="M410 110 H460"/><path class="f-accent" d="M460 103 l12 7 -12 7z"/>
+        <rect class="box-bg" x="480" y="20" width="160" height="190" rx="10"/>
+        <text x="496" y="50" font-size="13" font-weight="700">中身</text>
+        <text x="496" y="78" font-size="12" font-family="monospace">WEB-INF/</text>
+        <text x="510" y="100" font-size="12" font-family="monospace" class="t-ok">classes/</text>
+        <text x="510" y="122" font-size="12" font-family="monospace">lib/ (*.jar)</text>
+        <text x="510" y="144" font-size="12" font-family="monospace">web.xml</text>
+        <text x="496" y="166" font-size="12" font-family="monospace">META-INF/</text>
+        <text x="496" y="188" font-size="12" font-family="monospace">css/ js/ …</text>
+      </svg>
+    </div>
+    <div class="tiles">
+      <div class="tile"><svg class="ic"><use href="#i-box"/></svg><b>JAR = Java ARchive</b><span>Javaのファイルを詰めた箱</span></div>
+      <div class="tile"><svg class="ic"><use href="#i-web"/></svg><b>WAR = Web ARchive</b><span>Webアプリ1本分を詰めた箱</span></div>
+    </div>
+    <p class="say">「書類をまとめたzip」と同じ。拡張子で用途を区別しているだけです。</p>
+  </section>
+
+  <!-- S10 -->
+  <section class="scene" id="s10">
+    <div class="scene-h"><svg class="ic"><use href="#i-heart"/></svg><div><span class="tag">SCENE 10</span><h2>お弁当でたとえると</h2></div></div>
+    <div class="like">
+      <div><svg class="ic"><use href="#i-box"/></svg><b>ライブラリのJAR</b><span class="eq">市販の冷凍食品（おかず1品）</span></div>
+      <div><svg class="ic"><use href="#i-web"/></svg><b>WAR</b><span class="eq">お弁当一式。食堂のレンジで温める</span></div>
+      <div><svg class="ic"><use href="#i-fire"/></svg><b>実行できるJAR</b><span class="eq">紐を引くと温まる加熱式駅弁</span></div>
+      <div><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b><span class="eq">食堂の電子レンジ</span></div>
+    </div>
+    <div class="fig" style="margin-top:14px">
+      <svg viewBox="0 0 660 220" style="min-width:500px;max-width:660px" role="img" aria-label="WARはTomcatの中に置く。実行できるJARはTomcatを中に持っている">
+        <text x="160" y="24" text-anchor="middle" font-size="14" font-weight="700">WAR方式</text>
+        <rect class="box-warn" x="30" y="36" width="260" height="170" rx="12"/>
+        <text x="46" y="60" font-size="13" font-weight="700">Tomcat（外にある）</text>
+        <rect class="box-ok" x="60" y="76" width="200" height="110" rx="10"/>
+        <text x="160" y="104" text-anchor="middle" font-size="13" font-weight="700">kintai.war</text>
+        <rect class="box-bg" x="80" y="118" width="70" height="50" rx="6"/><text x="115" y="148" text-anchor="middle" font-size="12">自社</text>
+        <rect class="box-bg" x="170" y="118" width="70" height="50" rx="6"/><text x="205" y="148" text-anchor="middle" font-size="12">部品jar</text>
+        <text x="500" y="24" text-anchor="middle" font-size="14" font-weight="700">実行できるJAR方式</text>
+        <rect class="box-ok" x="370" y="36" width="260" height="170" rx="12"/>
+        <text x="386" y="60" font-size="13" font-weight="700">kintai.jar</text>
+        <rect class="box-bg" x="390" y="80" width="70" height="50" rx="6"/><text x="425" y="110" text-anchor="middle" font-size="12">自社</text>
+        <rect class="box-bg" x="470" y="80" width="70" height="50" rx="6"/><text x="505" y="110" text-anchor="middle" font-size="12">部品jar</text>
+        <rect class="box-warn" x="390" y="140" width="220" height="48" rx="6"/><text x="500" y="169" text-anchor="middle" font-size="12" font-weight="700">Tomcat（中に入っている）</text>
+        <text x="550" y="110" font-size="12" class="t-muted">java -jar</text>
+      </svg>
+    </div>
+    <p class="say">違いは「Tomcatが外にあるか、中にあるか」。入れ子が逆になります。</p>
+  </section>
+
+  <!-- S11 -->
+  <section class="scene" id="s11">
+    <div class="scene-h"><svg class="ic"><use href="#i-folder"/></svg><div><span class="tag">SCENE 11</span><h2>WARの中を開けてみる</h2></div></div>
+    <p class="say">ファイル名を押すと、それが何かが出ます。<span class="mark">緑が自社</span>、紫が他人の部品です。</p>
+    <div class="explore tree">
+      <div class="spots">
+        <button class="spot d1" data-show="t-war"><svg class="ic"><use href="#i-box"/></svg><span>kintai.war</span></button>
+        <button class="spot d2" data-show="t-webinf"><svg class="ic"><use href="#i-folder"/></svg><span>WEB-INF/</span></button>
+        <button class="spot d3 mine" data-show="t-classes"><svg class="ic"><use href="#i-pen"/></svg><span>classes/</span></button>
+        <button class="spot d3 lib" data-show="t-lib"><svg class="ic"><use href="#i-box"/></svg><span>lib/</span></button>
+        <button class="spot d3" data-show="t-webxml"><svg class="ic"><use href="#i-gear"/></svg><span>web.xml</span></button>
+        <button class="spot d2" data-show="t-meta"><svg class="ic"><use href="#i-folder"/></svg><span>META-INF/</span></button>
+        <button class="spot d2" data-show="t-static"><svg class="ic"><use href="#i-browser"/></svg><span>css/ js/ images/</span></button>
+      </div>
+      <div class="panel" id="t-war"><h3><svg class="ic"><use href="#i-box"/></svg>kintai.war</h3><ul><li>勤怠アプリ1本分の箱</li><li>mvn package で作られる</li><li>Tomcatの webapps/ に置く</li></ul></div>
+      <div class="panel" id="t-webinf" hidden><h3><svg class="ic"><use href="#i-folder"/></svg>WEB-INF/</h3><ul><li>アプリの本体が入る場所</li><li>ブラウザから直接は見えない</li></ul></div>
+      <div class="panel" id="t-classes" hidden><h3><svg class="ic c-ok"><use href="#i-pen"/></svg>classes/（自社）</h3><ul><li>自社の .java をコンパイルした .class</li><li>com/会社名/kintai/…Service.class</li><li>業務ルールはここ。設定ファイルもここ</li></ul></div>
+      <div class="panel" id="t-lib" hidden><h3><svg class="ic c-violet"><use href="#i-box"/></svg>lib/（部品）</h3><ul><li>spring-core-x.x.jar などが数十〜百個</li><li>postgresql-x.x.jar（DBにつなぐ部品）</li><li>社内共通の部品jarもここに入る</li></ul></div>
+      <div class="panel" id="t-webxml" hidden><h3><svg class="ic"><use href="#i-gear"/></svg>web.xml</h3><ul><li>Tomcatへの説明書</li><li>Spring Boot製なら無いこともある</li></ul></div>
+      <div class="panel" id="t-meta" hidden><h3><svg class="ic"><use href="#i-folder"/></svg>META-INF/</h3><ul><li>箱のラベル（MANIFEST.MF）</li><li>作成ツールや版の情報</li></ul></div>
+      <div class="panel" id="t-static" hidden><h3><svg class="ic"><use href="#i-browser"/></svg>css/ js/ images/</h3><ul><li>画面の見た目のファイル</li><li>ブラウザがそのまま受け取る</li></ul></div>
+    </div>
+  </section>
+
+  <!-- S12 -->
+  <section class="scene" id="s12">
+    <div class="scene-h"><svg class="ic"><use href="#i-layers"/></svg><div><span class="tag">SCENE 12</span><h2>WARとJAR、中身を比べる</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="WAR（外のTomcat）">
+<pre><code>kintai.war
+├─ WEB-INF/
+│   ├─ classes/   <span class="c">← 自社のコードと設定</span>
+│   ├─ lib/       <span class="c">← 部品jar（Spring など）</span>
+│   └─ web.xml
+└─ css/ js/
+
+<span class="c"># 動かし方：Tomcat の webapps/ に置く</span></code></pre>
+      </div>
+      <div class="tab" data-label="実行できるJAR">
+<pre><code>kintai.jar
+├─ BOOT-INF/
+│   ├─ classes/   <span class="c">← 自社のコードと設定</span>
+│   └─ lib/       <span class="c">← 部品jar ＋ <span class="hl">Tomcat本体のjar</span></span>
+├─ META-INF/MANIFEST.MF
+└─ org/springframework/boot/loader/
+
+<span class="c"># 動かし方：java -jar kintai.jar</span></code></pre>
+      </div>
+      <div class="tab" data-label="部品のJAR">
+<pre><code>postgresql-42.x.jar
+├─ org/postgresql/Driver.class
+├─ org/postgresql/…（たくさん）
+└─ META-INF/MANIFEST.MF
+
+<span class="c"># 単体では動かない。アプリが中で使う部品</span></code></pre>
+      </div>
+    </div>
+    <p class="say">自社の部分（classes）と部品（lib）に分かれる形は、3つとも同じです。</p>
+  </section>
+
+  <!-- S13 -->
+  <section class="scene" id="s13">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">SCENE 13</span><h2>「部品のリスト」は半分正解</h2></div></div>
+    <div class="talk">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>会社のWARやJARって、よく使う機能のフレームワークのリスト？</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-spark"/></svg><p>半分正解です。WARの中の lib/ は、まさに部品のリストです。</p></div>
+      <div class="msg"><svg class="ic"><use href="#i-spark"/></svg><p>でも classes/ には自社の業務ルールが入っています。WARは「アプリ本体＋部品セット」です。</p></div>
+    </div>
+    <h3 style="margin:20px 0 10px;font-size:1.05rem">サーバで見かける3種類の箱</h3>
+    <div class="shelf">
+      <div class="sh-mine"><h3><svg class="ic"><use href="#i-pen"/></svg>自社アプリ</h3>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>kintai.war</div>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>shinsei.war</div>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">業務ルール入り。改修するとここが変わる</p></div>
+      <div class="sh-co"><h3><svg class="ic"><use href="#i-users"/></svg>社内共通の部品</h3>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>company-common.jar</div>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>xx-auth-lib.jar</div>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">複数のシステムで使い回す自社製の部品</p></div>
+      <div class="sh-oss"><h3><svg class="ic"><use href="#i-cloud"/></svg>世の中の部品</h3>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>spring-core-x.x.jar</div>
+        <div class="j"><svg class="ic"><use href="#i-box"/></svg>postgresql-x.x.jar</div>
+        <p class="muted" style="font-size:.82rem;margin-top:8px">Spring・DBドライバなど。誰でも使える</p></div>
+    </div>
+    <p class="note muted" style="margin-top:8px;font-size:.8rem">ファイル名は一般的な例です。自社の名前は実際のサーバで確かめてください。</p>
+  </section>
+
+  <!-- S14 -->
+  <section class="scene" id="s14">
+    <div class="scene-h"><svg class="ic"><use href="#i-list"/></svg><div><span class="tag">SCENE 14</span><h2>本当の部品リストは pom.xml</h2></div></div>
+    <div class="fig">
+      <svg viewBox="0 0 680 210" style="min-width:510px;max-width:680px" role="img" aria-label="pom.xmlの注文書をもとにMavenが部品jarを取ってきてWARのlibに詰める">
+        <rect class="box" x="16" y="50" width="130" height="110" rx="10"/>
+        <text x="81" y="88" text-anchor="middle" font-size="14" font-weight="700">pom.xml</text>
+        <text x="81" y="110" text-anchor="middle" font-size="12" class="t-muted">部品の注文書</text>
+        <text x="81" y="128" text-anchor="middle" font-size="12" class="t-muted">（リスト）</text>
+        <path class="line-accent flowing" d="M150 105 H200"/>
+        <rect class="box-warn" x="204" y="50" width="130" height="110" rx="10"/>
+        <text x="269" y="88" text-anchor="middle" font-size="14" font-weight="700">Maven</text>
+        <text x="269" y="110" text-anchor="middle" font-size="12" class="t-muted">社内Nexusから</text>
+        <text x="269" y="128" text-anchor="middle" font-size="12" class="t-muted">jarを取ってくる</text>
+        <path class="line-accent flowing" d="M338 105 H388"/>
+        <rect class="box-bg" x="392" y="50" width="120" height="110" rx="10"/>
+        <text x="452" y="88" text-anchor="middle" font-size="14" font-weight="700">~/.m2</text>
+        <text x="452" y="110" text-anchor="middle" font-size="12" class="t-muted">自分のPCの</text>
+        <text x="452" y="128" text-anchor="middle" font-size="12" class="t-muted">部品置き場</text>
+        <path class="line-accent flowing" d="M516 105 H556"/>
+        <rect class="box-ok" x="560" y="50" width="106" height="110" rx="10"/>
+        <text x="613" y="88" text-anchor="middle" font-size="13" font-weight="700">WARの</text>
+        <text x="613" y="108" text-anchor="middle" font-size="13" font-weight="700">lib/</text>
+        <text x="613" y="130" text-anchor="middle" font-size="12" class="t-muted">に詰める</text>
+        <text x="340" y="196" text-anchor="middle" font-size="13" class="t-accent">05章で設定に苦戦している Maven は、この運び屋</text>
+      </svg>
+    </div>
+<pre><code><span class="c">&lt;!-- pom.xml の一部（例） --&gt;</span>
+&lt;packaging&gt;<span class="hl">war</span>&lt;/packaging&gt;   <span class="c">← WARで作るか JARで作るか</span>
+&lt;dependency&gt;
+  &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+  &lt;artifactId&gt;<span class="s">postgresql</span>&lt;/artifactId&gt;   <span class="c">← 部品の名前</span>
+&lt;/dependency&gt;</code></pre>
+    <p class="say">「よく使う部品のリスト」の正体は pom.xml の dependency です。</p>
+  </section>
+
+  <!-- S15 -->
+  <section class="scene" id="s15">
+    <div class="scene-h"><svg class="ic"><use href="#i-play"/></svg><div><span class="tag">SCENE 15</span><h2>WARができて動くまで</h2></div></div>
+    <div class="stepper">
+      <div class="frame">
+        <div class="pipe"><div class="n on"><svg class="ic"><use href="#i-code"/></svg><b>.java</b>自社のソース</div><div class="to"></div><div class="n"><svg class="ic"><use href="#i-wrench"/></svg><b>mvn package</b></div><div class="to"></div><div class="n"><svg class="ic"><use href="#i-box"/></svg><b>.war</b></div></div>
+        <p class="cap">① 自社のソース（.java）と pom.xml がスタート</p>
+      </div>
+      <div class="frame">
+        <div class="pipe"><div class="n"><svg class="ic"><use href="#i-code"/></svg><b>.java</b></div><div class="to"></div><div class="n on"><svg class="ic"><use href="#i-wrench"/></svg><b>mvn package</b>コンパイル＋部品集め</div><div class="to"></div><div class="n"><svg class="ic"><use href="#i-box"/></svg><b>.war</b></div></div>
+        <p class="cap">② Mavenが .class に変換し、部品jarを集めて箱に詰める</p>
+      </div>
+      <div class="frame">
+        <div class="pipe"><div class="n"><svg class="ic"><use href="#i-code"/></svg><b>.java</b></div><div class="to"></div><div class="n"><svg class="ic"><use href="#i-wrench"/></svg><b>mvn package</b></div><div class="to"></div><div class="n ok"><svg class="ic"><use href="#i-box"/></svg><b>target/kintai.war</b>完成</div></div>
+        <p class="cap">③ target フォルダに WAR が1つできる</p>
+      </div>
+      <div class="frame">
+        <div class="pipe"><div class="n"><svg class="ic"><use href="#i-box"/></svg><b>kintai.war</b></div><div class="to"></div><div class="n on"><svg class="ic"><use href="#i-server"/></svg><b>webapps/</b>サーバに置く</div><div class="to"></div><div class="n"><svg class="ic"><use href="#i-folder"/></svg><b>kintai/</b>展開</div></div>
+        <p class="cap">④ リリース作業＝WARをサーバの webapps/ に置く（デプロイ）</p>
+      </div>
+      <div class="frame">
+        <div class="pipe"><div class="n"><svg class="ic"><use href="#i-server"/></svg><b>Tomcat</b></div><div class="to"></div><div class="n on"><svg class="ic"><use href="#i-folder"/></svg><b>webapps/kintai/</b>zipを開く</div><div class="to"></div><div class="n ok"><svg class="ic"><use href="#i-browser"/></svg><b>/kintai</b>画面が出る</div></div>
+        <p class="cap">⑤ TomcatがWARを開いて起動。URL /kintai で使える</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- S16 -->
+  <section class="scene" id="s16">
+    <div class="scene-h"><svg class="ic"><use href="#i-terminal"/></svg><div><span class="tag">SCENE 16</span><h2>自分の現場で確かめる</h2></div></div>
+    <div class="tabs">
+      <div class="tab" data-label="WARの中を見る">
+<pre><code><span class="c"># 一覧だけ見る（中身は変えない）</span>
+jar tf kintai.war | head -30
+unzip -l kintai.war | grep "WEB-INF/lib"
+
+<span class="c"># Windows：コピーして名前を .zip にし、ダブルクリック</span></code></pre>
+      </div>
+      <div class="tab" data-label="WARかJARか">
+<pre><code>ps -ef | grep java
+
+<span class="c"># 結果に catalina や org.apache.catalina → WAR方式</span>
+<span class="c"># 結果に java -jar xxx.jar          → 実行できるJAR方式</span></code></pre>
+      </div>
+      <div class="tab" data-label="部品リスト">
+<pre><code><span class="c"># プロジェクトのフォルダで</span>
+mvn dependency:tree
+
+<span class="c"># pom.xml の注文から、実際に入る部品が木の形で出る</span></code></pre>
+      </div>
+    </div>
+    <div class="talk" style="margin-top:14px">
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>本番の勤怠はWARですか？ どのTomcatの webapps に置いていますか？</p></div>
+      <div class="msg me"><svg class="ic"><use href="#i-user"/></svg><p>社内共通の部品jarはありますか？ ソースはどこですか？</p></div>
+    </div>
+    <p class="say">この2つを先輩に聞くだけで、システムの地図がかなり埋まります。</p>
+  </section>
+
+  <!-- QUIZ -->
+  <section class="scene" id="quiz">
+    <div class="scene-h"><svg class="ic"><use href="#i-question"/></svg><div><span class="tag">QUIZ</span><h2>自社？部品？仕分けクイズ</h2></div></div>
+    <div class="flips">
+      <details class="flip"><summary>OvertimeService.class</summary><div class="a">自社。classes/ に入る業務ルール。</div></details>
+      <details class="flip"><summary>spring-webmvc-x.x.jar</summary><div class="a">世の中の部品。Springの一部で lib/ に入る。</div></details>
+      <details class="flip"><summary>postgresql-x.x.jar</summary><div class="a">世の中の部品。JavaからDBにつなぐドライバ。</div></details>
+      <details class="flip"><summary>application.properties</summary><div class="a">自社。DB接続先などの設定。classes/ に入る。</div></details>
+      <details class="flip"><summary>@Transactional は誰のもの？</summary><div class="a">Spring。自社コードに付ける「お願いの印」。</div></details>
+      <details class="flip"><summary>「8時間超は残業」はどこに？</summary><div class="a">自社のJava（Service）か、マスタの値。Springではない。</div></details>
+      <details class="flip"><summary>WARとJAR、Tomcatが中にあるのは？</summary><div class="a">実行できるJAR。WARは外のTomcatに置く。</div></details>
+    </div>
+  </section>
+
+  <!-- TODO -->
+  <section class="scene" id="todo">
+    <div class="scene-h"><svg class="ic"><use href="#i-flag"/></svg><div><span class="tag">TODO</span><h2>明日やること</h2></div></div>
+    <ul class="check" data-key="ch13">
+      <li><input type="checkbox" id="ch13-1"><label for="ch13-1">先輩に「WARかJARか」を聞く</label></li>
+      <li><input type="checkbox" id="ch13-2"><label for="ch13-2">WARのコピーをzipにして中を見る</label></li>
+      <li><input type="checkbox" id="ch13-3"><label for="ch13-3">lib/ の部品jarを5個書き出す</label></li>
+      <li><input type="checkbox" id="ch13-4"><label for="ch13-4">Serviceクラスを1つ開き、黄色の行を探す</label></li>
+      <li><input type="checkbox" id="ch13-5"><label for="ch13-5">pom.xml の dependency を数える</label></li>
+    </ul>
+    <p class="more"><svg class="ic"><use href="#i-book"/></svg>関連：<a href="02-system-map.html">02 全体像</a>・<a href="04-spring-boot.html">04 Spring Boot</a>・<a href="05-build-env.html">05 開発環境</a></p>
+  </section>
+
+  <nav class="pager"><a class="prev" href="12-roadmap.html"><span>← 前の章</span>12 12か月ロードマップ</a><a class="next" href="00-index.html"><span>次へ →</span>00 目次</a></nav>
+</main>
+<footer class="wrap">SE成長ガイド 図解版</footer>
+<script src="visual.js"></script>
+</body>
+</html>
